@@ -3,11 +3,12 @@ const app = express();
 
 app.use(express.json());
 
-// مسار التفعيل المتوافق مع رابط المود
-app.post('/unban', (req, res) => {
-    console.log("طلب تحقق قادم إلى سيرفر طارق!");
+// التعديل الجديد: استقبال طلب التفعيل مباشرة على المسار الرئيسي ( / ) لتوفير عدد الأحرف
+app.post('/', (req, res) => {
+    console.log("تم استقبال طلب تحقق جديد على سيرفر طارق المباشر!");
+    console.log("البيانات القادمة من المود:", req.body);
     
-    // إرسال استجابة الموافقة الافتراضية
+    // إرسال استجابة الموافقة الافتراضية لتخطي الحظر وتفعيل المود
     res.json({
         status: "success",
         active: true,
@@ -17,5 +18,5 @@ app.post('/unban', (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-    console.log(`السيرفر يعمل على المنفذ ${PORT}`);
+    console.log(`السيرفر المعدل يعمل بنجاح على المنفذ ${PORT}`);
 });
