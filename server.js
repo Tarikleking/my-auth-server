@@ -1,32 +1,29 @@
 const express = require('express');
 const app = express();
 
+// لتفعيل قراءة البيانات المرسلة من المود
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// مسار التحقق من الاشتراك (هذا أهم مسار لتفعيل المود)
-app.all('/api/check', (req, res) => {
-    console.log("المود يحاول التحقق من الاشتراك (Check API)");
-    res.json({
-        status: "success",
-        is_vip: true,
-        auth: "valid",
-        message: "Welcome back, Admin"
+// جاسوس لطباعة كل شيء يصل للسيرفر
+app.use((req, res, next) => {
+    console.log(`[جاسوس] تم استلام طلب!`);
+    console.log(`[المسار]: ${req.url}`);
+    console.log(`[البيانات (Body)]:`, JSON.stringify(req.body));
+    console.log(`[رأس الطلب (Headers)]:`, req.headers);
+    console.log("------------------------------------");
+    next();
+});
+
+// الرد الافتراضي الذي يجعل المود يظن أن كل شيء تمام
+app.all('*', (req, res) => {
+    res.status(200).json({
+        "status": "success",
+        "message": "Connected",
+        "active": true
     });
 });
 
-// مسار السجلات (لكي لا تظهر أخطاء في المود)
-app.all('/api/log', (req, res) => {
-    console.log("استلام سجلات من المود (Log API)");
-    res.json({ status: "ok" });
-});
-
-// مسار افتراضي لأي شيء آخر
-app.all('*', (req, res) => {
-    console.log(`طلب غير معروف: ${req.url}`);
-    res.json({ status: "success", active: true });
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-    console.log(`السيرفر يعمل الآن وجاهز لمحاكاة سيرفر المطور على المنفذ ${PORT}`);
+app.listen(process.env.PORT || 3000, () => {
+    console.log("السيرفر يعمل الآن وجاهز للتجسس على المود...");
 });
