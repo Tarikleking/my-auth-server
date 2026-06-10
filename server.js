@@ -1,22 +1,13 @@
-const express = require('express');
-const app = express();
+<?php
+// سكربت PHP بسيط لمحاكاة استجابة النجاح
+header('Content-Type: application/json');
 
-app.use(express.json());
+// إرجاع قيم تخبر المود بأن الحساب VIP ومفعل
+$response = [
+    "status" => "success",
+    "vip_status" => true,
+    "license" => "active"
+];
 
-// التعديل الجديد: استقبال طلب التفعيل مباشرة على المسار الرئيسي ( / ) لتوفير عدد الأحرف
-app.post('/', (req, res) => {
-    console.log("تم استقبال طلب تحقق جديد على سيرفر طارق المباشر!");
-    console.log("البيانات القادمة من المود:", req.body);
-    
-    // إرسال استجابة الموافقة الافتراضية لتخطي الحظر وتفعيل المود
-    res.json({
-        status: "success",
-        active: true,
-        message: "Access Granted by Tarik"
-    });
-});
-
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-    console.log(`السيرفر المعدل يعمل بنجاح على المنفذ ${PORT}`);
-});
+echo json_encode($response);
+?>
