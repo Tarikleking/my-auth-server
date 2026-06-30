@@ -522,4 +522,4 @@ afterLogin = async function(user){
 
 };
 
-}
+
