@@ -1,36 +1,258 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KingDZ VIP Key Panel</title>
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>KingDZ Admin Panel</title>
 
 <link rel="stylesheet" href="style.css">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<link rel="preconnect"
+href="https://fonts.googleapis.com">
+
+<link rel="preconnect"
+href="https://fonts.gstatic.com"
+crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+rel="stylesheet">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 
 <body>
 
-<div class="container">
+<div id="loading">
 
-<h1>لوحة إدارة المفاتيح</h1>
+<div class="loader"></div>
+
+<p>KingDZ Admin Panel</p>
+
+</div>
+
+<div id="loginPage">
+
+<div class="loginBox">
+
+<h1>
+
+<i class="fa-solid fa-shield-halved"></i>
+
+KingDZ Admin
+
+</h1>
+
+<p>
+
+تسجيل دخول لوحة الإدارة
+
+</p>
+
+<input
+id="email"
+type="email"
+placeholder="البريد الإلكتروني">
+
+<input
+id="password"
+type="password"
+placeholder="كلمة المرور">
+
+<button id="loginBtn">
+
+<i class="fa-solid fa-right-to-bracket"></i>
+
+تسجيل الدخول
+
+</button>
+
+<div id="loginMessage"></div>
+
+</div>
+
+</div>
+
+<div id="dashboard"
+style="display:none;">
+
+<aside class="sidebar">
+
+<div class="logo">
+
+<i class="fa-solid fa-crown"></i>
+
+<span>KingDZ</span>
+
+</div>
+
+<ul>
+
+<li class="active"
+data-page="home">
+
+<i class="fa-solid fa-house"></i>
+
+الرئيسية
+
+</li>
+
+<li data-page="keys">
+
+<i class="fa-solid fa-key"></i>
+
+المفاتيح
+
+</li>
+
+<li data-page="users">
+
+<i class="fa-solid fa-users"></i>
+
+المستخدمون
+
+</li>
+
+<li data-page="settings">
+
+<i class="fa-solid fa-gear"></i>
+
+الإعدادات
+
+</li>
+
+<li id="logout">
+
+<i class="fa-solid fa-right-from-bracket"></i>
+
+تسجيل الخروج
+
+</li>
+
+</ul>
+
+</aside>
+
+<main class="content">
+
+<header>
+
+<h2>
+
+لوحة التحكم
+
+</h2>
+
+<div id="adminEmail">
+
+...
+
+</div>
+
+</header>
+<section id="homePage" class="page active">
+
+<div class="cards">
+
+<div class="card stat">
+
+<i class="fa-solid fa-users"></i>
+
+<h3 id="usersCount">0</h3>
+
+<span>المستخدمون</span>
+
+</div>
+
+<div class="card stat">
+
+<i class="fa-solid fa-key"></i>
+
+<h3 id="keysCount">0</h3>
+
+<span>المفاتيح</span>
+
+</div>
+
+<div class="card stat">
+
+<i class="fa-solid fa-user-shield"></i>
+
+<h3 id="vipCount">0</h3>
+
+<span>VIP</span>
+
+</div>
+
+<div class="card stat">
+
+<i class="fa-solid fa-ban"></i>
+
+<h3 id="bannedCount">0</h3>
+
+<span>المحظورون</span>
+
+</div>
+
+</div>
+
+<div class="chartCard">
+
+<canvas id="statsChart"></canvas>
+
+</div>
+
+</section>
+
+<section id="keysPage" class="page">
 
 <div class="card">
 
-<label>مدة المفتاح</label>
+<h2>
+
+<i class="fa-solid fa-key"></i>
+
+إدارة المفاتيح
+
+</h2>
+
+<label>
+
+مدة المفتاح
+
+</label>
 
 <select id="duration">
+
 <option value="1 دقيقة">1 دقيقة</option>
+
 <option value="1 ساعة">1 ساعة</option>
+
 <option value="1 يوم">1 يوم</option>
+
 <option value="1 أسبوع">1 أسبوع</option>
+
 <option value="1 شهر">1 شهر</option>
+
 <option value="1 سنة">1 سنة</option>
+
 </select>
 
-<label>عدد المفاتيح</label>
+<label>
+
+عدد المفاتيح
+
+</label>
 
 <input
 type="number"
@@ -39,19 +261,34 @@ value="1"
 min="1"
 max="100">
 
+<div class="buttons">
+
 <button id="generate">
-توليد المفاتيح
+
+<i class="fa-solid fa-wand-magic-sparkles"></i>
+
+توليد
+
 </button>
 
 <button id="copy">
-نسخ جميع المفاتيح
+
+<i class="fa-solid fa-copy"></i>
+
+نسخ الكل
+
 </button>
+
+</div>
 
 </div>
 
 <div class="card">
 
-<h2>المفاتيح</h2>
+<input
+type="text"
+id="searchKey"
+placeholder="بحث عن مفتاح...">
 
 <table>
 
@@ -65,6 +302,8 @@ max="100">
 
 <th>الحالة</th>
 
+<th>العمليات</th>
+
 </tr>
 
 </thead>
@@ -77,13 +316,125 @@ max="100">
 
 </div>
 
+</section>
+
+<section id="usersPage" class="page">
+
+<div class="card">
+
+<h2>
+
+<i class="fa-solid fa-users"></i>
+
+المستخدمون
+
+</h2>
+
+<input
+id="searchUser"
+type="text"
+placeholder="بحث...">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>الجهاز</th>
+
+<th>VIP</th>
+
+<th>الحظر</th>
+
+<th>الدولة</th>
+
+<th>العمليات</th>
+
+</tr>
+
+</thead>
+
+<tbody id="usersTable">
+
+</tbody>
+
+</table>
+
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+</section>
+
+<section id="settingsPage" class="page">
+
+<div class="card">
+
+<h2>
+
+<i class="fa-solid fa-gear"></i>
+
+إعدادات التطبيق
+
+</h2>
+
+<label>
+
+آخر إصدار
+
+</label>
+
+<input id="latestVersion">
+
+<label>
+
+رسالة الصيانة
+
+</label>
+
+<textarea
+id="maintenanceMessage"></textarea>
+
+<div class="switches">
+
+<label>
+
+<input
+type="checkbox"
+id="modEnabled">
+
+تشغيل المود
+
+</label>
+
+<label>
+
+<input
+type="checkbox"
+id="forceUpdate">
+
+إجبار التحديث
+
+</label>
+
+</div>
+
+<button id="saveSettings">
+
+حفظ الإعدادات
+
+</button>
+
+</div>
+
+</section>
+</main>
+
+</div>
+
+<div id="toast"></div>
+
 <script src="script.js"></script>
 
 </body>
-</html>
-<script src="script.js"></script>
 
-</body>
 </html>
