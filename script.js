@@ -448,9 +448,8 @@ generateBtn.onclick = async () => {
 
                 expires_at: expire,
 
-                duration: total,
-
-                duration_type: duration.value
+                duration: duration.value,
+duration_type: duration.value
 
             });
 
