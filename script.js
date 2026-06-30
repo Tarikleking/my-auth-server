@@ -450,10 +450,10 @@ generateBtn.onclick = async () => {
             });
 
         if (error) {
-
-            console.error(error);
-
-        }
+    alert(JSON.stringify(error, null, 2));
+    console.error(error);
+            return ;
+}
 
     }
 
