@@ -296,7 +296,9 @@ const generateBtn = document.getElementById("generate");
 const copyBtn = document.getElementById("copy");
 
 const table = document.getElementById("keysTable");
-
+// عناصر المستخدمين
+const usersTable = document.getElementById("usersTable");
+const searchUser = document.getElementById("searchUser");
 let generatedKeys = [];
 
 // إنشاء مفتاح عشوائي
@@ -524,6 +526,50 @@ afterLogin = async function(user){
 
     await loadKeys();
 
-};
+    await loadUsers();
 
+};
+// ===========================
+// Part 5 : Users Manager
+// ===========================
+
+async function loadUsers() {
+
+    const { data, error } = await client
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.log(error);
+        return;
+    }
+
+    usersTable.innerHTML = "";
+
+    data.forEach(user => {
+
+        usersTable.innerHTML += `
+        <tr>
+
+            <td>${user.device_id || "-"}</td>
+
+            <td>${user.manufacturer || "-"}</td>
+
+            <td>${user.vip ? "✅" : "❌"}</td>
+
+            <td>${user.banned ? "🚫" : "✅"}</td>
+
+            <td>${user.country || "-"}</td>
+
+            <td>
+                سيتم إضافة الأزرار لاحقاً
+            </td>
+
+        </tr>
+        `;
+
+    });
+
+}
 
