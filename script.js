@@ -563,8 +563,14 @@ async function loadUsers() {
             <td>${user.country || "-"}</td>
 
             <td>
-                سيتم إضافة الأزرار لاحقاً
-            </td>
+
+<button onclick="toggleBan('${user.device_id}', ${user.banned})">
+
+${user.banned ? "فك الحظر" : "حظر"}
+
+</button>
+
+</td>
 
         </tr>
         `;
@@ -572,4 +578,25 @@ async function loadUsers() {
     });
 
 }
+async function toggleBan(deviceId, banned){
 
+    const { error } = await client
+        .from("users")
+        .update({
+            banned: !banned
+        })
+        .eq("device_id", deviceId);
+
+    if(error){
+
+        alert(error.message);
+
+        return;
+
+    }
+
+    await loadUsers();
+
+    await refreshDashboard();
+
+}
