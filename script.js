@@ -325,9 +325,6 @@ function randomKey(){
 
 }
 
-    return key;
-
-}
 
 // حساب تاريخ الانتهاء
 function calculateExpire(text){
