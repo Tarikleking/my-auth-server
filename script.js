@@ -285,3 +285,127 @@ async function afterLogin(user){
     await refreshDashboard();
 
 }
+// ===========================
+// Part 3 : Keys Manager
+// ===========================
+
+const duration = document.getElementById("duration");
+const count = document.getElementById("count");
+
+const generateBtn = document.getElementById("generate");
+const copyBtn = document.getElementById("copy");
+
+const table = document.getElementById("keysTable");
+
+let generatedKeys = [];
+
+// إنشاء مفتاح عشوائي
+function randomKey(){
+
+    const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
+
+    let key = "";
+
+    for(let i=0;i<32;i++){
+
+        key += chars[
+            Math.floor(
+                Math.random()*chars.length
+            )
+        ];
+
+    }
+
+    return key;
+
+}
+
+// حساب تاريخ الانتهاء
+function calculateExpire(text){
+
+    const now = new Date();
+
+    switch(text){
+
+        case "1 دقيقة":
+        now.setMinutes(now.getMinutes()+1);
+        break;
+
+        case "1 ساعة":
+        now.setHours(now.getHours()+1);
+        break;
+
+        case "1 يوم":
+        now.setDate(now.getDate()+1);
+        break;
+
+        case "1 أسبوع":
+        now.setDate(now.getDate()+7);
+        break;
+
+        case "1 شهر":
+        now.setMonth(now.getMonth()+1);
+        break;
+
+        case "1 سنة":
+        now.setFullYear(now.getFullYear()+1);
+        break;
+
+    }
+
+    return now.toISOString();
+
+}
+
+// تحميل جدول المفاتيح
+async function loadKeys(){
+
+    const { data,error } =
+    await client
+    .from("keys")
+    .select("*")
+    .order("created_at",{ascending:false});
+
+    if(error){
+
+        console.log(error);
+
+        return;
+
+    }
+
+    table.innerHTML="";
+
+    generatedKeys=[];
+
+    data.forEach(k=>{
+
+        generatedKeys.push(k.key);
+
+        table.innerHTML += `
+        <tr>
+
+        <td>${k.key}</td>
+
+        <td>${k.duration}</td>
+
+        <td>${k.used ? "مستعمل" : "جديد"}</td>
+
+        <td>
+
+        <button
+        onclick="deleteKey('${k.id}')">
+
+        حذف
+
+        </button>
+
+        </td>
+
+        </tr>
+        `;
+
+    });
+
+}
