@@ -547,7 +547,15 @@ async function loadUsers() {
 
     usersTable.innerHTML = "";
 
-    data.forEach(user => {
+    data.forEach(const keyword = searchUser.value.toLowerCase();
+
+data
+.filter(user =>
+    (user.device_id || "").toLowerCase().includes(keyword) ||
+    (user.manufacturer || "").toLowerCase().includes(keyword) ||
+    (user.country || "").toLowerCase().includes(keyword)
+)
+.forEach(user => {user => {
 
         usersTable.innerHTML += `
         <tr>
