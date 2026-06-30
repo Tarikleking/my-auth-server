@@ -136,3 +136,152 @@ logoutBtn.onclick = async ()=>{
 
 // تشغيل التطبيق
 checkSession();
+// ===========================
+// Part 2 : Dashboard Stats
+// ===========================
+
+const usersCount = document.getElementById("usersCount");
+const keysCount = document.getElementById("keysCount");
+const vipCount = document.getElementById("vipCount");
+const bannedCount = document.getElementById("bannedCount");
+
+// تحميل الإحصائيات
+async function loadDashboard() {
+
+    try {
+
+        // عدد المستخدمين
+        const { count: users } = await client
+            .from("users")
+            .select("*", { count: "exact", head: true });
+
+        // عدد المفاتيح
+        const { count: keys } = await client
+            .from("keys")
+            .select("*", { count: "exact", head: true });
+
+        // عدد VIP
+        const { count: vip } = await client
+            .from("users")
+            .select("*", { count: "exact", head: true })
+            .eq("vip", true);
+
+        // عدد المحظورين
+        const { count: banned } = await client
+            .from("users")
+            .select("*", { count: "exact", head: true })
+            .eq("banned", true);
+
+        usersCount.textContent = users || 0;
+        keysCount.textContent = keys || 0;
+        vipCount.textContent = vip || 0;
+        bannedCount.textContent = banned || 0;
+
+    } catch (e) {
+
+        console.error("Dashboard Error:", e);
+
+    }
+
+}
+
+// تحديث الرسم البياني
+let statsChart = null;
+
+function drawChart(users, keys, vip, banned){
+
+    const ctx = document
+        .getElementById("statsChart")
+        .getContext("2d");
+
+    if(statsChart){
+
+        statsChart.destroy();
+
+    }
+
+    statsChart = new Chart(ctx,{
+
+        type:"bar",
+
+        data:{
+
+            labels:[
+                "Users",
+                "Keys",
+                "VIP",
+                "Banned"
+            ],
+
+            datasets:[{
+
+                data:[
+                    users,
+                    keys,
+                    vip,
+                    banned
+                ]
+
+            }]
+
+        },
+
+        options:{
+
+            responsive:true,
+
+            plugins:{
+                legend:{
+                    display:false
+                }
+            }
+
+        }
+
+    });
+
+}
+
+// تحميل البيانات مع الرسم
+async function refreshDashboard(){
+
+    const { count: users } = await client
+        .from("users")
+        .select("*",{count:"exact",head:true});
+
+    const { count: keys } = await client
+        .from("keys")
+        .select("*",{count:"exact",head:true});
+
+    const { count: vip } = await client
+        .from("users")
+        .select("*",{count:"exact",head:true})
+        .eq("vip",true);
+
+    const { count: banned } = await client
+        .from("users")
+        .select("*",{count:"exact",head:true})
+        .eq("banned",true);
+
+    usersCount.textContent = users || 0;
+    keysCount.textContent = keys || 0;
+    vipCount.textContent = vip || 0;
+    bannedCount.textContent = banned || 0;
+
+    drawChart(
+        users || 0,
+        keys || 0,
+        vip || 0,
+        banned || 0
+    );
+
+}
+
+// بعد تسجيل الدخول
+async function afterLogin(user){
+
+    openDashboard(user);
+
+    await refreshDashboard();
+
+}
