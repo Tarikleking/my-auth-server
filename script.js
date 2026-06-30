@@ -90,7 +90,7 @@ async function checkSession(){
 
     if(data.session){
 
-        openDashboard(data.session.user);
+        afterLogin(data.session.user);
 
     }else{
 
