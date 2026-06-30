@@ -407,5 +407,118 @@ async function loadKeys(){
         `;
 
     });
+    // ===========================
+// Part 4 : Generate / Save Keys
+// ===========================
+
+// توليد المفاتيح
+generateBtn.onclick = async () => {
+
+    const total = parseInt(count.value);
+
+    if (total < 1 || total > 100) {
+        alert("عدد المفاتيح يجب أن يكون بين 1 و 100");
+        return;
+    }
+
+    generateBtn.disabled = true;
+    generateBtn.textContent = "جارٍ التوليد...";
+
+    for (let i = 0; i < total; i++) {
+
+        const key = randomKey();
+
+        const expire = calculateExpire(duration.value);
+
+        const { error } = await client
+            .from("keys")
+            .insert({
+
+                key: key,
+
+                status: "new",
+
+                created_at: new Date().toISOString(),
+
+                expires_at: expire,
+
+                duration: total,
+
+                duration_type: duration.value
+
+            });
+
+        if (error) {
+
+            console.error(error);
+
+        }
+
+    }
+
+    await loadKeys();
+
+    await refreshDashboard();
+
+    generateBtn.disabled = false;
+
+    generateBtn.innerHTML =
+    '<i class="fa-solid fa-wand-magic-sparkles"></i> توليد المفاتيح';
+
+};
+
+// نسخ جميع المفاتيح
+copyBtn.onclick = async () => {
+
+    if (generatedKeys.length === 0) {
+
+        alert("لا توجد مفاتيح.");
+
+        return;
+
+    }
+
+    await navigator.clipboard.writeText(
+        generatedKeys.join("\n")
+    );
+
+    alert("تم نسخ جميع المفاتيح.");
+
+};
+
+// حذف مفتاح
+async function deleteKey(id){
+
+    if(!confirm("حذف هذا المفتاح؟")) return;
+
+    const { error } = await client
+    .from("keys")
+    .delete()
+    .eq("id",id);
+
+    if(error){
+
+        console.log(error);
+
+        return;
+
+    }
+
+    await loadKeys();
+
+    await refreshDashboard();
+
+}
+
+// تحميل المفاتيح بعد الدخول
+const oldAfterLogin = afterLogin;
+
+afterLogin = async function(user){
+
+    oldAfterLogin(user);
+
+    await loadKeys();
+
+};
 
 }
