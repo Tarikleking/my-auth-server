@@ -5,25 +5,19 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport"
-content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>KingDZ Admin Panel</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
 <link rel="stylesheet" href="style.css">
-
-<link rel="preconnect"
-href="https://fonts.googleapis.com">
-
-<link rel="preconnect"
-href="https://fonts.gstatic.com"
-crossorigin>
-
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
-rel="stylesheet">
-
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -37,36 +31,40 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 
 <div class="loader"></div>
 
-<p>KingDZ Admin Panel</p>
+<h2>KingDZ Admin Panel</h2>
+
+<p>جار تحميل لوحة التحكم...</p>
 
 </div>
 
 <div id="loginPage">
 
-<div class="loginBox">
+<div class="login-card">
 
-<h1>
+<div class="login-logo">
 
-<i class="fa-solid fa-shield-halved"></i>
+<i class="fa-solid fa-crown"></i>
 
-KingDZ Admin
+<h1>KingDZ</h1>
 
-</h1>
+<span>Admin Panel</span>
 
-<p>
+</div>
 
-تسجيل دخول لوحة الإدارة
+<div class="login-form">
 
-</p>
+<h2>تسجيل الدخول</h2>
+
+<p>سجل دخولك لإدارة التطبيق</p>
 
 <input
-id="email"
 type="email"
+id="email"
 placeholder="البريد الإلكتروني">
 
 <input
-id="password"
 type="password"
+id="password"
 placeholder="كلمة المرور">
 
 <button id="loginBtn">
@@ -77,18 +75,19 @@ placeholder="كلمة المرور">
 
 </button>
 
-<div id="loginMessage"></div>
+<p id="loginError"></p>
 
 </div>
 
 </div>
 
-<div id="dashboard"
-style="display:none;">
+</div>
+
+<div id="dashboard" style="display:none;">
 
 <aside class="sidebar">
 
-<div class="logo">
+<div class="brand">
 
 <i class="fa-solid fa-crown"></i>
 
@@ -98,12 +97,11 @@ style="display:none;">
 
 <ul>
 
-<li class="active"
-data-page="home">
+<li class="active" data-page="home">
 
 <i class="fa-solid fa-house"></i>
 
-الرئيسية
+<span>الرئيسية</span>
 
 </li>
 
@@ -111,7 +109,7 @@ data-page="home">
 
 <i class="fa-solid fa-key"></i>
 
-المفاتيح
+<span>المفاتيح</span>
 
 </li>
 
@@ -119,7 +117,7 @@ data-page="home">
 
 <i class="fa-solid fa-users"></i>
 
-المستخدمون
+<span>المستخدمون</span>
 
 </li>
 
@@ -127,7 +125,7 @@ data-page="home">
 
 <i class="fa-solid fa-gear"></i>
 
-الإعدادات
+<span>الإعدادات</span>
 
 </li>
 
@@ -135,7 +133,7 @@ data-page="home">
 
 <i class="fa-solid fa-right-from-bracket"></i>
 
-تسجيل الخروج
+<span>تسجيل الخروج</span>
 
 </li>
 
@@ -143,70 +141,108 @@ data-page="home">
 
 </aside>
 
-<main class="content">
+<div class="main-content">
 
-<header>
+<header class="topbar">
 
-<h2>
+<div>
 
-لوحة التحكم
+<h2>لوحة التحكم</h2>
 
-</h2>
+<p>مرحباً بك في لوحة إدارة KingDZ</p>
 
-<div id="adminEmail">
+</div>
 
-...
+<div class="admin-info">
+
+<div class="admin-avatar">
+
+<i class="fa-solid fa-user-shield"></i>
+
+</div>
+
+<div>
+
+<h4 id="adminName">Administrator</h4>
+
+<small id="adminEmail">admin@kingdz.com</small>
+
+</div>
 
 </div>
 
 </header>
 <section id="homePage" class="page active">
 
-<div class="cards">
+<div class="stats-grid">
 
-<div class="card stat">
+<div class="stat-card">
 
+<div class="icon blue">
 <i class="fa-solid fa-users"></i>
+</div>
 
+<div class="info">
 <h3 id="usersCount">0</h3>
-
-<span>المستخدمون</span>
+<p>المستخدمون</p>
+</div>
 
 </div>
 
-<div class="card stat">
+<div class="stat-card">
 
+<div class="icon green">
 <i class="fa-solid fa-key"></i>
+</div>
 
+<div class="info">
 <h3 id="keysCount">0</h3>
-
-<span>المفاتيح</span>
+<p>المفاتيح</p>
+</div>
 
 </div>
 
-<div class="card stat">
+<div class="stat-card">
 
-<i class="fa-solid fa-user-shield"></i>
+<div class="icon orange">
+<i class="fa-solid fa-crown"></i>
+</div>
 
+<div class="info">
 <h3 id="vipCount">0</h3>
-
-<span>VIP</span>
+<p>VIP</p>
+</div>
 
 </div>
 
-<div class="card stat">
+<div class="stat-card">
 
+<div class="icon red">
 <i class="fa-solid fa-ban"></i>
+</div>
 
+<div class="info">
 <h3 id="bannedCount">0</h3>
-
-<span>المحظورون</span>
-
+<p>المحظورون</p>
 </div>
 
 </div>
 
-<div class="chartCard">
+</div>
+
+<div class="chart-box">
+
+<div class="section-title">
+
+<h3>
+
+<i class="fa-solid fa-chart-line"></i>
+
+إحصائيات التطبيق
+
+</h3>
+
+</div>
 
 <canvas id="statsChart"></canvas>
 
@@ -216,43 +252,42 @@ data-page="home">
 
 <section id="keysPage" class="page">
 
-<div class="card">
+<div class="section-title">
 
-<h2>
+<h3>
 
 <i class="fa-solid fa-key"></i>
 
 إدارة المفاتيح
 
-</h2>
+</h3>
 
-<label>
+</div>
 
-مدة المفتاح
+<div class="card">
 
-</label>
+<div class="form-grid">
+
+<div>
+
+<label>مدة المفتاح</label>
 
 <select id="duration">
 
 <option value="1 دقيقة">1 دقيقة</option>
-
 <option value="1 ساعة">1 ساعة</option>
-
 <option value="1 يوم">1 يوم</option>
-
 <option value="1 أسبوع">1 أسبوع</option>
-
 <option value="1 شهر">1 شهر</option>
-
 <option value="1 سنة">1 سنة</option>
 
 </select>
 
-<label>
+</div>
 
-عدد المفاتيح
+<div>
 
-</label>
+<label>عدد المفاتيح</label>
 
 <input
 type="number"
@@ -261,13 +296,17 @@ value="1"
 min="1"
 max="100">
 
-<div class="buttons">
+</div>
+
+</div>
+
+<div class="button-group">
 
 <button id="generate">
 
 <i class="fa-solid fa-wand-magic-sparkles"></i>
 
-توليد
+توليد المفاتيح
 
 </button>
 
@@ -288,7 +327,7 @@ max="100">
 <input
 type="text"
 id="searchKey"
-placeholder="بحث عن مفتاح...">
+placeholder="🔍 البحث عن مفتاح">
 
 <table>
 
@@ -320,20 +359,24 @@ placeholder="بحث عن مفتاح...">
 
 <section id="usersPage" class="page">
 
-<div class="card">
+<div class="section-title">
 
-<h2>
+<h3>
 
 <i class="fa-solid fa-users"></i>
 
-المستخدمون
+إدارة المستخدمين
 
-</h2>
+</h3>
+
+</div>
+
+<div class="card">
 
 <input
 id="searchUser"
 type="text"
-placeholder="بحث...">
+placeholder="🔍 البحث عن مستخدم">
 
 <table>
 
@@ -342,6 +385,8 @@ placeholder="بحث...">
 <tr>
 
 <th>الجهاز</th>
+
+<th>الشركة</th>
 
 <th>VIP</th>
 
@@ -367,34 +412,33 @@ placeholder="بحث...">
 
 <section id="settingsPage" class="page">
 
-<div class="card">
+<div class="section-title">
 
-<h2>
+<h3>
 
-<i class="fa-solid fa-gear"></i>
+<i class="fa-solid fa-sliders"></i>
 
 إعدادات التطبيق
 
-</h2>
+</h3>
 
-<label>
+</div>
 
-آخر إصدار
+<div class="card">
 
-</label>
+<label>آخر إصدار</label>
 
-<input id="latestVersion">
+<input
+id="latestVersion"
+placeholder="مثال: 2.0.1">
 
-<label>
-
-رسالة الصيانة
-
-</label>
+<label>رسالة الصيانة</label>
 
 <textarea
-id="maintenanceMessage"></textarea>
+id="maintenanceMessage"
+rows="5"></textarea>
 
-<div class="switches">
+<div class="switch-grid">
 
 <label>
 
@@ -420,6 +464,8 @@ id="forceUpdate">
 
 <button id="saveSettings">
 
+<i class="fa-solid fa-floppy-disk"></i>
+
 حفظ الإعدادات
 
 </button>
@@ -427,11 +473,61 @@ id="forceUpdate">
 </div>
 
 </section>
-</main>
+<footer class="footer">
+
+<p>
+
+© 2026 KingDZ Admin Panel
+
+</p>
+
+</footer>
+
+</div>
 
 </div>
 
 <div id="toast"></div>
+
+<div id="modal" class="modal">
+
+<div class="modal-content">
+
+<div class="modal-header">
+
+<h3 id="modalTitle">
+
+KingDZ
+
+</h3>
+
+<button id="closeModal">
+
+<i class="fa-solid fa-xmark"></i>
+
+</button>
+
+</div>
+
+<div id="modalBody">
+
+...
+
+</div>
+
+<div class="modal-footer">
+
+<button id="modalOk">
+
+موافق
+
+</button>
+
+</div>
+
+</div>
+
+</div>
 
 <script src="script.js"></script>
 
