@@ -307,15 +307,23 @@ function randomKey(){
 
     let key = "";
 
-    for(let i=0;i<32;i++){
+    for(let i = 0; i < 12; i++){
+
+        if(i > 0 && i % 4 === 0){
+            key += "-";
+        }
 
         key += chars[
             Math.floor(
-                Math.random()*chars.length
+                Math.random() * chars.length
             )
         ];
 
     }
+
+    return key;
+
+}
 
     return key;
 
