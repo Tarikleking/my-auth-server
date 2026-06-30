@@ -395,7 +395,7 @@ async function loadKeys(){
 
         <td>${k.duration}</td>
 
-        <td>${k.used ? "مستعمل" : "جديد"}</td>
+        <td>${k.status === "used" ? "مستعمل" : "جديد"}</td>
 
         <td>
 
