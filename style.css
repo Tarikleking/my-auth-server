@@ -1,89 +1,130 @@
-
 *{
 margin:0;
 padding:0;
 box-sizing:border-box;
-font-family:Cairo,sans-serif;
+font-family:'Cairo',sans-serif;
+}
+
+:root{
+
+--bg:#0b1120;
+--sidebar:#111827;
+--card:#1a2333;
+--card2:#1e293b;
+
+--primary:#6d5dfc;
+--primary2:#8b5cf6;
+
+--success:#22c55e;
+--danger:#ef4444;
+--warning:#f59e0b;
+
+--text:#ffffff;
+--text2:#b6bfd0;
+
+--border:rgba(255,255,255,.08);
+
 }
 
 body{
-background:#0f172a;
-color:white;
+
+background:linear-gradient(135deg,#090f1c,#111827,#0b1120);
+
+color:var(--text);
+
+min-height:100vh;
+
+overflow-x:hidden;
+
 }
 
-.container{
-width:90%;
-max-width:1100px;
-margin:auto;
-padding:30px;
-}
+a{
 
-h1{
-text-align:center;
-margin-bottom:25px;
-color:#38bdf8;
-}
+text-decoration:none;
 
-.card{
-background:#1e293b;
-padding:20px;
-border-radius:15px;
-margin-bottom:25px;
-box-shadow:0 0 15px rgba(0,0,0,.35);
-}
+color:inherit;
 
-label{
-display:block;
-margin-top:15px;
-margin-bottom:6px;
-font-weight:bold;
-}
-
-select,
-input{
-width:100%;
-padding:12px;
-border:none;
-border-radius:8px;
-background:#334155;
-color:white;
-font-size:16px;
 }
 
 button{
-margin-top:15px;
-padding:12px;
-width:100%;
-border:none;
-border-radius:8px;
-background:#0ea5e9;
-color:white;
-font-size:16px;
+
 cursor:pointer;
-transition:.3s;
+
+border:none;
+
+outline:none;
+
+transition:.25s;
+
 }
 
-button:hover{
-background:#0284c7;
+input,
+select,
+textarea{
+
+outline:none;
+
+border:none;
+
 }
 
-table{
+#loading{
+
+position:fixed;
+
+top:0;
+left:0;
+
 width:100%;
-border-collapse:collapse;
-margin-top:15px;
+height:100%;
+
+background:#090f1c;
+
+display:flex;
+
+flex-direction:column;
+
+justify-content:center;
+
+align-items:center;
+
+z-index:99999;
+
 }
 
-th,
-td{
-padding:12px;
-text-align:center;
-border-bottom:1px solid #475569;
+.loader{
+
+width:65px;
+height:65px;
+
+border-radius:50%;
+
+border:6px solid rgba(255,255,255,.1);
+
+border-top:6px solid #6d5dfc;
+
+animation:spin 1s linear infinite;
+
 }
 
-th{
-background:#334155;
+#loading p{
+
+margin-top:20px;
+
+font-size:22px;
+
+font-weight:700;
+
+color:white;
+
 }
 
-tr:hover{
-background:#293548;
+@keyframes spin{
+
+100%{
+
+transform:rotate(360deg);
+
+}
+
 }
