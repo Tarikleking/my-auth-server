@@ -567,15 +567,15 @@ async function loadUsers() {
 <td>
 
 <button onclick="toggleVip('${user.device_id}', ${user.vip})">
-
 ${user.vip ? "إزالة VIP" : "VIP"}
-
 </button>
 
 <button onclick="toggleBan('${user.device_id}', ${user.banned})">
-
 ${user.banned ? "فك الحظر" : "حظر"}
+</button>
 
+<button onclick="deleteUser('${user.device_id}')">
+حذف
 </button>
 
 </td>
@@ -615,6 +615,29 @@ async function toggleVip(deviceId, vip){
         .update({
             vip: !vip
         })
+        .eq("device_id", deviceId);
+
+    if(error){
+
+        alert(error.message);
+
+        return;
+
+    }
+
+    await loadUsers();
+
+    await refreshDashboard();
+
+}
+async function deleteUser(deviceId){
+
+    if(!confirm("هل تريد حذف هذا المستخدم نهائياً؟"))
+        return;
+
+    const { error } = await client
+        .from("users")
+        .delete()
         .eq("device_id", deviceId);
 
     if(error){
