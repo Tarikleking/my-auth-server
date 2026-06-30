@@ -407,6 +407,7 @@ async function loadKeys(){
         `;
 
     });
+    }
     // ===========================
 // Part 4 : Generate / Save Keys
 // ===========================
