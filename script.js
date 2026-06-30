@@ -564,6 +564,14 @@ async function loadUsers() {
 
             <td>
 
+<td>
+
+<button onclick="toggleVip('${user.device_id}', ${user.vip})">
+
+${user.vip ? "إزالة VIP" : "VIP"}
+
+</button>
+
 <button onclick="toggleBan('${user.device_id}', ${user.banned})">
 
 ${user.banned ? "فك الحظر" : "حظر"}
@@ -584,6 +592,28 @@ async function toggleBan(deviceId, banned){
         .from("users")
         .update({
             banned: !banned
+        })
+        .eq("device_id", deviceId);
+
+    if(error){
+
+        alert(error.message);
+
+        return;
+
+    }
+
+    await loadUsers();
+
+    await refreshDashboard();
+
+}
+async function toggleVip(deviceId, vip){
+
+    const { error } = await client
+        .from("users")
+        .update({
+            vip: !vip
         })
         .eq("device_id", deviceId);
 
