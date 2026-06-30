@@ -659,5 +659,9 @@ async function deleteUser(deviceId){
     await loadUsers();
 
     await refreshDashboard();
+    
 
 }
+searchUser.oninput = () => {
+    loadUsers();
+};
