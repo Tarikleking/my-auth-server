@@ -1,72 +1,138 @@
+// ===========================
+// KingDZ Admin Panel
+// Part 1
+// ===========================
 
 const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const duration = document.getElementById("duration");
-const count = document.getElementById("count");
+// عناصر تسجيل الدخول
+const loginPage = document.getElementById("loginPage");
+const dashboard = document.getElementById("dashboard");
+const loading = document.getElementById("loading");
 
-const generateBtn = document.getElementById("generate");
-const copyBtn = document.getElementById("copy");
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const loginBtn = document.getElementById("loginBtn");
+const loginError = document.getElementById("loginError");
 
-const table = document.getElementById("keysTable");
+const adminName = document.getElementById("adminName");
+const adminEmail = document.getElementById("adminEmail");
 
-const totalKeys = document.getElementById("totalKeys");
-const activeKeys = document.getElementById("activeKeys");
-const usedKeys = document.getElementById("usedKeys");
-const bannedUsers = document.getElementById("bannedUsers");
+const logoutBtn = document.getElementById("logout");
 
-let generatedKeys = [];
+// صفحات اللوحة
+const pages = {
+    home: document.getElementById("homePage"),
+    keys: document.getElementById("keysPage"),
+    users: document.getElementById("usersPage"),
+    settings: document.getElementById("settingsPage")
+};
 
-function randomKey(){
+// عناصر القائمة
+document.querySelectorAll(".sidebar li[data-page]").forEach(item => {
 
-const chars="ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
+    item.onclick = () => {
 
-let key="";
+        document
+            .querySelectorAll(".sidebar li")
+            .forEach(x => x.classList.remove("active"));
 
-for(let i=0;i<32;i++){
+        item.classList.add("active");
 
-key+=chars[Math.floor(Math.random()*chars.length)];
+        Object.values(pages).forEach(p => {
+            p.classList.remove("active");
+        });
 
-}
+        pages[item.dataset.page].classList.add("active");
 
-return key;
+    };
 
-}
+});
 
-function calculateExpire(text){
+// إخفاء شاشة التحميل
+function hideLoading(){
 
-const now=new Date();
-
-switch(text){
-
-case "1 دقيقة":
-now.setMinutes(now.getMinutes()+1);
-break;
-
-case "1 ساعة":
-now.setHours(now.getHours()+1);
-break;
-
-case "1 يوم":
-now.setDate(now.getDate()+1);
-break;
-
-case "1 أسبوع":
-now.setDate(now.getDate()+7);
-break;
-
-case "1 شهر":
-now.setMonth(now.getMonth()+1);
-break;
-
-case "1 سنة":
-now.setFullYear(now.getFullYear()+1);
-break;
+    loading.style.display = "none";
 
 }
 
-return now.toISOString();
+// فتح اللوحة
+function openDashboard(user){
+
+    loginPage.style.display = "none";
+
+    dashboard.style.display = "flex";
+
+    adminEmail.textContent = user.email;
+
+    adminName.textContent = "Administrator";
 
 }
+
+// فتح صفحة تسجيل الدخول
+function openLogin(){
+
+    dashboard.style.display = "none";
+
+    loginPage.style.display = "flex";
+
+}
+
+// التحقق من الجلسة
+async function checkSession(){
+
+    const { data } = await client.auth.getSession();
+
+    hideLoading();
+
+    if(data.session){
+
+        openDashboard(data.session.user);
+
+    }else{
+
+        openLogin();
+
+    }
+
+}
+
+// تسجيل الدخول
+loginBtn.onclick = async ()=>{
+
+    loginError.textContent = "";
+
+    const { error } = await client.auth.signInWithPassword({
+
+        email: email.value.trim(),
+
+        password: password.value
+
+    });
+
+    if(error){
+
+        loginError.textContent = error.message;
+
+        return;
+
+    }
+
+    checkSession();
+
+};
+
+// تسجيل الخروج
+logoutBtn.onclick = async ()=>{
+
+    await client.auth.signOut();
+
+    openLogin();
+
+};
+
+// تشغيل التطبيق
+checkSession();
