@@ -145,27 +145,40 @@ placeholder="كلمة المرور">
 
 <header class="topbar">
 
-<div>
+<div class="header-left">
 
-<h2>لوحة التحكم</h2>
+<h2>
+<i class="fa-solid fa-gauge-high"></i>
+لوحة التحكم
+</h2>
 
-<p>مرحباً بك في لوحة إدارة KingDZ</p>
+<p id="liveTime">
+آخر تحديث: ...
+</p>
 
 </div>
+
+<div class="header-actions">
+
+<button class="header-btn">
+<i class="fa-solid fa-bell"></i>
+<span class="badge">0</span>
+</button>
+
+<button class="header-btn">
+<i class="fa-solid fa-moon"></i>
+</button>
 
 <div class="admin-info">
 
 <div class="admin-avatar">
-
 <i class="fa-solid fa-user-shield"></i>
-
 </div>
 
 <div>
-
 <h4 id="adminName">Administrator</h4>
-
-<small id="adminEmail">admin@kingdz.com</small>
+<small id="adminEmail"></small>
+</div>
 
 </div>
 
@@ -227,9 +240,55 @@ placeholder="كلمة المرور">
 </div>
 
 </div>
+<div class="stat-card">
+
+<div class="icon purple">
+<i class="fa-solid fa-signal"></i>
+</div>
+
+<div class="info">
+<h3 id="onlineCount">0</h3>
+<p>المتصلون الآن</p>
+</div>
 
 </div>
 
+<div class="stat-card">
+
+<div class="icon gold">
+<i class="fa-solid fa-chart-column"></i>
+</div>
+
+<div class="info">
+<h3 id="todayCount">0</h3>
+<p>تسجيلات اليوم</p>
+</div>
+
+</div>
+</div>
+<div class="live-grid">
+
+<div class="live-card">
+<h3>
+<i class="fa-solid fa-globe"></i>
+آخر تسجيل دخول
+</h3>
+
+<div id="lastUsers"></div>
+
+</div>
+
+<div class="live-card">
+<h3>
+<i class="fa-solid fa-fire"></i>
+آخر المفاتيح
+</h3>
+
+<div id="lastKeys"></div>
+
+</div>
+
+</div>
 <div class="chart-box">
 
 <div class="section-title">
