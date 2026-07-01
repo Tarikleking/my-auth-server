@@ -693,3 +693,41 @@ async function deleteUser(deviceId){
 searchUser.oninput = () => {
     loadUsers();
 };
+//==============================
+// Realtime Sync
+//==============================
+
+client
+.channel("kingdz-live")
+
+.on(
+"postgres_changes",
+{
+event:"*",
+schema:"public",
+table:"users"
+},
+async ()=>{
+
+await loadUsers();
+await refreshDashboard();
+
+}
+)
+
+.on(
+"postgres_changes",
+{
+event:"*",
+schema:"public",
+table:"keys"
+},
+async ()=>{
+
+await loadKeys();
+await refreshDashboard();
+
+}
+)
+
+.subscribe();
