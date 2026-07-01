@@ -144,7 +144,10 @@ const usersCount = document.getElementById("usersCount");
 const keysCount = document.getElementById("keysCount");
 const vipCount = document.getElementById("vipCount");
 const bannedCount = document.getElementById("bannedCount");
-
+const todayUsers=document.getElementById("todayUsers");
+const onlineUsers=document.getElementById("onlineUsers");
+const countriesCount=document.getElementById("countriesCount");
+const devicesCount=document.getElementById("devicesCount");
 // تحميل الإحصائيات
 async function loadDashboard() {
 
@@ -274,7 +277,33 @@ async function refreshDashboard(){
         vip || 0,
         banned || 0
     );
+const { data: allUsers } = await client
+.from("users")
+.select("*");
 
+if(allUsers){
+
+const today=new Date().toDateString();
+
+todayUsers.textContent=
+allUsers.filter(u=>
+new Date(u.created_at).toDateString()==today
+).length;
+
+countriesCount.textContent=
+new Set(
+allUsers.map(x=>x.country).filter(Boolean)
+).size;
+
+devicesCount.textContent=
+new Set(
+allUsers.map(x=>x.manufacturer).filter(Boolean)
+).size;
+
+onlineUsers.textContent=
+allUsers.filter(x=>x.online===true).length;
+
+}
 }
 
 // بعد تسجيل الدخول
