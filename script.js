@@ -554,7 +554,7 @@ data
     (user.manufacturer || "").toLowerCase().includes(keyword) ||
     (user.country || "").toLowerCase().includes(keyword)
 )
-.forEach(user => {user => {
+.forEach(user => {
 
         usersTable.innerHTML += `
         <tr>
