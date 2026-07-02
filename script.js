@@ -348,3 +348,188 @@ client.channel('kingdz-compact-live')
 
 // انطلاق الفحص الأساسي عند تحميل الواجهة
 checkSession();
+// ==========================================
+// 🛠️ ملحق الوظائف المتقدمة: إدارة المفاتيح، الحظر، والـ VIP
+// ==========================================
+
+// [1] دالة توليد مفاتيح عشوائية وحفظها بالسيرفر
+if (document.getElementById("btnGenerateKey")) {
+    document.getElementById("btnGenerateKey").onclick = async () => {
+        const type = document.getElementById("keyType").value;
+        const duration = parseInt(document.getElementById("keyDuration").value) || 30;
+        const amount = parseInt(document.getElementById("keyAmount").value) || 1;
+        
+        let insertedCount = 0;
+
+        for (let i = 0; i < amount; i++) {
+            // توليد رمز عشوائي فريد شبه المفاتيح الرسمية KINGDZ-XXXX-XXXX
+            const randomCode = "KINGDZ-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+            
+            const { error } = await client.from("keys").insert([
+                { 
+                    key_code: randomCode, 
+                    type: type, 
+                    duration_days: duration, 
+                    status: "active",
+                    created_at: new Date().toISOString()
+                }
+            ]);
+            
+            if (!error) insertedCount++;
+        }
+
+        if (insertedCount > 0) {
+            showToast(`تم توليد ${insertedCount} مفتاح بنجاح!`);
+            // إعادة جلب البيانات لتحديث الجداول والعدادات فوراً
+            refreshDashboard();
+            fetchKeysTable(); 
+        } else {
+            showToast("حدث خطأ أثناء توليد المفاتيح");
+        }
+    };
+}
+
+// [2] دالة جلب وعرض جدول المفاتيح في قسم المفاتيح الفرعي
+async function fetchKeysTable() {
+    const tbody = document.getElementById("keysListTable");
+    const badge = document.getElementById("keysTotalBadge");
+    if (!tbody) return;
+
+    const { data: keys, count } = await client.from("keys").select("*", { count: "exact" });
+    
+    if(badge) badge.textContent = `${count || 0} مفتاح`;
+
+    if (!keys || keys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-500 text-[10px]">لا توجد مفاتيح تفعيل منشأة حالياً.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = keys.reverse().map(k => `
+        <tr class="hover:bg-white/[0.005]">
+            <td class="p-2 pr-4 font-mono font-bold text-purple-400 text-[10px] select-all cursor-pointer" title="اضغط لنسخ المفتاح">${k.key_code}</td>
+            <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold ${k.type.includes('VIP') ? 'badge-vip-gold' : 'badge-monthly'}">${k.type}</span></td>
+            <td class="p-2 text-gray-400">${k.duration_days} يوم</td>
+            <td class="p-2">
+                <span class="inline-flex items-center gap-1 font-bold ${k.status === 'active' ? 'text-green-400' : 'text-gray-500'} text-[10px]">
+                    <span class="w-1 h-1 rounded-full bg-current"></span>${k.status === 'active' ? 'جاهز' : 'مستعمل'}
+                </span>
+            </td>
+            <td class="p-2 text-center pl-4">
+                <button onclick="deleteKey('${k.key_code}')" class="p-1 text-red-500 hover:bg-red-500/5 rounded-md transition-all"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </td>
+        </tr>
+    `).join('');
+    lucide.createIcons();
+}
+
+// دالة حذف مفتاح تفعيل محدد من جدول الـ keys
+async function deleteKey(keyCode) {
+    if (confirm(`هل أنت متأكد من حذف المفتاح ${keyCode}؟`)) {
+        const { error } = await client.from("keys").delete().eq("key_code", keyCode);
+        if (!error) {
+            showToast("تم حذف المفتاح نهائياً");
+            refreshDashboard();
+            fetchKeysTable();
+        }
+    }
+}
+
+// [3] دالة تطبيق الحظر الفوري على الأجهزة (Ban Engine)
+if (document.getElementById("btnApplyBan")) {
+    document.getElementById("btnApplyBan").onclick = async () => {
+        const deviceId = document.getElementById("banDeviceId").value.trim();
+        const reason = document.getElementById("banReason").value.trim() || "مخالفة شروط الاستخدام";
+
+        if (!deviceId) { showToast("الرجاء إدخال الـ Device ID أولاً"); return; }
+
+        // إضافة الجهاز إلى جدول المحظورين المخصص
+        const { error } = await client.from("banned_devices").insert([
+            { device_id: deviceId, reason: reason, banned_at: new Date().toISOString() }
+        ]);
+
+        if (!error) {
+            // تحديث حالة المستخدم في جدول المستخدمين الأصلي لجعله محظوراً أو طرده فوراً
+            await client.from("users").update({ online: false }).eq("device_id", deviceId);
+            showToast("تم إدراج الجهاز في قائمة الحظر");
+            document.getElementById("banDeviceId").value = "";
+            document.getElementById("banReason").value = "";
+            fetchBannedDevicesTable();
+            refreshDashboard();
+        } else {
+            showToast("الجهاز محظور بالفعل سابقاً أو حدث خطأ");
+        }
+    };
+}
+
+// دالة جلب وعرض قائمة الأجهزة المحظورة في قسم الحظر
+async function fetchBannedDevicesTable() {
+    const tbody = document.getElementById("bannedDevicesTable");
+    if (!tbody) return;
+
+    const { data: bans } = await client.from("banned_devices").select("*");
+
+    if (!bans || bans.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-gray-500 text-[10px]">القائمة السوداء فارغة تماماً.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = bans.reverse().map(b => `
+        <tr class="hover:bg-white/[0.005]">
+            <td class="p-2 pr-4 text-red-400 font-bold font-mono text-[10px]">${b.device_id.substring(0, 15)}...</td>
+            <td class="p-2 text-gray-400">${b.reason}</td>
+            <td class="p-2 text-gray-500 text-[10px]">منذ قليل</td>
+            <td class="p-2 text-center pl-4">
+                <button onclick="unbanDevice('${b.device_id}')" class="px-2 py-0.5 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 text-green-400 font-bold text-[9px] rounded-md transition-all">فك الحظر</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// دالة إلغاء فك الحظر عن العميل
+async function unbanDevice(deviceId) {
+    if (confirm("هل تريد فك الحظر عن هذا الجهاز والسماح له بالدخول؟")) {
+        const { error } = await client.from("banned_devices").delete().eq("device_id", deviceId);
+        if (!error) {
+            showToast("تم فك الحظر بنجاح");
+            fetchBannedDevicesTable();
+        }
+    }
+}
+
+// [4] إدارة ترقيات VIP وسحب الرتب يدوياً
+if (document.getElementById("btnGrantVip")) {
+    document.getElementById("btnGrantVip").onclick = async () => {
+        const deviceId = document.getElementById("vipDeviceId").value.trim();
+        if (!deviceId) { showToast("أدخل معرّف الجهاز"); return; }
+
+        const { error } = await client.from("users").update({ vip: true }).eq("device_id", deviceId);
+        if (!error) {
+            showToast("تمت الترقية إلى رتبة VIP بنجاح ✨");
+            document.getElementById("vipDeviceId").value = "";
+            refreshDashboard();
+        } else { showToast("لم يتم العثور على الجهاز بالسيرفر"); }
+    };
+}
+
+if (document.getElementById("btnRevokeVip")) {
+    document.getElementById("btnRevokeVip").onclick = async () => {
+        const deviceId = document.getElementById("vipDeviceId").value.trim();
+        if (!deviceId) { showToast("أدخل معرّف الجهاز"); return; }
+
+        const { error } = await client.from("users").update({ vip: false }).eq("device_id", deviceId);
+        if (!error) {
+            showToast("تم سحب صلاحيات VIP بنجاح");
+            document.getElementById("vipDeviceId").value = "";
+            refreshDashboard();
+        } else { showToast("لم يتم العثور على الجهاز بالسيرفر"); }
+    };
+}
+
+// تعديل الدالة الأساسية بعد الدخول لضمان تشغيل الجداول الإضافية فورياً
+const originalAfterLogin = afterLogin;
+afterLogin = function() {
+    originalAfterLogin();
+    fetchKeysTable();
+    fetchBannedDevicesTable();
+};
+
