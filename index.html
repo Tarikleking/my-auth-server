@@ -341,5 +341,17 @@
 
     <script src="script.js"></script>
     <script>lucide.createIcons();</script>
+    <div id="userDrawer" class="fixed inset-y-0 right-[-450px] w-[450px] bg-[#0b0e14] border-l border-white/10 shadow-2xl z-50 transition-all duration-300 ease-in-out p-6 overflow-y-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-sm font-black text-white">تفاصيل المستخدم</h3>
+        <button onclick="closeDrawer()" class="p-2 hover:bg-white/10 rounded-lg text-gray-400">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+    <div id="drawerContent" class="space-y-6 text-[11px] text-gray-400">
+        <div class="flex items-center justify-center h-64 text-gray-600">جاري تحميل البيانات...</div>
+    </div>
+</div>
+
 </body>
 </html>
