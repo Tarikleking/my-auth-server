@@ -147,8 +147,8 @@ if (document.getElementById("btnGenerateKey")) {
             if (!error) successCount++;
         }
 
-        if (successCount > 0) {
-            showToast(تم توليد ${successCount} مفتاح متوافق مع الدالة بنجاح!);
+       if (successCount > 0) {
+            showToast("تم توليد " + successCount + " مفتاح متوافق مع الدالة بنجاح!");
             refreshDashboard();
         } else {
             showToast("فشل في التوليد، يرجى التحقق من الاتصال بالسيرفر");
