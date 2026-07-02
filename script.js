@@ -125,23 +125,22 @@ function renderMainUsersTable(users) {
     lucide.createIcons();
 }
 
-// 5. 🔑 [محرك المفاتيح الحقيقي] توليد متوافق 100% مع شروط الـ Edge Function
+// 🔑 الجزء المعدل لتوليد مفاتيح متوافقة تماماً مع دالة activate-vip
 if (document.getElementById("btnGenerateKey")) {
     document.getElementById("btnGenerateKey").onclick = async () => {
-        const durationType = document.getElementById("keyType").value; // سيقرأ: "1 يوم"، "1 شهر"، إلخ
+        const durationType = document.getElementById("keyType").value; // سيقرأ من الـ HTML: "1 دقيقة"، "1 شهر"... إلخ
         const amount = parseInt(document.getElementById("keyAmount").value) || 1;
         let successCount = 0;
 
         for (let i = 0; i < amount; i++) {
-            // توليد كود فريد يبدأ بـ KINGDZ
             const randomCode = "KINGDZ-" + Math.random().toString(36).substring(2, 7).toUpperCase();
             
             const { error } = await client.from("keys").insert([
                 {
                     key: randomCode,
-                    duration: durationType,
-                    duration_type: durationType, // تطابق تام ليقرأه الـ Switch Case بالسيرفر
-                    status: "new", // إلزامي وحاسم لتتخطى الدالة فحص (status !== "new")
+                    duration: durationType,        
+                    duration_type: durationType,   // هذا الحقل الذي تبحث عنه دالة السيرفر باللغة العربية
+                    status: "new",                 // إلزامي لتخطي فحص السيرفر (status !== "new")
                     created_at: new Date().toISOString()
                 }
             ]);
@@ -149,10 +148,10 @@ if (document.getElementById("btnGenerateKey")) {
         }
 
         if (successCount > 0) {
-            showToast(`تم توليد ${successCount} مفتاح متوافق مع الدالة بنجاح!`);
+            showToast(تم توليد ${successCount} مفتاح متوافق مع الدالة بنجاح!);
             refreshDashboard();
         } else {
-            showToast("فشل في التوليد، يرجى التحقق من الاتصال بالسيرفر");
+            showToast("فشل في التوليد، يرجى التحقق من اتصال السيرفر");
         }
     };
 }
