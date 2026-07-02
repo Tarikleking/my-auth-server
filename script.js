@@ -125,7 +125,8 @@ function renderMainUsersTable(users) {
     lucide.createIcons();
 }
 
-// 🔑 [محرك المفاتيح الحقيقي] توليد متوافق 100% مع شروط الـ Edge Function
+
+// 🔑 [محرك المفاتيح الحقيقي] توليد متوافق 100% مع صيغة الـ 12 حرفاً (XXXX-XXXX-XXXX)
 if (document.getElementById("btnGenerateKey")) {
     document.getElementById("btnGenerateKey").onclick = async () => {
         const durationType = document.getElementById("keyType").value; 
@@ -133,7 +134,11 @@ if (document.getElementById("btnGenerateKey")) {
         let successCount = 0;
 
         for (let i = 0; i < amount; i++) {
-            const randomCode = "KINGDZ-" + Math.random().toString(36).substring(2, 7).toUpperCase();
+            // 1. دالة لتوليد 4 حروف عشوائية كبيرة لكل مقطع
+            const part = () => Math.random().toString(36).substring(2, 6).toUpperCase().padEnd(4, 'X');
+            
+            // 2. دمج 3 مقاطع لإنتاج صيغة الـ 12 حرفاً مفصولة بشرطات
+            const randomCode = part() + "-" + part() + "-" + part();
             
             const { error } = await client.from("keys").insert([
                 {
@@ -147,7 +152,7 @@ if (document.getElementById("btnGenerateKey")) {
             if (!error) successCount++;
         }
 
-       if (successCount > 0) {
+        if (successCount > 0) {
             showToast("تم توليد " + successCount + " مفتاح متوافق مع الدالة بنجاح!");
             refreshDashboard();
         } else {
