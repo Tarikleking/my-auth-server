@@ -336,3 +336,35 @@ client.channel('kingdz-realtime-sync')
     .subscribe();
 
 checkSession();
+// 1. فتح القائمة الجانبية
+function openDrawer(deviceId) {
+    const drawer = document.getElementById('userDrawer');
+    drawer.style.right = '0'; // تغيير الموقع ليصبح مرئياً
+    loadUserDetails(deviceId); // دالة لجلب البيانات
+}
+
+// 2. إغلاق القائمة
+function closeDrawer() {
+    const drawer = document.getElementById('userDrawer');
+    drawer.style.right = '-450px'; // إخفاؤه مجدداً
+}
+
+// 3. دالة لجلب تفاصيل المستخدم من Supabase
+async function loadUserDetails(deviceId) {
+    const content = document.getElementById('drawerContent');
+    // جلب البيانات من Supabase
+    const { data, error } = await client.from('users').select('*').eq('device_id', deviceId).single();
+
+    if (error) { content.innerHTML = "حدث خطأ في جلب البيانات"; return; }
+
+    // حقن البيانات في الـ Drawer
+    content.innerHTML = `
+        <div class="glass-card p-4 rounded-xl">
+            <p class="font-bold text-white mb-2">معلومات الجهاز</p>
+            <div class="flex justify-between py-1 border-b border-white/5"><span>Device ID:</span><span>${data.device_id}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span>الموديل:</span><span>${data.model || 'غير معروف'}</span></div>
+        </div>
+        `;
+    lucide.createIcons(); // لتحديث الأيقونات بعد تغيير المحتوى
+}
+
