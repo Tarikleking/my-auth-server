@@ -1,629 +1,341 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
-
-<meta charset="UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>KingDZ Admin Panel</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-
-<link rel="stylesheet" href="style.css">
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KingDZ | لوحة التحكم الاحترافية</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- SDKs -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
 
-<div id="loading">
-
-<div class="loader"></div>
-
-<h2>KingDZ Admin Panel</h2>
-
-<p>جار تحميل لوحة التحكم...</p>
-
-</div>
-
-<div id="loginPage">
-
-<div class="login-card">
-
-<div class="login-logo">
-
-<i class="fa-solid fa-crown"></i>
-
-<h1>KingDZ</h1>
-
-<span>Admin Panel</span>
-
-</div>
-
-<div class="login-form">
-
-<h2>تسجيل الدخول</h2>
-
-<p>سجل دخولك لإدارة التطبيق</p>
-
-<input
-type="email"
-id="email"
-placeholder="البريد الإلكتروني">
-
-<input
-type="password"
-id="password"
-placeholder="كلمة المرور">
-
-<button id="loginBtn">
-
-<i class="fa-solid fa-right-to-bracket"></i>
-
-تسجيل الدخول
-
-</button>
-
-<p id="loginError"></p>
-
-</div>
-
-</div>
-
-</div>
-
-<div id="dashboard" style="display:none;">
-
-<aside class="sidebar">
-
-<div class="brand">
-
-<i class="fa-solid fa-crown"></i>
-
-<span>KingDZ</span>
-
-</div>
-
-<ul>
-
-<li class="active" data-page="home">
-
-<i class="fa-solid fa-house"></i>
-
-<span>الرئيسية</span>
-
-</li>
-
-<li data-page="keys">
-
-<i class="fa-solid fa-key"></i>
-
-<span>المفاتيح</span>
-
-</li>
-
-<li data-page="users">
-
-<i class="fa-solid fa-users"></i>
-
-<span>المستخدمون</span>
-
-</li>
-
-<li data-page="settings">
-
-<i class="fa-solid fa-gear"></i>
-
-<span>الإعدادات</span>
-
-</li>
-
-<li id="logout">
-
-<i class="fa-solid fa-right-from-bracket"></i>
-
-<span>تسجيل الخروج</span>
-
-</li>
-
-</ul>
-
-</aside>
-
-<div class="main-content">
-
-<header class="topbar">
-
-<div class="header-left">
-
-<h2>
-<i class="fa-solid fa-gauge-high"></i>
-لوحة التحكم
-</h2>
-
-<p id="liveTime">
-آخر تحديث: ...
-</p>
-
-</div>
-
-<div class="header-actions">
-
-<div class="notification-box">
-
-    <i class="fa-solid fa-bell"></i>
-
-    <span id="notifyCount">0</span>
-
-</div>
-
-<button class="header-btn">
-<i class="fa-solid fa-moon"></i>
-</button>
-
-<div class="admin-info">
-
-<div class="admin-avatar">
-<i class="fa-solid fa-user-shield"></i>
-</div>
-
-<div>
-<h4 id="adminName">Administrator</h4>
-<small id="adminEmail"></small>
-</div>
-
-</div>
-
-</div>
-
-</header>
-<section id="homePage" class="page active">
-
-<div class="stats-grid">
-
-<div class="stat-card">
-
-<div class="icon blue">
-<i class="fa-solid fa-users"></i>
-</div>
-
-<div class="info">
-<h3 id="usersCount">0</h3>
-<p>المستخدمون</p>
-</div>
-
-</div>
-
-<div class="stat-card">
-
-<div class="icon green">
-<i class="fa-solid fa-key"></i>
-</div>
-
-<div class="info">
-<h3 id="keysCount">0</h3>
-<p>المفاتيح</p>
-</div>
-
-</div>
-
-<div class="stat-card">
-
-<div class="icon orange">
-<i class="fa-solid fa-crown"></i>
-</div>
-
-<div class="info">
-<h3 id="vipCount">0</h3>
-<p>VIP</p>
-</div>
-
-</div>
-
-<div class="stat-card">
-
-<div class="icon red">
-<i class="fa-solid fa-ban"></i>
-</div>
-
-<div class="info">
-<h3 id="bannedCount">0</h3>
-<p>المحظورون</p>
-</div>
-
-</div>
-<div class="stat-card">
-
-<div class="icon purple">
-<i class="fa-solid fa-signal"></i>
-</div>
-
-<div class="info">
-<h3 id="onlineCount">0</h3>
-<p>المتصلون الآن</p>
-</div>
-
-</div>
-
-<div class="stat-card">
-
-<div class="icon gold">
-<i class="fa-solid fa-chart-column"></i>
-</div>
-
-<div class="info">
-<h3 id="todayCount">0</h3>
-<p>تسجيلات اليوم</p>
-</div>
-
-</div>
-</div>
-<div class="live-grid">
-
-<div class="live-card">
-<h3>
-<i class="fa-solid fa-globe"></i>
-آخر تسجيل دخول
-</h3>
-
-<div id="lastUsers"></div>
-
-</div>
-
-<div class="live-card">
-<h3>
-<i class="fa-solid fa-fire"></i>
-آخر المفاتيح
-</h3>
-
-<div id="lastKeys"></div>
-
-</div>
-
-</div>
-<div class="chart-box">
-
-<div class="section-title">
-
-<h3>
-
-<i class="fa-solid fa-chart-line"></i>
-
-إحصائيات التطبيق
-
-</h3>
-
-</div>
-
-<canvas id="statsChart"></canvas>
-
-</div>
-
-<div class="card">
-
-<div class="section-title">
-<h3>
-<i class="fa-solid fa-clock-rotate-left"></i>
-آخر النشاط
-</h3>
-</div>
-
-<table>
-
-<thead>
-
-<tr>
-<th>الجهاز</th>
-<th>الشركة</th>
-<th>الدولة</th>
-<th>آخر دخول</th>
-</tr>
-
-</thead>
-
-<tbody id="activityTable">
-
-</tbody>
-
-</table>
-
-</div>
-</div>
-
-</section>
-
-<section id="keysPage" class="page">
-
-<div class="section-title">
-
-<h3>
-
-<i class="fa-solid fa-key"></i>
-
-إدارة المفاتيح
-
-</h3>
-
-</div>
-
-<div class="card">
-
-<div class="form-grid">
-
-<div>
-
-<label>مدة المفتاح</label>
-
-<select id="duration">
-
-<option value="1 دقيقة">1 دقيقة</option>
-<option value="1 ساعة">1 ساعة</option>
-<option value="1 يوم">1 يوم</option>
-<option value="1 أسبوع">1 أسبوع</option>
-<option value="1 شهر">1 شهر</option>
-<option value="1 سنة">1 سنة</option>
-
-</select>
-
-</div>
-
-<div>
-
-<label>عدد المفاتيح</label>
-
-<input
-type="number"
-id="count"
-value="1"
-min="1"
-max="100">
-
-</div>
-
-</div>
-
-<div class="button-group">
-
-<button id="generate">
-
-<i class="fa-solid fa-wand-magic-sparkles"></i>
-
-توليد المفاتيح
-
-</button>
-
-<button id="copy">
-
-<i class="fa-solid fa-copy"></i>
-
-نسخ الكل
-
-</button>
-
-</div>
-
-</div>
-
-<div class="card">
-
-<input
-type="text"
-id="searchKey"
-placeholder="🔍 البحث عن مفتاح">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>المفتاح</th>
-
-<th>المدة</th>
-
-<th>الحالة</th>
-
-<th>العمليات</th>
-
-</tr>
-
-</thead>
-
-<tbody id="keysTable">
-
-</tbody>
-
-</table>
-
-</div>
-
-</section>
-
-<section id="usersPage" class="page">
-
-<div class="section-title">
-
-<h3>
-
-<i class="fa-solid fa-users"></i>
-
-إدارة المستخدمين
-
-</h3>
-
-</div>
-
-<div class="card">
-
-<input
-id="searchUser"
-type="text"
-placeholder="🔍 البحث عن مستخدم">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>الجهاز</th>
-
-<th>الشركة</th>
-
-<th>VIP</th>
-
-<th>الحظر</th>
-
-<th>الدولة</th>
-
-<th>العمليات</th>
-
-</tr>
-
-</thead>
-
-<tbody id="usersTable">
-
-</tbody>
-
-</table>
-
-</div>
-
-</section>
-
-<section id="settingsPage" class="page">
-
-<div class="section-title">
-
-<h3>
-
-<i class="fa-solid fa-sliders"></i>
-
-إعدادات التطبيق
-
-</h3>
-
-</div>
-
-<div class="card">
-
-<label>آخر إصدار</label>
-
-<input
-id="latestVersion"
-placeholder="مثال: 2.0.1">
-
-<label>رسالة الصيانة</label>
-
-<textarea
-id="maintenanceMessage"
-rows="5"></textarea>
-
-<div class="switch-grid">
-
-<label>
-
-<input
-type="checkbox"
-id="modEnabled">
-
-تشغيل المود
-
-</label>
-
-<label>
-
-<input
-type="checkbox"
-id="forceUpdate">
-
-إجبار التحديث
-
-</label>
-
-</div>
-
-<button id="saveSettings">
-
-<i class="fa-solid fa-floppy-disk"></i>
-
-حفظ الإعدادات
-
-</button>
-
-</div>
-
-</section>
-<footer class="footer">
-
-<p>
-
-© 2026 KingDZ Admin Panel
-
-</p>
-
-</footer>
-
-</div>
-
-</div>
-
-<div id="toast"></div>
-
-<div id="modal" class="modal">
-
-<div class="modal-content">
-
-<div class="modal-header">
-
-<h3 id="modalTitle">
-
-KingDZ
-
-</h3>
-
-<button id="closeModal">
-
-<i class="fa-solid fa-xmark"></i>
-
-</button>
-
-</div>
-
-<div id="modalBody">
-
-...
-
-</div>
-
-<div class="modal-footer">
-
-<button id="modalOk">
-
-موافق
-
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-<script src="script.js"></script>
-
+    <!-- Loading Screen -->
+    <div id="loading">
+        <div class="loader-container">
+            <div class="loader-ring"></div>
+            <div class="loader-logo"><i class="fa-solid fa-crown"></i></div>
+        </div>
+        <h2 class="animate-pulse">KingDZ Panel</h2>
+        <p>جاري تحضير البيانات الحية...</p>
+    </div>
+
+    <!-- Login Page -->
+    <div id="loginPage">
+        <div class="login-wrapper">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="logo-icon"><i class="fa-solid fa-crown"></i></div>
+                    <h1>مرحباً بك مجدداً</h1>
+                    <p>أدخل بياناتك للوصول إلى لوحة التحكم</p>
+                </div>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-envelope"></i> البريد الإلكتروني</label>
+                        <input type="email" id="email" placeholder="admin@kingdz.com">
+                    </div>
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-lock"></i> كلمة المرور</label>
+                        <input type="password" id="password" placeholder="••••••••">
+                    </div>
+                    <button id="loginBtn" class="btn-primary">
+                        <span>تسجيل الدخول</span>
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <p id="loginError" class="error-msg"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" style="display:none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-crown"></i>
+                <span>KingDZ PRO</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active" data-page="home">
+                        <i class="fa-solid fa-house-chimney"></i>
+                        <span>الرئيسية</span>
+                    </li>
+                    <li data-page="keys">
+                        <i class="fa-solid fa-key-skeleton"></i>
+                        <span>إدارة المفاتيح</span>
+                    </li>
+                    <li data-page="users">
+                        <i class="fa-solid fa-users-gear"></i>
+                        <span>المستخدمون</span>
+                    </li>
+                    <li data-page="settings">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>الإعدادات</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div id="logout" class="logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>تسجيل الخروج</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-info">
+                    <h2 id="pageTitle">لوحة القيادة</h2>
+                    <p id="liveTime"><i class="fa-solid fa-circle-dot animate-ping"></i> تحديث مباشر للبيانات</p>
+                </div>
+                
+                <div class="header-actions">
+                    <div class="notification-trigger" id="notifyTrigger">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="notifyCount" class="badge">0</span>
+                    </div>
+                    
+                    <div class="user-profile">
+                        <div class="user-details">
+                            <span id="adminName">Admin</span>
+                            <small id="adminEmail">admin@kingdz.com</small>
+                        </div>
+                        <div class="user-avatar">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- Home Page -->
+                <section id="homePage" class="page active">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon blue"><i class="fa-solid fa-users"></i></div>
+                            <div class="metric-data">
+                                <p>إجمالي المستخدمين</p>
+                                <h3 id="usersCount">0</h3>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon green"><i class="fa-solid fa-key"></i></div>
+                            <div class="metric-data">
+                                <p>المفاتيح النشطة</p>
+                                <h3 id="keysCount">0</h3>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon gold"><i class="fa-solid fa-crown"></i></div>
+                            <div class="metric-data">
+                                <p>أعضاء VIP</p>
+                                <h3 id="vipCount">0</h3>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon red"><i class="fa-solid fa-user-slash"></i></div>
+                            <div class="metric-data">
+                                <p>المحظورون</p>
+                                <h3 id="bannedCount">0</h3>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon purple"><i class="fa-solid fa-tower-broadcast"></i></div>
+                            <div class="metric-data">
+                                <p>أونلاين الآن</p>
+                                <h3 id="onlineUsers">0</h3>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon cyan"><i class="fa-solid fa-calendar-day"></i></div>
+                            <div class="metric-data">
+                                <p>تسجيلات اليوم</p>
+                                <h3 id="todayUsers">0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-row">
+                        <div class="glass-card chart-container">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-chart-area"></i> تحليل النمو</h3>
+                            </div>
+                            <canvas id="statsChart"></canvas>
+                        </div>
+                        <div class="glass-card activity-container">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-bolt"></i> آخر النشاطات</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>الجهاز</th>
+                                            <th>الشركة</th>
+                                            <th>الدولة</th>
+                                            <th>التوقيت</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activityTable"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Keys Page -->
+                <section id="keysPage" class="page">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3>توليد مفاتيح جديدة</h3>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label>مدة الصلاحية</label>
+                                <select id="duration">
+                                    <option value="1 دقيقة">1 دقيقة</option>
+                                    <option value="1 ساعة">1 ساعة</option>
+                                    <option value="1 يوم">1 يوم</option>
+                                    <option value="1 أسبوع">1 أسبوع</option>
+                                    <option value="1 شهر">1 شهر</option>
+                                    <option value="1 سنة">1 سنة</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>العدد المطلوب</label>
+                                <input type="number" id="count" value="1" min="1" max="100">
+                            </div>
+                            <div class="action-buttons">
+                                <button id="generate" class="btn-primary">
+                                    <i class="fa-solid fa-plus"></i> توليد
+                                </button>
+                                <button id="copy" class="btn-secondary">
+                                    <i class="fa-solid fa-copy"></i> نسخ الكل
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card mt-20">
+                        <div class="search-bar">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="searchKey" placeholder="ابحث عن مفتاح محدد...">
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>المفتاح</th>
+                                        <th>المدة</th>
+                                        <th>الحالة</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="keysTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Users Page -->
+                <section id="usersPage" class="page">
+                    <div class="glass-card">
+                        <div class="search-bar">
+                            <i class="fa-solid fa-users-viewfinder"></i>
+                            <input type="text" id="searchUser" placeholder="البحث برقم الجهاز، الشركة أو الدولة...">
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>الجهاز</th>
+                                        <th>الشركة</th>
+                                        <th>العضوية</th>
+                                        <th>الحظر</th>
+                                        <th>الدولة</th>
+                                        <th>التحكم</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Page -->
+                <section id="settingsPage" class="page">
+                    <div class="glass-card max-w-600">
+                        <div class="card-header">
+                            <h3>إعدادات النظام</h3>
+                        </div>
+                        <div class="settings-form">
+                            <div class="input-group">
+                                <label>إصدار التطبيق</label>
+                                <input id="latestVersion" placeholder="V 1.0.0">
+                            </div>
+                            <div class="input-group">
+                                <label>رسالة الصيانة</label>
+                                <textarea id="maintenanceMessage" rows="4"></textarea>
+                            </div>
+                            <div class="toggle-group">
+                                <label class="switch-container">
+                                    <input type="checkbox" id="modEnabled">
+                                    <span class="slider"></span>
+                                    <span>تفعيل المود (Global Mod)</span>
+                                </label>
+                                <label class="switch-container">
+                                    <input type="checkbox" id="forceUpdate">
+                                    <span class="slider"></span>
+                                    <span>إجبار المستخدمين على التحديث</span>
+                                </label>
+                            </div>
+                            <button id="saveSettings" class="btn-primary full-width">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> حفظ التغييرات
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="main-footer">
+                <p>© 2026 KingDZ Enterprise • All Rights Reserved</p>
+                <div class="footer-links">
+                    <span>V 2.5.0</span>
+                    <span class="status-indicator">الخادم متصل <i class="fa-solid fa-circle"></i></span>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Dynamic Toast -->
+    <div id="toast"></div>
+
+    <!-- Modern Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">تنبيه النظام</h3>
+                <button id="closeModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="modalBody" class="modal-body"></div>
+            <div class="modal-footer">
+                <button id="modalOk" class="btn-primary">فهمت</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
-
 </html>
