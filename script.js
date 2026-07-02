@@ -767,3 +767,29 @@ await refreshDashboard();
 )
 
 .subscribe();
+function showToast(text){
+
+    const toast = document.getElementById("toast");
+
+    toast.textContent = text;
+
+    toast.classList.add("show");
+
+    setTimeout(()=>{
+
+        toast.classList.remove("show");
+
+    },3000);
+
+}
+
+function pushNotification(){
+
+    notifications++;
+
+    if(notifyCount){
+        notifyCount.textContent = notifications;
+    }
+
+    showToast("📢 تم تحديث البيانات");
+}
