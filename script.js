@@ -7,7 +7,9 @@ const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
 const activityTable = document.getElementById("activityTable");
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const notifyCount=document.getElementById("notifyCount");
 
+let notifications=0;
 // عناصر تسجيل الدخول
 const loginPage = document.getElementById("loginPage");
 const dashboard = document.getElementById("dashboard");
@@ -745,6 +747,7 @@ async ()=>{
 await loadUsers();
 await refreshDashboard();
 await loadActivity();
+    pushNotification();
 }
 )
 
