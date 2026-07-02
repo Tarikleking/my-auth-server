@@ -5,7 +5,7 @@
 
 const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
-
+const activityTable = document.getElementById("activityTable");
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // عناصر تسجيل الدخول
@@ -693,6 +693,39 @@ async function deleteUser(deviceId){
 searchUser.oninput = () => {
     loadUsers();
 };
+async function loadActivity(){
+
+const {data,error}=await client
+.from("users")
+.select("*")
+.order("last_online",{ascending:false})
+.limit(10);
+
+if(error)return;
+
+activityTable.innerHTML="";
+
+data.forEach(u=>{
+
+activityTable.innerHTML+=`
+
+<tr>
+
+<td>${u.model||"-"}</td>
+
+<td>${u.manufacturer||"-"}</td>
+
+<td>${u.country||"-"}</td>
+
+<td>${new Date(u.last_online).toLocaleString()}</td>
+
+</tr>
+
+`;
+
+});
+
+}
 //==============================
 // Realtime Sync
 //==============================
@@ -711,7 +744,7 @@ async ()=>{
 
 await loadUsers();
 await refreshDashboard();
-
+await loadActivity();
 }
 )
 
