@@ -125,10 +125,10 @@ function renderMainUsersTable(users) {
     lucide.createIcons();
 }
 
-// 🔑 الجزء المعدل لتوليد مفاتيح متوافقة تماماً مع دالة activate-vip
+// 🔑 [محرك المفاتيح الحقيقي] توليد متوافق 100% مع شروط الـ Edge Function
 if (document.getElementById("btnGenerateKey")) {
     document.getElementById("btnGenerateKey").onclick = async () => {
-        const durationType = document.getElementById("keyType").value; // سيقرأ من الـ HTML: "1 دقيقة"، "1 شهر"... إلخ
+        const durationType = document.getElementById("keyType").value; 
         const amount = parseInt(document.getElementById("keyAmount").value) || 1;
         let successCount = 0;
 
@@ -138,9 +138,9 @@ if (document.getElementById("btnGenerateKey")) {
             const { error } = await client.from("keys").insert([
                 {
                     key: randomCode,
-                    duration: durationType,        
-                    duration_type: durationType,   // هذا الحقل الذي تبحث عنه دالة السيرفر باللغة العربية
-                    status: "new",                 // إلزامي لتخطي فحص السيرفر (status !== "new")
+                    duration: durationType,
+                    duration_type: durationType, 
+                    status: "new", 
                     created_at: new Date().toISOString()
                 }
             ]);
@@ -151,11 +151,10 @@ if (document.getElementById("btnGenerateKey")) {
             showToast(تم توليد ${successCount} مفتاح متوافق مع الدالة بنجاح!);
             refreshDashboard();
         } else {
-            showToast("فشل في التوليد، يرجى التحقق من اتصال السيرفر");
+            showToast("فشل في التوليد، يرجى التحقق من الاتصال بالسيرفر");
         }
     };
 }
-
 function renderKeysTable(keys) {
     const tbody = document.getElementById("keysListTable");
     const badge = document.getElementById("keysTotalBadge");
