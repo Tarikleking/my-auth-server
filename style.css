@@ -1,1 +1,124 @@
 
+/* KINGDZ ADMIN PANEL - 100/100 PREMIUM ROYAL DESIGN */
+:root {
+    --purple-glow: rgba(168, 85, 247, 0.4);
+    --bg-dark-main: #0b0e14; /* لون الخلفية الملكي الغامق من الصورة */
+    --bg-dark-card: #111622; /* لون الكروت والصناديق الداكنة */
+    --purple-accent: #a855f7;
+}
+
+* {
+    font-family: 'Cairo', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark-main);
+    background-image: 
+        radial-gradient(circle at 0% 0%, rgba(168, 85, 247, 0.04) 0%, transparent 45%),
+        radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.02) 0%, transparent 45%);
+    background-attachment: fixed;
+}
+
+/* التنسيق الزجاجي الفخم للكروت */
+.glass-card {
+    background: var(--bg-dark-card);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* القائمة الجانبية (Sidebar) والمؤشرات المضيئة */
+.sidebar {
+    background-color: #0b0e14 !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.02) !important;
+}
+
+.nav-item {
+    @apply flex items-center gap-4 px-5 py-3.5 rounded-2xl text-gray-500 font-bold text-sm cursor-pointer transition-all duration-300;
+}
+
+.nav-item:hover {
+    @apply bg-white/[0.015] text-gray-300;
+}
+
+.nav-item.active {
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--purple-accent);
+    border-right: 4px solid var(--purple-accent);
+    font-weight: 800;
+}
+
+.nav-item i {
+    @apply w-5 h-5;
+}
+
+/* شريط التمرير المخصص فائق النعومة */
+.custom-scroll::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(168, 85, 247, 0.3);
+}
+
+/* تأثيرات الانتقال للمكونات عند التحميل */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#dashboard section, #dashboard .glass-card {
+    animation: slideIn 0.4s ease-out forwards;
+}
+
+/* تنسيقات الجداول المتطابقة */
+table {
+    width: 100%;
+}
+
+tr {
+    transition: all 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.01);
+}
+
+/* بادجات نوع الاشتراك (VIP & Packages) مطابقة للصورة بدقة */
+.badge-vip-gold {
+    background-color: rgba(250, 204, 21, 0.1);
+    color: #facc15;
+    border: 1px solid rgba(250, 204, 21, 0.15);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.03);
+}
+
+.badge-monthly {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.03);
+}
+
+.badge-vip-silver {
+    background-color: rgba(156, 163, 175, 0.1);
+    color: #e5e7eb;
+    border: 1px solid rgba(156, 163, 175, 0.15);
+    box-shadow: 0 0 10px rgba(156, 163, 175, 0.03);
+}
+
+/* الإشعارات المنبثقة التفاعلية (Toast Notification) */
+#toast {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
