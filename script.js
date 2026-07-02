@@ -126,7 +126,7 @@ function renderMainUsersTable(users) {
 }
 
 
-// 🔑 [محرك المفاتيح الحقيقي] توليد متوافق 100% مع صيغة الـ 12 حرفاً (XXXX-XXXX-XXXX)
+// 🔑 [محرك المفاتيح الحقيقي] توليد بصيغة 12 حرفاً مع حساب وحقن تاريخ الانتهاء expires_at
 if (document.getElementById("btnGenerateKey")) {
     document.getElementById("btnGenerateKey").onclick = async () => {
         const durationType = document.getElementById("keyType").value; 
@@ -134,11 +134,34 @@ if (document.getElementById("btnGenerateKey")) {
         let successCount = 0;
 
         for (let i = 0; i < amount; i++) {
-            // 1. دالة لتوليد 4 حروف عشوائية كبيرة لكل مقطع
             const part = () => Math.random().toString(36).substring(2, 6).toUpperCase().padEnd(4, 'X');
-            
-            // 2. دمج 3 مقاطع لإنتاج صيغة الـ 12 حرفاً مفصولة بشرطات
             const randomCode = part() + "-" + part() + "-" + part();
+            
+            // --- حساب تاريخ انتهاء الصلاحية بناءً على نوع المدة ---
+            let expireDate = new Date();
+            
+            switch (durationType) {
+                case "1 دقيقة":
+                    expireDate.setMinutes(expireDate.getMinutes() + 1);
+                    break;
+                case "1 ساعة":
+                    expireDate.setHours(expireDate.getHours() + 1);
+                    break;
+                case "1 يوم":
+                    expireDate.setDate(expireDate.getDate() + 1);
+                    break;
+                case "1 أسبوع":
+                    expireDate.setDate(expireDate.getDate() + 7);
+                    break;
+                case "1 شهر":
+                    expireDate.setMonth(expireDate.getMonth() + 1);
+                    break;
+                case "1 سنة":
+                    expireDate.setFullYear(expireDate.getFullYear() + 1);
+                    break;
+                default:
+                    expireDate.setMonth(expireDate.getMonth() + 1); // افتراضي شهر
+            }
             
             const { error } = await client.from("keys").insert([
                 {
@@ -146,14 +169,15 @@ if (document.getElementById("btnGenerateKey")) {
                     duration: durationType,
                     duration_type: durationType, 
                     status: "new", 
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    expires_at: expireDate.toISOString() // هنا يتم حقن التاريخ بدلاً من NULL
                 }
             ]);
             if (!error) successCount++;
         }
 
         if (successCount > 0) {
-            showToast("تم توليد " + successCount + " مفتاح متوافق مع الدالة بنجاح!");
+            showToast("تم توليد " + successCount + " مفتاح وتحديث تاريخ الانتهاء بنجاح!");
             refreshDashboard();
         } else {
             showToast("فشل في التوليد، يرجى التحقق من الاتصال بالسيرفر");
