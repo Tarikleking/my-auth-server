@@ -27,7 +27,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 // 2. فحص وتأمين الجلسة (تسجيل الدخول / الخروج)
 async function checkSession() {
-    const { data } = .auth.getSession();
+    const { data } = await client.auth.getSession();
     if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
     
     if (data.session) {
@@ -44,7 +44,10 @@ if (document.getElementById("loginBtn")) {
         const errorEl = document.getElementById("loginError");
         if(errorEl) errorEl.textContent = "";
         
-        const { error } = .auth.signInWithPassword({ email, password });
+        const { error } = await client.auth.signInWithPassword({
+    email,
+    password
+});
         if (error) { 
             if(errorEl) errorEl.textContent = "بيانات الدخول خاطئة!"; 
             return; 
@@ -55,7 +58,7 @@ if (document.getElementById("loginBtn")) {
 
 if (document.getElementById("logout")) {
     document.getElementById("logout").onclick = async () => {
-        .auth.signOut();
+        await client.auth.signOut();
         location.reload();
     };
 }
@@ -215,6 +218,7 @@ function renderAllUsersTable(users) {
         tbody.appendChild(row);
     });
 }
+
 function getRemainingTime(vipUntil) {
 
     const now = new Date();
