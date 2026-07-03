@@ -244,16 +244,55 @@ if (document.getElementById("btnGenerateKey")) {
 function renderKeysTable(keys) {
     const tbody = document.getElementById("keysListTable");
     if (!tbody) return;
+
     tbody.innerHTML = keys.slice().reverse().map(k => `
         <tr class="hover:bg-white/[0.005]">
-            <td class="p-2 pr-4 font-mono font-bold text-purple-400 text-[10px] select-all cursor-pointer">${k.key}</td>
-            <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/10 border border-purple-500/20 text-purple-400">${k.duration_type || 'STANDARD'}</span></td>
-            <td class="p-2 text-gray-400">${k.duration || 'غير محدد'}</td>
-            <td class="p-2 text-[10px] font-bold ${k.status === 'new' ? 'text-green-400' : 'text-gray-500'}">${k.status === 'new' ? 'جاهز' : 'مستعمل'}</td>
-            <td class="p-2 text-center pl-4"><button onclick="deleteKeyRow(${k.id})" class="p-1 text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></td>
+
+            <td class="p-2 text-center">
+                <input
+                    type="checkbox"
+                    class="key-checkbox"
+                    value="${k.key}">
+            </td>
+
+            <td class="p-2 pr-4 font-mono font-bold text-purple-400 text-[10px] select-all cursor-pointer">
+                ${k.key}
+            </td>
+
+            <td class="p-2">
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                    ${k.duration_type || 'STANDARD'}
+                </span>
+            </td>
+
+            <td class="p-2 text-gray-400">
+                ${k.duration || 'غير محدد'}
+            </td>
+
+            <td class="p-2 text-[10px] font-bold ${k.status === 'new' ? 'text-green-400' : 'text-gray-500'}">
+                ${k.status === 'new' ? 'جاهز' : 'مستعمل'}
+            </td>
+
+            <td class="p-2 text-center pl-4">
+                <button onclick="deleteKeyRow(${k.id})" class="p-1 text-red-500">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+            </td>
+
         </tr>
     `).join('');
+
     lucide.createIcons();
+
+    const selectAll = document.getElementById("selectAllKeys");
+
+    if (selectAll) {
+        selectAll.onchange = function () {
+            document.querySelectorAll(".key-checkbox").forEach(cb => {
+                cb.checked = this.checked;
+            });
+        };
+    }
 }
 
 // 🚫 [جدار الحظر]
