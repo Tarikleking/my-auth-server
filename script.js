@@ -188,25 +188,7 @@ function renderAllUsersTable(users) {
 
             <td>${vip}</td>
 
-            function getRemainingTime(vipUntil) {
-
-    const now = new Date();
-    const end = new Date(vipUntil);
-
-    const diff = end - now;
-
-    if (diff <= 0) return "منتهي";
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days > 0) return days + " يوم";
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours > 0) return hours + " ساعة";
-
-    const minutes = Math.floor(diff / (1000 * 60));
-    return minutes + " دقيقة";
-}
-
+            
             <td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">
                 ${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}
             </td>
@@ -222,6 +204,25 @@ function renderAllUsersTable(users) {
 
         tbody.appendChild(row);
     });
+}
+function getRemainingTime(vipUntil) {
+
+    const now = new Date();
+    const end = new Date(vipUntil);
+
+    const diff = end - now;
+
+    if (diff <= 0) return "منتهي";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days > 0) return days + " يوم";
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours > 0) return hours + " ساعة";
+
+    const minutes = Math.floor(diff / (1000 * 60));
+
+    return minutes + " دقيقة";
 }
 // 🔑 [محرك المفاتيح الحقيقي] 
 if (document.getElementById("btnGenerateKey")) {
