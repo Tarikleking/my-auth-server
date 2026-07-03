@@ -654,4 +654,31 @@ function initSelectAllButton() {
     };
 
 }
+document.getElementById("btnDeleteSelected")?.addEventListener("click", async () => {
+
+    const checked = document.querySelectorAll(".key-checkbox:checked");
+
+    if (checked.length === 0) {
+        showToast("حدد مفتاحًا واحدًا على الأقل");
+        return;
+    }
+
+    if (!confirm(`سيتم حذف ${checked.length} مفتاح، هل أنت متأكد؟`))
+        return;
+
+    for (const cb of checked) {
+
+        const row = cb.closest("tr");
+
+        const btn = row.querySelector("button");
+
+        if (btn) {
+            await btn.click();
+        }
+
+    }
+
+    showToast("تم حذف المفاتيح المحددة");
+
+});
 checkSession();
