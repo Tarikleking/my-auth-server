@@ -1,4 +1,3 @@
-
 /* KINGDZ ADMIN PANEL - SUPABASE REALTIME & EDGE ENGINE */
 const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
@@ -20,7 +19,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (targetEl) {
             targetEl.classList.remove('hidden');
             // تحديث فوري للقسم المستهدف لضمان حيوية البيانات
-            if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section') {
+            if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section') {
                 refreshDashboard();
             }
         }
@@ -64,21 +63,19 @@ if (document.getElementById("logout")) {
 
 // 3. المحرك الموحد لجلب البيانات الحقيقية من جدولين (keys و users)
 async function refreshDashboard() {
-    // جلب البيانات من جدول المستخدمين الفعلي (users) وجدول المفاتيح (keys)
     const { data: usersData } = await client.from("users").select("*");
     const { data: keysData } = await client.from("keys").select("*");
 
     const uData = usersData || [];
     const kData = keysData || [];
 
-    // تحديث العدادات الرئيسية بناءً على الجداول الصحيحة
-    updateCounter("usersCount", uData.length); // إجمالي الأجهزة المتصلة
-    updateCounter("keysCount", kData.filter(k => k.status === 'new').length); // المفاتيح غير المستخدمة وجاهزة للعمل
-    updateCounter("vipCount", uData.filter(u => u.vip === true).length); // حسابات الـ VIP النشطة
-    updateCounter("onlineUsers", uData.length); // الأجهزة النشطة بالسيرفر
+    updateCounter("usersCount", uData.length);
+    updateCounter("keysCount", kData.filter(k => k.status === 'new').length);
+    updateCounter("vipCount", uData.filter(u => u.vip === true).length);
+    updateCounter("onlineUsers", uData.length);
 
-    // حقن وتغذية الجداول حياً
     renderMainUsersTable(uData);
+    renderAllUsersTable(uData); // تم إضافة التحديث لجدول المستخدمين الكلي
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
@@ -89,7 +86,7 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-// 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي (من جدول users)
+// 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي
 function renderMainUsersTable(users) {
     const tbody = document.getElementById("usersTable");
     if (!tbody) return;
@@ -118,15 +115,37 @@ function renderMainUsersTable(users) {
                 </span>
             </td>
             <td class="p-2.5 text-center pl-4">
-                <button on<button onclick="openDrawer('${u.device_id}')" class="p-1 text-purple-400 hover:bg-purple-500/10 rounded-md"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>click="deleteUserRow('${u.device_id}')" class="p-1 text-red-500 hover:bg-red-500/5 rounded-md"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-            
+                <button onclick="openDrawer('${u.device_id}')" class="p-1 text-purple-400 hover:bg-purple-500/10 rounded-md"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+            </td>
         </tr>
     `).join('');
     lucide.createIcons();
 }
 
+// [جدول المستخدمين الكامل - الميزة الجديدة]
+function renderAllUsersTable(users) {
+    const tbody = document.getElementById("allUsersTable");
+    if (!tbody) return;
+    tbody.innerHTML = users.map(u => `
+        <tr class="hover:bg-white/[0.005] border-b border-white/[0.01]">
+            <td class="p-3 pr-4 font-mono font-bold text-gray-300 text-[11px]">${u.device_id.substring(0, 12)}...</td>
+            <td class="p-3 text-gray-400">${u.country || 'غير معروف'}</td>
+            <td class="p-3 text-gray-500">${u.model || 'Smartphone'}</td>
+            <td class="p-3">
+                <div class="flex gap-2 text-[9px]">
+                    <span class="${(u.cheat_attempts || 0) > 0 ? 'text-red-500' : 'text-gray-600'} font-bold">غش:${u.cheat_attempts || 0}</span>
+                    <span class="${(u.injection_attempts || 0) > 0 ? 'text-orange-500' : 'text-gray-600'} font-bold">حقن:${u.injection_attempts || 0}</span>
+                </div>
+            </td>
+            <td class="p-3 text-center">
+                <button onclick="openDrawer('${u.device_id}')" class="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-lg text-[9px] font-bold hover:bg-purple-500/20 transition-all">إدارة المستخدم</button>
+            </td>
+        </tr>
+    `).join('');
+    lucide.createIcons();
+}
 
-// 🔑 [محرك المفاتيح الحقيقي] توليد بصيغة 12 حرفاً مع حساب وحقن تاريخ الانتهاء expires_at
+// 🔑 [محرك المفاتيح الحقيقي] 
 if (document.getElementById("btnGenerateKey")) {
     document.getElementById("btnGenerateKey").onclick = async () => {
         const durationType = document.getElementById("keyType").value; 
@@ -136,149 +155,91 @@ if (document.getElementById("btnGenerateKey")) {
         for (let i = 0; i < amount; i++) {
             const part = () => Math.random().toString(36).substring(2, 6).toUpperCase().padEnd(4, 'X');
             const randomCode = part() + "-" + part() + "-" + part();
-            
-            // --- حساب تاريخ انتهاء الصلاحية بناءً على نوع المدة ---
             let expireDate = new Date();
             
             switch (durationType) {
-                case "1 دقيقة":
-                    expireDate.setMinutes(expireDate.getMinutes() + 1);
-                    break;
-                case "1 ساعة":
-                    expireDate.setHours(expireDate.getHours() + 1);
-                    break;
-                case "1 يوم":
-                    expireDate.setDate(expireDate.getDate() + 1);
-                    break;
-                case "1 أسبوع":
-                    expireDate.setDate(expireDate.getDate() + 7);
-                    break;
-                case "1 شهر":
-                    expireDate.setMonth(expireDate.getMonth() + 1);
-                    break;
-                case "1 سنة":
-                    expireDate.setFullYear(expireDate.getFullYear() + 1);
-                    break;
-                default:
-                    expireDate.setMonth(expireDate.getMonth() + 1); // افتراضي شهر
+                case "1 دقيقة": expireDate.setMinutes(expireDate.getMinutes() + 1); break;
+                case "1 ساعة": expireDate.setHours(expireDate.getHours() + 1); break;
+                case "1 يوم": expireDate.setDate(expireDate.getDate() + 1); break;
+                case "1 أسبوع": expireDate.setDate(expireDate.getDate() + 7); break;
+                case "1 شهر": expireDate.setMonth(expireDate.getMonth() + 1); break;
+                case "1 سنة": expireDate.setFullYear(expireDate.getFullYear() + 1); break;
             }
             
-            const { error } = await client.from("keys").insert([
-                {
-                    key: randomCode,
-                    duration: durationType,
-                    duration_type: durationType, 
-                    status: "new", 
-                    created_at: new Date().toISOString(),
-                    expires_at: expireDate.toISOString() // هنا يتم حقن التاريخ بدلاً من NULL
-                }
-            ]);
+            const { error } = await client.from("keys").insert([{
+                key: randomCode, duration: durationType, duration_type: durationType, status: "new", 
+                created_at: new Date().toISOString(), expires_at: expireDate.toISOString()
+            }]);
             if (!error) successCount++;
         }
-
-        if (successCount > 0) {
-            showToast("تم توليد " + successCount + " مفتاح وتحديث تاريخ الانتهاء بنجاح!");
-            refreshDashboard();
-        } else {
-            showToast("فشل في التوليد، يرجى التحقق من الاتصال بالسيرفر");
-        }
+        if (successCount > 0) { showToast("تم توليد " + successCount + " مفتاح"); refreshDashboard(); }
     };
 }
+
 function renderKeysTable(keys) {
     const tbody = document.getElementById("keysListTable");
-    const badge = document.getElementById("keysTotalBadge");
     if (!tbody) return;
-
-    if(badge) badge.textContent = `${keys.length} مفتاح إجمالي`;
-
-    if (keys.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-500 text-[10px]">لا توجد مفاتيح تفعيل حالياً.</td></tr>`;
-        return;
-    }
-
     tbody.innerHTML = keys.slice().reverse().map(k => `
         <tr class="hover:bg-white/[0.005]">
             <td class="p-2 pr-4 font-mono font-bold text-purple-400 text-[10px] select-all cursor-pointer">${k.key}</td>
             <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/10 border border-purple-500/20 text-purple-400">${k.duration_type || 'STANDARD'}</span></td>
             <td class="p-2 text-gray-400">${k.duration || 'غير محدد'}</td>
-            <td class="p-2 text-[10px] font-bold ${k.status === 'new' ? 'text-green-400' : 'text-gray-500'}">${k.status === 'new' ? 'جاهز للتفعيل (new)' : 'مستعمل (used)'}</td>
-            <td class="p-2 text-center pl-4">
-                <button onclick="deleteKeyRow(${k.id})" class="p-1 text-red-500 hover:bg-red-500/5 rounded-md"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-            </td>
+            <td class="p-2 text-[10px] font-bold ${k.status === 'new' ? 'text-green-400' : 'text-gray-500'}">${k.status === 'new' ? 'جاهز' : 'مستعمل'}</td>
+            <td class="p-2 text-center pl-4"><button onclick="deleteKeyRow(${k.id})" class="p-1 text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></td>
         </tr>
     `).join('');
     lucide.createIcons();
 }
 
-// 6. 🚫 [جدار الحظر الحقيقي] حظر وفك حظر الأجهزة من جدول users مباشرة
+// 🚫 [جدار الحظر]
 if (document.getElementById("btnApplyBan")) {
     document.getElementById("btnApplyBan").onclick = async () => {
         const targetDeviceId = document.getElementById("banDeviceId").value.trim();
-        if (!targetDeviceId) { showToast("أدخل الـ Device ID المستهدف"); return; }
-
+        if (!targetDeviceId) return;
         const { error } = await client.from("users").update({ banned: true }).eq("device_id", targetDeviceId);
-        
-        if (!error) {
-            showToast("تم إدراج الجهاز في قائمة الحظر 🚫");
-            document.getElementById("banDeviceId").value = "";
-            refreshDashboard();
-        } else {
-            showToast("فشل الحظر، تأكد من معرف الجهاز الصحيح");
-        }
+        if (!error) { showToast("تم الحظر 🚫"); refreshDashboard(); }
     };
 }
 
 function renderBannedTable(users) {
     const tbody = document.getElementById("bannedDevicesTable");
     if (!tbody) return;
-
     const bannedList = users.filter(u => u.banned === true);
-
-    if (bannedList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-gray-500 text-[10px]">قائمة الحظر فارغة حالياً.</td></tr>`;
-        return;
-    }
-
     tbody.innerHTML = bannedList.reverse().map(b => `
         <tr class="hover:bg-white/[0.005]">
-            <td class="p-2 pr-4 text-red-400 font-bold font-mono text-[10px] select-all">${b.device_id}</td>
-            <td class="p-2 text-gray-400">${b.model || b.manufacturer || 'انتهاك حماية النظام وعمليات التخطي'}</td>
-            <td class="p-2 text-center pl-4">
-                <button onclick="liftUserBan('${b.device_id}')" class="px-2 py-0.5 bg-green-500/10 border border-green-500/20 text-green-400 font-bold text-[9px] rounded-md transition-all">فك الحظر</button>
-            </td>
+            <td class="p-2 pr-4 text-red-400 font-bold font-mono text-[10px]">${b.device_id}</td>
+            <td class="p-2 text-gray-400">${b.model || '---'}</td>
+            <td class="p-2 text-center pl-4"><button onclick="liftUserBan('${b.device_id}')" class="text-green-400 font-bold text-[9px]">فك الحظر</button></td>
         </tr>
     `).join('');
 }
 
 async function liftUserBan(deviceId) {
     const { error } = await client.from("users").update({ banned: false }).eq("device_id", deviceId);
-    if (!error) { showToast("تم فك الحظر بنجاح عن الجهاز"); refreshDashboard(); }
+    if (!error) { showToast("تم فك الحظر"); refreshDashboard(); }
 }
 
-// دالات الحذف المباشر والسريع (تم التعديل هنا)
 async function deleteUserRow(deviceId) {
-    if (confirm("هل تريد مسح هذا الجهاز نهائياً من السيرفر وطرد المستخدم فوراً؟")) {
+    if (confirm("حذف الجهاز نهائياً؟")) {
         const { error } = await client.from("users").delete().eq("device_id", deviceId);
-        if (!error) { showToast("تم حذف جهاز المستخدم وطرده من التطبيق!"); refreshDashboard(); }
-        else { showToast("خطأ أثناء الحذف: " + error.message); }
+        if (!error) { showToast("تم الحذف"); refreshDashboard(); }
     }
 }
 
 async function deleteKeyRow(id) {
-    if (confirm("هل تريد حذف هذا المفتاح نهائياً؟")) {
+    if (confirm("حذف المفتاح نهائياً؟")) {
         const { error } = await client.from("keys").delete().eq("id", id);
-        if (!error) { showToast("تم حذف المفتاح بنجاح"); refreshDashboard(); }
+        if (!error) { showToast("تم الحذف"); refreshDashboard(); }
     }
 }
 
-// 7. 💎 [التحكم المباشر برتب الـ VIP] تحديث حقل vip في جدول users الحقيقي
+// 💎 [التحكم VIP]
 if (document.getElementById("btnGrantVip")) {
     document.getElementById("btnGrantVip").onclick = async () => {
         const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
         if (!targetDeviceId) return;
-        
         const { error } = await client.from("users").update({ vip: true }).eq("device_id", targetDeviceId);
-        if (!error) { showToast("تم منح رتبة VIP للجهاز ✨"); document.getElementById("vipDeviceId").value = ""; refreshDashboard(); }
+        if (!error) { showToast("تم الترقية لـ VIP ✨"); refreshDashboard(); }
     };
 }
 
@@ -286,18 +247,64 @@ if (document.getElementById("btnRevokeVip")) {
     document.getElementById("btnRevokeVip").onclick = async () => {
         const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
         if (!targetDeviceId) return;
-        
         const { error } = await client.from("users").update({ vip: false }).eq("device_id", targetDeviceId);
-        if (!error) { showToast("تم سحب صلاحيات VIP"); document.getElementById("vipDeviceId").value = ""; refreshDashboard(); }
+        if (!error) { showToast("تم سحب VIP"); refreshDashboard(); }
     };
 }
 
-// 8. الرسوم البيانية المتطابقة
+// [وظائف الـ Drawer الجديدة]
+function openDrawer(deviceId) { 
+    document.getElementById('userDrawer').style.right = '0'; 
+    loadUserDetails(deviceId); 
+}
+
+function closeDrawer() { 
+    document.getElementById('userDrawer').style.right = '-450px'; 
+}
+
+async function loadUserDetails(deviceId) {
+    const content = document.getElementById('drawerContent');
+    const { data, error } = await client.from('users').select('*').eq('device_id', deviceId).single();
+    if (error) { content.innerHTML = "حدث خطأ"; return; }
+    
+    content.innerHTML = `
+        <div class="space-y-4">
+            <div class="glass-card p-4 rounded-xl border border-white/10">
+                <h4 class="text-white font-bold mb-3">بيانات الجهاز</h4>
+                <div class="text-[10px] space-y-2 text-gray-400">
+                    <p>ID: <span class="text-white">${data.device_id}</span></p>
+                    <p>الموديل: <span class="text-white">${data.model || 'غير معروف'}</span></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="handleAction('ban', '${data.device_id}')" class="bg-red-500/10 text-red-400 py-2 rounded-lg font-bold">حظر</button>
+                <button onclick="handleAction('vip', '${data.device_id}')" class="bg-yellow-500/10 text-yellow-500 py-2 rounded-lg font-bold">VIP</button>
+                <button onclick="handleAction('delete', '${data.device_id}')" class="col-span-2 bg-white/5 text-gray-400 py-2 rounded-lg font-bold">حذف نهائي</button>
+            </div>
+            <div class="glass-card p-4 rounded-xl border border-purple-500/20">
+                <h4 class="text-white font-bold mb-3">سجلات الأمان</h4>
+                <div class="text-[10px] text-gray-400">
+                    <p>محاولات حقن: <span class="text-red-400">${data.injection_attempts || 0}</span></p>
+                    <p>محاولات غش: <span class="text-red-400">${data.cheat_attempts || 0}</span></p>
+                </div>
+            </div>
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+async function handleAction(action, deviceId) {
+    if (action === 'ban') await client.from('users').update({ banned: true }).eq('device_id', deviceId);
+    if (action === 'vip') await client.from('users').update({ vip: true }).eq('device_id', deviceId);
+    if (action === 'delete') await client.from('users').delete().eq('device_id', deviceId);
+    closeDrawer(); refreshDashboard();
+}
+
+// الرسوم البيانية والنظام
 function updateMainCharts(users) {
     const lineCtx = document.getElementById("statsChart")?.getContext("2d");
     if (!lineCtx) return;
     if (statsChart) statsChart.destroy();
-
     statsChart = new Chart(lineCtx, {
         type: 'line',
         data: {
@@ -308,7 +315,6 @@ function updateMainCharts(users) {
     });
 }
 
-// نظام التنبيهات الصغير (Toast)
 function showToast(text) {
     const toast = document.getElementById("toast");
     const toastText = document.getElementById("toastText");
@@ -329,42 +335,9 @@ function afterLogin() {
     }, 1000);
 }
 
-// قنوات التحديث اللحظي المباشر عند تغيير أي بيانات
 client.channel('kingdz-realtime-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { refreshDashboard(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { refreshDashboard(); })
     .subscribe();
 
 checkSession();
-// 1. فتح القائمة الجانبية
-function openDrawer(deviceId) {
-    const drawer = document.getElementById('userDrawer');
-    drawer.style.right = '0'; // تغيير الموقع ليصبح مرئياً
-    loadUserDetails(deviceId); // دالة لجلب البيانات
-}
-
-// 2. إغلاق القائمة
-function closeDrawer() {
-    const drawer = document.getElementById('userDrawer');
-    drawer.style.right = '-450px'; // إخفاؤه مجدداً
-}
-
-// 3. دالة لجلب تفاصيل المستخدم من Supabase
-async function loadUserDetails(deviceId) {
-    const content = document.getElementById('drawerContent');
-    // جلب البيانات من Supabase
-    const { data, error } = await client.from('users').select('*').eq('device_id', deviceId).single();
-
-    if (error) { content.innerHTML = "حدث خطأ في جلب البيانات"; return; }
-
-    // حقن البيانات في الـ Drawer
-    content.innerHTML = `
-        <div class="glass-card p-4 rounded-xl">
-            <p class="font-bold text-white mb-2">معلومات الجهاز</p>
-            <div class="flex justify-between py-1 border-b border-white/5"><span>Device ID:</span><span>${data.device_id}</span></div>
-            <div class="flex justify-between py-1 border-b border-white/5"><span>الموديل:</span><span>${data.model || 'غير معروف'}</span></div>
-        </div>
-        `;
-    lucide.createIcons(); // لتحديث الأيقونات بعد تغيير المحتوى
-}
-
