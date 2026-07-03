@@ -192,3 +192,27 @@ tr:hover {
     display: block !important;
     visibility: visible !important;
 }
+/* style.css */
+.custom-table-container { 
+    width: 100%; 
+    overflow-x: auto; 
+    background: #0b0e14; 
+    padding: 10px; 
+    border-radius: 8px; 
+}
+.custom-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 10px; 
+    color: #fff; 
+    text-align: center; 
+}
+.custom-table th { 
+    padding: 12px; 
+    color: #888; 
+    border-bottom: 2px solid #333; 
+}
+.custom-table td { 
+    padding: 10px; 
+    border-bottom: 1px solid #222; 
+}
