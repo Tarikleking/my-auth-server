@@ -150,3 +150,50 @@ tr:hover {
 .hidden {
     display: none !important;
 }
+/* ===========================
+   KINGDZ USERS TABLE
+=========================== */
+
+.custom-table-container{
+    width:100%;
+    overflow-x:auto;
+    background:#111622;
+    border:1px solid rgba(168,85,247,.15);
+    border-radius:18px;
+    box-shadow:0 10px 35px rgba(0,0,0,.35);
+}
+
+.custom-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.custom-table thead{
+    background:linear-gradient(90deg,#7c3aed,#9333ea);
+}
+
+.custom-table thead th{
+    color:#fff !important;
+    font-size:15px !important;
+    font-weight:700;
+    padding:16px !important;
+    text-align:center;
+    border-bottom:1px solid rgba(255,255,255,.1);
+}
+
+.custom-table tbody td{
+    color:#e5e7eb !important;
+    font-size:14px !important;
+    padding:15px !important;
+    text-align:center;
+    border-bottom:1px solid rgba(255,255,255,.05);
+}
+
+.custom-table tbody tr:nth-child(even){
+    background:#171f30;
+}
+
+.custom-table tbody tr:hover{
+    background:rgba(168,85,247,.12);
+    transition:.25s;
+}
