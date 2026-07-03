@@ -319,14 +319,7 @@
                     </div>
                 </div>
             </section>
-<section id="users-section" class="tab-content" style="display: block !important;">
-    <style>
-        .custom-table-container { width: 100%; overflow-x: auto; background: #0b0e14; padding: 10px; border-radius: 8px; }
-        .custom-table { width: 100%; border-collapse: collapse; font-size: 10px; color: #fff; text-align: center; }
-        .custom-table th { padding: 8px; color: #888; border-bottom: 2px solid #333; }
-        .custom-table td { padding: 8px; border-bottom: 1px solid #222; }
-    </style>
-
+<section id="users-section" class="tab-content hidden">
     <div class="custom-table-container">
         <table class="custom-table">
             <thead>
@@ -341,18 +334,7 @@
                     <th>إجراء</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td>DZ</td>
-                    <td>Android</td>
-                    <td>نشط</td>
-                    <td>VIP</td>
-                    <td>30 يوم</td>
-                    <td>2026-08-10</td>
-                    <td>نظيف</td>
-                    <td><button>إدارة</button></td>
-                </tr>
-            </tbody>
+            <tbody id="allUsersTable"></tbody>
         </table>
     </div>
 </section>
