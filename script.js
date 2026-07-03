@@ -413,8 +413,26 @@ function renderBannedTable(users) {
 }
 
 async function liftUserBan(deviceId) {
-    const { error } = await client.from("users").update({ banned: false }).eq("device_id", deviceId);
-    if (!error) { showToast("تم فك الحظر"); refreshDashboard(); }
+
+    const { error } = await client
+        .from("users")
+        .update({ banned: false })
+        .eq("device_id", deviceId);
+
+    if (!error) {
+
+        await addActivity(
+            "USER",
+            "USER_UNBANNED",
+            deviceId,
+            "تم فك الحظر"
+        );
+
+        showToast("تم فك الحظر");
+
+        refreshDashboard();
+    }
+
 }
 
 async function deleteUserRow(deviceId) {
