@@ -18,7 +18,6 @@ document.querySelectorAll('.nav-item').forEach(item => {
         const targetEl = document.getElementById(targetSection);
         if (targetEl) {
             targetEl.classList.remove('hidden');
-            // تحديث فوري للقسم المستهدف لضمان حيوية البيانات
             if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section') {
                 refreshDashboard();
             }
@@ -75,7 +74,7 @@ async function refreshDashboard() {
     updateCounter("onlineUsers", uData.length);
 
     renderMainUsersTable(uData);
-    renderAllUsersTable(uData); // تم إضافة التحديث لجدول المستخدمين الكلي
+    renderAllUsersTable(uData); 
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
@@ -122,26 +121,43 @@ function renderMainUsersTable(users) {
     lucide.createIcons();
 }
 
-// [جدول المستخدمين الكامل - الميزة الجديدة]
+// [جدول المستخدمين الكامل - الميزة الجديدة مع كافة التفاصيل]
 function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
     if (!tbody) return;
-    tbody.innerHTML = users.map(u => `
-        <tr class="hover:bg-white/[0.005] border-b border-white/[0.01]">
-            <td class="p-3 pr-4 font-mono font-bold text-gray-300 text-[11px]">${u.device_id.substring(0, 12)}...</td>
-            <td class="p-3 text-gray-400">${u.country || 'غير معروف'}</td>
-            <td class="p-3 text-gray-500">${u.model || 'Smartphone'}</td>
-            <td class="p-3">
-                <div class="flex gap-2 text-[9px]">
-                    <span class="${(u.cheat_attempts || 0) > 0 ? 'text-red-500' : 'text-gray-600'} font-bold">غش:${u.cheat_attempts || 0}</span>
-                    <span class="${(u.injection_attempts || 0) > 0 ? 'text-orange-500' : 'text-gray-600'} font-bold">حقن:${u.injection_attempts || 0}</span>
-                </div>
-            </td>
-            <td class="p-3 text-center">
-                <button onclick="openDrawer('${u.device_id}')" class="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-lg text-[9px] font-bold hover:bg-purple-500/20 transition-all">إدارة المستخدم</button>
-            </td>
-        </tr>
-    `).join('');
+
+    tbody.innerHTML = users.map(u => {
+        // حساب الوقت المتبقي للاشتراك
+        const expiry = u.expires_at ? new Date(u.expires_at) : new Date();
+        const now = new Date();
+        const diffTime = expiry - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const statusText = diffTime > 0 ? `${diffDays} يوم` : 'منتهي';
+
+        return `
+            <tr class="hover:bg-white/[0.02] border-b border-white/[0.01]">
+                <td class="p-3 pr-4">
+                    <div class="text-white font-bold text-[10px]">${u.device_id.substring(0, 8)}...</div>
+                    <div class="text-[9px] text-gray-500">${u.model || 'Unknown'}</div>
+                </td>
+                <td class="p-3 text-gray-400">${u.country || 'غير معروف'}</td>
+                <td class="p-3">
+                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${u.vip ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-400'}">
+                        ${u.vip ? 'VIP 👑' : 'عادي'}
+                    </span>
+                </td>
+                <td class="p-3">
+                    <div class="text-[10px] ${u.banned ? 'text-red-500' : 'text-green-400'} font-bold">
+                        ${u.banned ? '🚫 محظور' : '🟢 متصل'}
+                    </div>
+                    <div class="text-[9px] text-gray-500">ينتهي في: ${statusText}</div>
+                </td>
+                <td class="p-3 text-center">
+                    <button onclick="openDrawer('${u.device_id}')" class="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-lg text-[9px] font-bold hover:bg-purple-500/20">إدارة</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
     lucide.createIcons();
 }
 
@@ -252,7 +268,7 @@ if (document.getElementById("btnRevokeVip")) {
     };
 }
 
-// [وظائف الـ Drawer الجديدة]
+// [وظائف الـ Drawer]
 function openDrawer(deviceId) { 
     document.getElementById('userDrawer').style.right = '0'; 
     loadUserDetails(deviceId); 
@@ -281,13 +297,6 @@ async function loadUserDetails(deviceId) {
                 <button onclick="handleAction('vip', '${data.device_id}')" class="bg-yellow-500/10 text-yellow-500 py-2 rounded-lg font-bold">VIP</button>
                 <button onclick="handleAction('delete', '${data.device_id}')" class="col-span-2 bg-white/5 text-gray-400 py-2 rounded-lg font-bold">حذف نهائي</button>
             </div>
-            <div class="glass-card p-4 rounded-xl border border-purple-500/20">
-                <h4 class="text-white font-bold mb-3">سجلات الأمان</h4>
-                <div class="text-[10px] text-gray-400">
-                    <p>محاولات حقن: <span class="text-red-400">${data.injection_attempts || 0}</span></p>
-                    <p>محاولات غش: <span class="text-red-400">${data.cheat_attempts || 0}</span></p>
-                </div>
-            </div>
         </div>
     `;
     lucide.createIcons();
@@ -300,7 +309,6 @@ async function handleAction(action, deviceId) {
     closeDrawer(); refreshDashboard();
 }
 
-// الرسوم البيانية والنظام
 function updateMainCharts(users) {
     const lineCtx = document.getElementById("statsChart")?.getContext("2d");
     if (!lineCtx) return;
