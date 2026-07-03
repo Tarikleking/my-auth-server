@@ -188,7 +188,17 @@ function renderAllUsersTable(users) {
 
             <td>${vip}</td>
 
-            
+       <td class="text-yellow-400 font-bold">
+    ${u.duration_type || '--'}
+</td>
+
+<td>
+    ${u.vip_until ? getRemainingTime(u.vip_until) : '--'}
+</td>
+
+<td>
+    ${formatDate(u.vip_until)}
+</td>     
             <td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">
                 ${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}
             </td>
