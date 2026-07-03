@@ -124,35 +124,37 @@ function renderMainUsersTable(users) {
 // [جدول المستخدمين الكامل - الميزة الجديدة مع كافة التفاصيل]
 function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
-    if (!tbody) return;
+    
+    // تصحيح: تأكد من أن العنصر موجود في الـ HTML
+    if (!tbody) {
+        console.error("خطأ: لم يتم العثور على العنصر allUsersTable في الصفحة!");
+        return;
+    }
 
-    tbody.innerHTML = users.map(u => {
-        const expiry = u.expires_at ? new Date(u.expires_at) : new Date();
-        const now = new Date();
-        const diffDays = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-        const statusText = diffDays > 0 ? diffDays + " يوم" : "منتهي";
+    // تصحيح: مسح الجدول قبل إعادة ملئه
+    tbody.innerHTML = "";
 
-        return `
-            <tr class="hover:bg-white/[0.02]">
-                <td class="p-4 font-bold text-white">${u.device_id ? u.device_id.substring(0, 8) : '---'}</td>
-                <td class="p-4 text-gray-400">${u.country || 'غير معروف'}</td>
-                <td class="p-4">
-                    <span class="px-2 py-1 rounded-md text-[10px] ${u.vip ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-400'}">
-                        ${u.vip ? 'VIP 👑' : 'عادي'}
-                    </span>
-                </td>
-                <td class="p-4">
-                    <div class="font-bold ${u.banned ? 'text-red-500' : 'text-green-400'}">
-                        ${u.banned ? 'محظور 🚫' : 'متصل 🟢'}
-                    </div>
-                    <div class="text-[9px] text-gray-500">ينتهي: ${statusText}</div>
-                </td>
-                <td class="p-4">
-                    <button onclick="openDrawer('${u.device_id}')" class="bg-purple-500/10 text-purple-400 px-3 py-1 rounded-lg font-bold">إدارة</button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-500">لا توجد بيانات مستخدمين لعرضها</td></tr>';
+        return;
+    }
+
+    // إضافة البيانات
+    tbody.innerHTML = users.map(u => `
+        <tr class="border-b border-white/[0.05] hover:bg-white/[0.02]">
+            <td class="p-4 text-white font-bold">${u.device_id ? u.device_id.substring(0, 8) : 'N/A'}</td>
+            <td class="p-4 text-gray-400">${u.country || 'غير معروف'}</td>
+            <td class="p-4 text-[10px] text-yellow-500">${u.vip ? 'VIP' : 'عادي'}</td>
+            <td class="p-4 text-[10px] ${u.banned ? 'text-red-500' : 'text-green-500'}">
+                ${u.banned ? 'محظور' : 'متصل'}
+            </td>
+            <td class="p-4">
+                <button onclick="console.log('${u.device_id}')" class="text-purple-400">إدارة</button>
+            </td>
+        </tr>
+    `).join('');
+    
+    console.log("تمت عملية حقن البيانات بنجاح في الجدول.");
 }
 
 // 🔑 [محرك المفاتيح الحقيقي] 
