@@ -126,17 +126,16 @@ function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
     if (!tbody) return;
 
-    // تحويل البيانات لنص مباشر للتأكد من أننا نرى شيئاً
     tbody.innerHTML = users.map(u => `
-        <tr style="border-bottom: 1px solid #222;">
-            <td style="padding: 15px;">${u.device_id ? u.device_id.substring(0, 8) : 'لا يوجد ID'}</td>
-            <td style="padding: 15px;">${u.country || 'غير معروف'}</td>
-            <td style="padding: 15px;">${u.vip ? 'VIP' : 'عادي'}</td>
-            <td style="padding: 15px;">${u.banned ? 'محظور' : 'متصل'}</td>
+        <tr class="table-row">
+            <td class="p-4" style="color: white !important;">${u.device_id ? u.device_id.substring(0, 8) : '---'}</td>
+            <td class="p-4">${u.country || 'غير معروف'}</td>
+            <td class="p-4">${u.vip ? 'VIP 👑' : 'عادي'}</td>
+            <td class="p-4" style="color: ${u.banned ? '#f87171' : '#4ade80'} !important;">
+                ${u.banned ? 'محظور' : 'متصل'}
+            </td>
         </tr>
     `).join('');
-    
-    console.log("عدد الصفوف التي تم إنشاؤها:", users.length);
 }
 // 🔑 [محرك المفاتيح الحقيقي] 
 if (document.getElementById("btnGenerateKey")) {
