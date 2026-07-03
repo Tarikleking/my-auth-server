@@ -71,8 +71,14 @@ async function refreshDashboard() {
     updateCounter("usersCount", uData.length);
     updateCounter("keysCount", kData.filter(k => k.status === 'new').length);
     updateCounter("vipCount", uData.filter(u => u.vip === true).length);
-    updateCounter("onlineUsers", uData.leconst now = Date.now();
+   const now = Date.now();
 
+const onlineUsers = uData.filter(u => {
+    return u.last_online &&
+           (now - new Date(u.last_online).getTime()) < 60000;
+}).length;
+
+updateCounter("onlineUsers", onlineUsers);
 const onlineUsers = uData.filter(u => {
     return u.last_online &&
            (now - new Date(u.last_online).getTime()) < 60000;
