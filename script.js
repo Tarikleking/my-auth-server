@@ -126,16 +126,24 @@ function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
     if (!tbody) return;
 
-    tbody.innerHTML = users.map(u => `
-        <tr class="table-row">
-            <td class="p-4" style="color: white !important;">${u.device_id ? u.device_id.substring(0, 8) : '---'}</td>
-            <td class="p-4">${u.country || 'غير معروف'}</td>
-            <td class="p-4">${u.vip ? 'VIP 👑' : 'عادي'}</td>
-            <td class="p-4" style="color: ${u.banned ? '#f87171' : '#4ade80'} !important;">
+    // مسح الجدول
+    tbody.innerHTML = "";
+
+    // إضافة البيانات بقوة
+    users.forEach(u => {
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid #222";
+        tr.innerHTML = `
+            <td style="padding:15px; color:white;">${u.device_id ? u.device_id.substring(0, 8) : '...'}</td>
+            <td style="padding:15px; color:#aaa;">${u.country || 'غير معروف'}</td>
+            <td style="padding:15px; color:#ffcc00;">${u.vip ? 'VIP' : 'عادي'}</td>
+            <td style="padding:15px; color:${u.banned ? 'red' : 'lightgreen'}; font-weight:bold;">
                 ${u.banned ? 'محظور' : 'متصل'}
             </td>
-        </tr>
-    `).join('');
+        `;
+        tbody.appendChild(tr);
+    });
+    console.log("تم حقن البيانات بنجاح لـ " + users.length + " مستخدم");
 }
 // 🔑 [محرك المفاتيح الحقيقي] 
 if (document.getElementById("btnGenerateKey")) {
