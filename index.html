@@ -233,9 +233,11 @@
                     <p class="text-gray-500 text-[10px]">توليد ومراقبة رموز التفعيل الحية بالسيرفر.</p>
                 </div>
                 <div class="glass-card p-4 rounded-xl mb-4">
-                    <div class="grid grid-cols-4 gap-3 items-end">
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-[9px] text-gray-500 font-bold mb-1">نوع الاشتراك / الرتبة</label>
+                            <label class="block text-[10px] text-purple-300 font-bold mb-2">
+🛡️ نوع الاشتراك
+</label>
                             <select id="keyType" class="bg-[#111622] border border-white/10 text-gray-300 text-[11px] rounded-lg p-2.5 w-full focus:outline-none focus:border-purple-500">
     <option value="1 دقيقة">تجريبي (1 دقيقة)</option>
     <option value="1 ساعة">ساعة واحدة (1 ساعة)</option>
@@ -246,14 +248,32 @@
 </select>
                         </div>
                         <div>
-                            <label class="block text-[9px] text-gray-500 font-bold mb-1">المدة بالأيام</label>
+                            <label class="block text-[10px] text-purple-300 font-bold mb-2">
+⏳ مدة الاشتراك
+</label>
                             <input type="number" id="keyDuration" value="30" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none">
                         </div>
                         <div>
-                            <label class="block text-[9px] text-gray-500 font-bold mb-1">الكمية للتوليد</label>
+                            <label class="block text-[10px] text-purple-300 font-bold mb-2">
+📦 عدد المفاتيح
+</label>
                             <input type="number" id="keyAmount" value="1" min="1" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none">
                         </div>
-                        <button id="btnGenerateKey" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] py-1.5 rounded-lg transition-all">توليد الآن</button>
+                       <button
+id="btnGenerateKey"
+class="col-span-2 h-12 rounded-xl
+bg-gradient-to-r
+from-purple-600
+to-fuchsia-600
+text-white
+font-black
+text-sm
+hover:scale-[1.02]
+transition-all
+shadow-lg
+shadow-purple-600/30">
+🚀 توليد المفاتيح
+</button>
                     </div>
                 </div>
                 <div class="glass-card rounded-xl overflow-hidden">
