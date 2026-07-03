@@ -115,29 +115,30 @@ function renderMainUsersTable(users) {
             <td class="p-2.5 text-gray-500 font-medium">${u.model || u.manufacturer || 'Smartphone'}</td>
             <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[9px] font-extrabold ${u.vip ? 'badge-vip-gold' : 'badge-monthly'}">${u.vip ? 'VIP👑' : 'FREE'}</span></td>
             <td class="p-2.5">
-                <span class="inline-flex items-center gap-1 font-bold ${u.banne${
-u.banned
-? 'text-red-400'
-: (
-u.last_online &&
-(now - new Date(u.last_online).getTime()) < 60000
-)
-? 'text-green-400'
-: 'text-gray-500'
-}d ? 'text-red-400' : 'text-green-400'} text-[10px]">
-                    <span class="w-1 h-1 rounded-full bg-current"></span>
-                    ${u.banned ? 'محظور' : 'متصل${
-    u.banned
-        ? 'محظور'
-        : (
-            u.last_online &&
-            (now - new Date(u.last_online).getTime()) < 60000
-        )
-            ? '🟢 متصل الآن'
-            : '⚫ غير متصل'
-} الآن'}
-                </span>
-            </td>
+    <span class="inline-flex items-center gap-1 font-bold ${
+        u.banned
+            ? 'text-red-400'
+            : (
+                u.last_online &&
+                (now - new Date(u.last_online).getTime()) < 60000
+            )
+                ? 'text-green-400'
+                : 'text-gray-500'
+    } text-[10px]">
+        <span class="w-1 h-1 rounded-full bg-current"></span>
+
+        ${
+            u.banned
+                ? 'محظور'
+                : (
+                    u.last_online &&
+                    (now - new Date(u.last_online).getTime()) < 60000
+                )
+                    ? '🟢 متصل الآن'
+                    : '⚫ غير متصل'
+        }
+    </span>
+</td>
             <td class="p-2.5 text-center pl-4">
                 <button onclick="openDrawer('${u.device_id}')" class="p-1 text-purple-400 hover:bg-purple-500/10 rounded-md"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
             </td>
