@@ -455,7 +455,19 @@ if (document.getElementById("btnGrantVip")) {
         const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
         if (!targetDeviceId) return;
         const { error } = await client.from("users").update({ vip: true }).eq("device_id", targetDeviceId);
-        if (!error) { showToast("تم الترقية لـ VIP ✨"); refreshDashboard(); }
+      if (!error) {
+
+    await addActivity(
+        "VIP",
+        "VIP_GRANTED",
+        targetDeviceId,
+        "تم منح اشتراك VIP"
+    );
+
+    showToast("تم الترقية لـ VIP ✨");
+    refreshDashboard();
+
+}
     };
 }
 
