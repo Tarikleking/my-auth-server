@@ -132,17 +132,17 @@ function renderAllUsersTable(users) {
         row.style.borderBottom = "1px solid #222";
         
         row.innerHTML = `
-            <td style="padding: 4px;">${u.country || '--'}</td>
-            <td style="padding: 4px;">${u.device_type || '--'}</td>
-            <td style="padding: 4px;">${u.client_status || '--'}</td>
-            <td style="padding: 4px;">${u.subscription_type || '--'}</td>
-            <td style="padding: 4px;">${u.duration || '0'}</td>
-            <td style="padding: 4px;">${u.expires_at || '--'}</td>
-            <td style="padding: 4px; color: ${u.cheat_detected ? '#f87171' : '#4ade80'}; font-weight: bold;">
+            <td style="padding: 5px;">${u.country || '--'}</td>
+            <td style="padding: 5px;">${u.device_type || '--'}</td>
+            <td style="padding: 5px;">${u.client_status || '--'}</td>
+            <td style="padding: 5px;">${u.subscription_type || '--'}</td>
+            <td style="padding: 5px;">${u.duration || '0'}</td>
+            <td style="padding: 5px;">${u.expires_at || '--'}</td>
+            <td style="padding: 5px; color: ${u.cheat_detected ? '#f87171' : '#4ade80'}; font-weight: bold;">
                 ${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}
             </td>
-            <td style="padding: 4px;">
-                <button style="padding: 2px 6px; font-size: 8px; background: #4f46e5; color: white; border: none; border-radius: 3px;">إدارة</button>
+            <td style="padding: 5px;">
+                <button style="background:#4f46e5; color:white; border:none; padding:2px 6px; border-radius:3px;">إدارة</button>
             </td>
         `;
         tbody.appendChild(row);
