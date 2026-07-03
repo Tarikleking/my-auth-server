@@ -87,7 +87,7 @@ async function refreshDashboard() {
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
-    await loadStats();
+ 
    
 }
 
