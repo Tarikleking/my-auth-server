@@ -118,8 +118,8 @@ function renderMainUsersTable(users) {
                 </span>
             </td>
             <td class="p-2.5 text-center pl-4">
-                <button onclick="deleteUserRow('${u.device_id}')" class="p-1 text-red-500 hover:bg-red-500/5 rounded-md"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-            </td>
+                <button on<button onclick="openDrawer('${u.device_id}')" class="p-1 text-purple-400 hover:bg-purple-500/10 rounded-md"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>click="deleteUserRow('${u.device_id}')" class="p-1 text-red-500 hover:bg-red-500/5 rounded-md"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            
         </tr>
     `).join('');
     lucide.createIcons();
