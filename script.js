@@ -250,9 +250,9 @@ function renderKeysTable(keys) {
 
             <td class="p-2 text-center">
                 <input
-                    type="checkbox"
-                    class="key-checkbox"
-                    value="${k.key}">
+    type="checkbox"
+    class="key-checkbox"
+    data-key="${k.key}">
             </td>
 
             <td class="p-2 pr-4 font-mono font-bold text-purple-400 text-[10px] select-all cursor-pointer">
@@ -612,6 +612,25 @@ client.channel('kingdz-realtime-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { refreshDashboard(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { refreshDashboard(); })
     .subscribe();
+document.getElementById("btnCopyAllKeys")?.addEventListener("click", async () => {
+
+    const checked = document.querySelectorAll(".key-checkbox:checked");
+
+    if (checked.length === 0) {
+        showToast("حدد مفتاحًا واحدًا على الأقل");
+        return;
+    }
+
+    const keys = [];
+
+    checked.forEach(cb => {
+        keys.push(cb.dataset.key);
+    });
+
+    await navigator.clipboard.writeText(keys.join("\n"));
+
+    showToast("تم نسخ " + keys.length + " مفتاح");
+});
 function initSelectAllButton() {
 
     const btn = document.getElementById("btnSelectAll");
