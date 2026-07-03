@@ -127,38 +127,32 @@ function renderAllUsersTable(users) {
     if (!tbody) return;
 
     tbody.innerHTML = users.map(u => {
-        // حساب الوقت المتبقي للاشتراك
-        const expiry = u.expires_at ? new Date(u.expires_at) : new Date();
+        // حساب الأيام المتبقية
+        const expiry = new Date(u.expires_at);
         const now = new Date();
-        const diffTime = expiry - now;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        const statusText = diffTime > 0 ? `${diffDays} يوم` : 'منتهي';
-
+        const diffDays = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+        
         return `
-            <tr class="hover:bg-white/[0.02] border-b border-white/[0.01]">
-                <td class="p-3 pr-4">
-                    <div class="text-white font-bold text-[10px]">${u.device_id.substring(0, 8)}...</div>
-                    <div class="text-[9px] text-gray-500">${u.model || 'Unknown'}</div>
-                </td>
+            <tr class="hover:bg-white/[0.02]">
+                <td class="p-3 font-bold text-white">${u.device_id.substring(0, 8)}...</td>
                 <td class="p-3 text-gray-400">${u.country || 'غير معروف'}</td>
                 <td class="p-3">
-                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${u.vip ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-400'}">
+                    <span class="px-2 py-0.5 rounded text-[9px] ${u.vip ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-400'}">
                         ${u.vip ? 'VIP 👑' : 'عادي'}
                     </span>
                 </td>
                 <td class="p-3">
-                    <div class="text-[10px] ${u.banned ? 'text-red-500' : 'text-green-400'} font-bold">
+                    <div class="${u.banned ? 'text-red-500' : 'text-green-400'} font-bold">
                         ${u.banned ? '🚫 محظور' : '🟢 متصل'}
                     </div>
-                    <div class="text-[9px] text-gray-500">ينتهي في: ${statusText}</div>
+                    <div class="text-[9px] text-gray-500">ينتهي بعد: ${diffDays > 0 ? diffDays + ' يوم' : 'منتهي'}</div>
                 </td>
-                <td class="p-3 text-center">
-                    <button onclick="openDrawer('${u.device_id}')" class="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-lg text-[9px] font-bold hover:bg-purple-500/20">إدارة</button>
+                <td class="p-3">
+                    <button onclick="openDrawer('${u.device_id}')" class="text-purple-400 font-bold">إدارة</button>
                 </td>
             </tr>
         `;
     }).join('');
-    lucide.createIcons();
 }
 
 // 🔑 [محرك المفاتيح الحقيقي] 
