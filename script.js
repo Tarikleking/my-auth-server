@@ -328,26 +328,184 @@ function closeDrawer() {
 }
 
 async function loadUserDetails(deviceId) {
-    const content = document.getElementById('drawerContent');
-    const { data, error } = await client.from('users').select('*').eq('device_id', deviceId).single();
-    if (error) { content.innerHTML = "حدث خطأ"; return; }
-    
+
+    const content = document.getElementById("drawerContent");
+
+    const { data, error } = await client
+        .from("users")
+        .select("*")
+        .eq("device_id", deviceId)
+        .single();
+
+    if (error) {
+        content.innerHTML = "حدث خطأ";
+        return;
+    }
+
+    const online =
+        data.last_online &&
+        (Date.now() - new Date(data.last_online).getTime()) < 60000;
+
     content.innerHTML = `
-        <div class="space-y-4">
-            <div class="glass-card p-4 rounded-xl border border-white/10">
-                <h4 class="text-white font-bold mb-3">بيانات الجهاز</h4>
-                <div class="text-[10px] space-y-2 text-gray-400">
-                    <p>ID: <span class="text-white">${data.device_id}</span></p>
-                    <p>الموديل: <span class="text-white">${data.model || 'غير معروف'}</span></p>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="handleAction('ban', '${data.device_id}')" class="bg-red-500/10 text-red-400 py-2 rounded-lg font-bold">حظر</button>
-                <button onclick="handleAction('vip', '${data.device_id}')" class="bg-yellow-500/10 text-yellow-500 py-2 rounded-lg font-bold">VIP</button>
-                <button onclick="handleAction('delete', '${data.device_id}')" class="col-span-2 bg-white/5 text-gray-400 py-2 rounded-lg font-bold">حذف نهائي</button>
-            </div>
-        </div>
-    `;
+
+<div class="space-y-4">
+
+<div class="glass-card p-4 rounded-xl">
+
+<div class="flex items-center gap-3 mb-4">
+
+<img
+src="https://api.dicebear.com/7.x/avataaars/svg?seed=${data.device_id}"
+class="w-14 h-14 rounded-full bg-[#161b26]">
+
+<div>
+
+<h3 class="text-white font-bold text-lg">
+${data.username || "Player"}
+</h3>
+
+<p class="text-gray-500 text-xs">
+${data.device_id}
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="glass-card p-4 rounded-xl">
+
+<h4 class="text-purple-400 font-bold mb-3">
+
+📱 معلومات الجهاز
+
+</h4>
+
+<div class="grid grid-cols-2 gap-2 text-[11px]">
+
+<div>الموديل</div>
+<div class="text-white">${data.model || "--"}</div>
+
+<div>الشركة</div>
+<div class="text-white">${data.manufacturer || "--"}</div>
+
+<div>العلامة</div>
+<div class="text-white">${data.brand || "--"}</div>
+
+<div>Android</div>
+<div class="text-white">${data.android_version || "--"}</div>
+
+<div>SDK</div>
+<div class="text-white">${data.sdk || "--"}</div>
+
+<div>الدولة</div>
+<div class="text-white">${data.country || "--"}</div>
+
+<div>اللغة</div>
+<div class="text-white">${data.language || "--"}</div>
+
+</div>
+
+</div>
+
+
+<div class="glass-card p-4 rounded-xl">
+
+<h4 class="text-green-400 font-bold mb-3">
+
+📊 حالة المستخدم
+
+</h4>
+
+<div class="grid grid-cols-2 gap-2 text-[11px]">
+
+<div>الحالة</div>
+
+<div class="${online ? 'text-green-400' : 'text-gray-400'}">
+
+${online ? "🟢 متصل الآن" : "⚫ غير متصل"}
+
+</div>
+
+<div>VIP</div>
+
+<div class="${data.vip ? 'text-yellow-400' : 'text-gray-400'}">
+
+${data.vip ? "👑 مفعل" : "FREE"}
+
+</div>
+
+<div>الحظر</div>
+
+<div class="${data.banned ? 'text-red-400' : 'text-green-400'}">
+
+${data.banned ? "🚫 نعم" : "✅ لا"}
+
+</div>
+
+<div>عدد مرات الدخول</div>
+
+<div class="text-white">
+
+${data.login_count || 0}
+
+</div>
+
+<div>أول دخول</div>
+
+<div class="text-white">
+
+${data.first_login || "--"}
+
+</div>
+
+<div>آخر اتصال</div>
+
+<div class="text-white">
+
+${data.last_online || "--"}
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="grid grid-cols-2 gap-2">
+
+<button
+onclick="handleAction('vip','${data.device_id}')"
+class="bg-yellow-500/10 text-yellow-400 py-2 rounded-lg font-bold">
+
+👑 VIP
+
+</button>
+
+<button
+onclick="handleAction('ban','${data.device_id}')"
+class="bg-red-500/10 text-red-400 py-2 rounded-lg font-bold">
+
+🚫 حظر
+
+</button>
+
+<button
+onclick="handleAction('delete','${data.device_id}')"
+class="col-span-2 bg-white/5 text-gray-300 py-2 rounded-lg font-bold">
+
+🗑 حذف نهائي
+
+</button>
+
+</div>
+
+</div>
+
+`;
+
     lucide.createIcons();
 }
 
