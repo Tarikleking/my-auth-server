@@ -252,6 +252,7 @@ function renderKeysTable(keys) {
                 <input
     type="checkbox"
     class="key-checkbox"
+    data-id="${k.id}"
     data-key="${k.key}">
             </td>
 
@@ -656,7 +657,7 @@ function initSelectAllButton() {
 }
 document.getElementById("btnDeleteSelected")?.addEventListener("click", async () => {
 
-    const checked = document.querySelectorAll(".key-checkbox:checked");
+    const checked = [...document.querySelectorAll(".key-checkbox:checked")];
 
     if (checked.length === 0) {
         showToast("حدد مفتاحًا واحدًا على الأقل");
@@ -666,19 +667,22 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
     if (!confirm(`سيتم حذف ${checked.length} مفتاح، هل أنت متأكد؟`))
         return;
 
-    for (const cb of checked) {
+    const ids = checked.map(cb => Number(cb.dataset.id));
 
-        const row = cb.closest("tr");
+    const { error } = await client
+        .from("keys")
+        .delete()
+        .in("id", ids);
 
-        const btn = row.querySelector("button");
-
-        if (btn) {
-            await btn.click();
-        }
-
+    if (error) {
+        showToast("فشل الحذف");
+        console.error(error);
+        return;
     }
 
-    showToast("تم حذف المفاتيح المحددة");
+    showToast(`تم حذف ${ids.length} مفتاح`);
+
+    refreshDashboard();
 
 });
 checkSession();
