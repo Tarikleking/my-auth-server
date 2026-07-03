@@ -125,24 +125,24 @@ function renderMainUsersTable(users) {
 function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
     if (!tbody) return;
-    tbody.innerHTML = "";
+    
+    // تفريغ الجدول قبل التعبئة
+    tbody.innerHTML = ""; 
 
     users.forEach(u => {
         const row = document.createElement("tr");
-        row.style.borderBottom = "1px solid #222";
-        
         row.innerHTML = `
-            <td style="padding: 5px;">${u.country || '--'}</td>
-            <td style="padding: 5px;">${u.device_type || '--'}</td>
-            <td style="padding: 5px;">${u.client_status || '--'}</td>
-            <td style="padding: 5px;">${u.subscription_type || '--'}</td>
-            <td style="padding: 5px;">${u.duration || '0'}</td>
-            <td style="padding: 5px;">${u.expires_at || '--'}</td>
-            <td style="padding: 5px; color: ${u.cheat_detected ? '#f87171' : '#4ade80'}; font-weight: bold;">
+            <td>${u.country || '--'}</td>
+            <td>${u.device_type || '--'}</td>
+            <td>${u.client_status || '--'}</td>
+            <td>${u.subscription_type || '--'}</td>
+            <td>${u.duration || '0'}</td>
+            <td>${u.expires_at || '--'}</td>
+            <td style="color: ${u.cheat_detected ? '#f87171' : '#4ade80'}">
                 ${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}
             </td>
-            <td style="padding: 5px;">
-                <button style="background:#4f46e5; color:white; border:none; padding:2px 6px; border-radius:3px;">إدارة</button>
+            <td>
+                <button onclick="openDrawer('${u.device_id}')" class="bg-purple-600 px-3 py-1 rounded text-white">إدارة</button>
             </td>
         `;
         tbody.appendChild(row);
