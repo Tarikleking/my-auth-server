@@ -170,3 +170,25 @@ tr:hover {
 #users-section {
     display: block !important;
 }
+/* إجبار الجدول على الظهور بوضوح كامل */
+#users-section table {
+    background-color: #0b0e14 !important; /* نفس لون الخلفية المظلمة */
+    color: #ffffff !important;           /* لون الخط أبيض ناصع */
+}
+
+#users-section th {
+    color: #a855f7 !important;           /* لون مميز للـ Header */
+    border-bottom: 1px solid #333 !important;
+}
+
+#users-section td {
+    color: #e5e7eb !important;           /* لون نصي واضح جداً */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* حل مشكلة الاختفاء */
+.tab-content {
+    opacity: 1 !important;
+    display: block !important;
+    visibility: visible !important;
+}
