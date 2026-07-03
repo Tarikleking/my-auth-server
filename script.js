@@ -759,3 +759,9 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
     refreshDashboard();
 
 });
+client.channel('kingdz-realtime-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, refreshDashboard)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshDashboard)
+    .subscribe();
+
+checkSession();
