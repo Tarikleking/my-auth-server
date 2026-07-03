@@ -27,7 +27,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 // 2. فحص وتأمين الجلسة (تسجيل الدخول / الخروج)
 async function checkSession() {
-    const { data } = await client.auth.getSession();
+    const { data } = .auth.getSession();
     if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
     
     if (data.session) {
@@ -44,7 +44,7 @@ if (document.getElementById("loginBtn")) {
         const errorEl = document.getElementById("loginError");
         if(errorEl) errorEl.textContent = "";
         
-        const { error } = await client.auth.signInWithPassword({ email, password });
+        const { error } = .auth.signInWithPassword({ email, password });
         if (error) { 
             if(errorEl) errorEl.textContent = "بيانات الدخول خاطئة!"; 
             return; 
@@ -55,7 +55,7 @@ if (document.getElementById("loginBtn")) {
 
 if (document.getElementById("logout")) {
     document.getElementById("logout").onclick = async () => {
-        await client.auth.signOut();
+        .auth.signOut();
         location.reload();
     };
 }
@@ -188,11 +188,24 @@ function renderAllUsersTable(users) {
 
             <td>${vip}</td>
 
-            <td>${u.subscription_type || '--'}</td>
+            function getRemainingTime(vipUntil) {
 
-            <td>${u.duration || '0'}</td>
+    const now = new Date();
+    const end = new Date(vipUntil);
 
-            <td>${u.expires_at || '--'}</td>
+    const diff = end - now;
+
+    if (diff <= 0) return "منتهي";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days > 0) return days + " يوم";
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours > 0) return hours + " ساعة";
+
+    const minutes = Math.floor(diff / (1000 * 60));
+    return minutes + " دقيقة";
+}
 
             <td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">
                 ${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}
