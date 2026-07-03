@@ -319,23 +319,38 @@
                     </div>
                 </div>
             </section>
-
-   <section id="users-section" class="tab-content">
-    <table style="width: 100%; border-collapse: collapse; font-size: 10px; color: #fff; text-align: center;">
-        <thead>
-            <tr style="border-bottom: 1px solid #444; color: #888;">
-                <th style="padding: 5px;">الدولة</th>
-                <th style="padding: 5px;">نوع الجهاز</th>
-                <th style="padding: 5px;">حالة العميل</th>
-                <th style="padding: 5px;">نوع الاشتراك</th>
-                <th style="padding: 5px;">مدة الاشتراك</th>
-                <th style="padding: 5px;">تاريخ الانتهاء</th>
-                <th style="padding: 5px;">فحص الغش</th>
-                <th style="padding: 5px;">إجراء</th>
-            </tr>
-        </thead>
-        <tbody id="allUsersTable"></tbody>
-    </table>
+<section id="users-section" class="tab-content" style="display: block !important;">
+    <div style="width: 100%; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px; color: #fff; text-align: center; background: #0b0e14;">
+            <thead>
+                <tr style="border-bottom: 2px solid #333; color: #aaa;">
+                    <th style="padding: 10px;">الدولة</th>
+                    <th style="padding: 10px;">نوع الجهاز</th>
+                    <th style="padding: 10px;">حالة العميل</th>
+                    <th style="padding: 10px;">نوع الاشتراك</th>
+                    <th style="padding: 10px;">مدة الاشتراك</th>
+                    <th style="padding: 10px;">تاريخ الانتهاء</th>
+                    <th style="padding: 10px;">فحص الغش</th>
+                    <th style="padding: 10px;">إجراء</th>
+                </tr>
+            </thead>
+            <tbody id="allUsersTable">
+                <!-- صف تجريبي لإثبات ظهور التصميم -->
+                <tr style="border-bottom: 1px solid #222;">
+                    <td style="padding: 10px;">DZ</td>
+                    <td style="padding: 10px;">Android</td>
+                    <td style="padding: 10px;">Active</td>
+                    <td style="padding: 10px;">VIP</td>
+                    <td style="padding: 10px;">30d</td>
+                    <td style="padding: 10px;">2026-08-03</td>
+                    <td style="padding: 10px; color: #4ade80;">✅ نظيف</td>
+                    <td style="padding: 10px;">
+                        <button style="background: #4f46e5; color: white; border: none; padding: 3px 8px; border-radius: 4px; font-size: 9px; cursor: pointer;">إدارة</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </section>
             <section id="stats-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">التقارير البيانية الموسعة.</div></section>
             <section id="activity-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">سجل نشاط الطاقم.</div></section>
