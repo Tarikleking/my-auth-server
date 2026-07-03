@@ -87,6 +87,8 @@ async function refreshDashboard() {
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
+    await loadStats();
+   
 }
 
 function updateCounter(id, value) {
@@ -713,4 +715,33 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
     refreshDashboard();
 
 });
+async function loadStats() {
+
+    const { count: usersCount } = await client
+        .from("users")
+        .select("*", { count: "exact", head: true });
+
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+
+    const { count: onlineCount } = await client
+        .from("users")
+        .select("*", { count: "exact", head: true })
+        .gte("last_online", oneMinuteAgo);
+
+    const { count: vipCount } = await client
+        .from("users")
+        .select("*", { count: "exact", head: true })
+        .eq("vip", true);
+
+    const { count: bannedCount } = await client
+        .from("users")
+        .select("*", { count: "exact", head: true })
+        .eq("banned", true);
+
+    document.getElementById("statsUsers").textContent = usersCount || 0;
+    document.getElementById("statsOnline").textContent = onlineCount || 0;
+    document.getElementById("statsVip").textContent = vipCount || 0;
+    document.getElementById("statsBanned").textContent = bannedCount || 0;
+
+}
 checkSession();
