@@ -648,7 +648,19 @@ class="col-span-2 bg-white/5 text-gray-300 py-2 rounded-lg font-bold">
 }
 
 async function handleAction(action, deviceId) {
-    if (action === 'ban') await client.from('users').update({ banned: true }).eq('device_id', deviceId);
+    if (action === 'ban') {
+    await client
+        .from('users')
+        .update({ banned: true })
+        .eq('device_id', deviceId);
+
+    await addActivity(
+        "USER",
+        "USER_BANNED",
+        deviceId,
+        "تم حظر المستخدم"
+    );
+}
     if (action === 'vip') await client.from('users').update({ vip: true }).eq('device_id', deviceId);
     if (action === 'delete') await client.from('users').delete().eq('device_id', deviceId);
     closeDrawer(); refreshDashboard();
