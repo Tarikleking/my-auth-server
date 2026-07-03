@@ -1,8 +1,8 @@
 /* KINGDZ ADMIN PANEL - COMPACT & ROYAL ULTRA-PREMIUM STYLES */
 :root {
     --purple-glow: rgba(168, 85, 247, 0.25);
-    --bg-dark-main: #0b0e14;
-    --bg-dark-card: #111622;
+    --bg-dark-main: #0b0e14; /* درجة اللون الملكي الداكنة العميقة من الصورة */
+    --bg-dark-card: #111622; /* لون الكروت المدمجة */
     --purple-accent: #a855f7;
 }
 
@@ -22,6 +22,7 @@ body {
     background-attachment: fixed;
 }
 
+/* الكروت الزجاجية المصغرة والمحكمة بحدود ناعمة جداً */
 .glass-card {
     background: var(--bg-dark-card);
     border: 1px solid rgba(255, 255, 255, 0.02);
@@ -30,6 +31,7 @@ body {
     -webkit-backdrop-filter: blur(8px);
 }
 
+/* أزرار القائمة الجانبية الصغيرة والمتقاربة */
 .sidebar {
     background-color: #0b0e14 !important;
     border-left: 1px solid rgba(255, 255, 255, 0.01) !important;
@@ -39,7 +41,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 12px !important;
+    padding: 7px 12px !important; /* حجم صغير ومتقارب للمسافات لتجنب التضخم */
     border-radius: 10px !important;
     color: #6b7280;
     font-weight: 700;
@@ -60,6 +62,7 @@ body {
     font-weight: 800;
 }
 
+/* تخصيص السكرول بار ليكون رفيعاً ومخفياً جزئياً لجمالية التصميم */
 .custom-scroll::-webkit-scrollbar {
     width: 3px;
     height: 3px;
@@ -75,24 +78,17 @@ body {
     background: rgba(168, 85, 247, 0.2);
 }
 
+/* تأثيرات الظهور السلس والديناميكي للأقسام والكروت */
 @keyframes fadeInCompact {
     from { opacity: 0; transform: translateY(3px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-/* نظام إظهار وإخفاء الأقسام المصحح */
-.tab-content {
-    display: none;
-}
-.tab-content.active-section {
-    display: block !important;
-    animation: fadeInCompact 0.25s ease-out forwards;
 }
 
 .glass-card {
     animation: fadeInCompact 0.25s ease-out forwards;
 }
 
+/* تنسيق الجداول الحادة والمحكمة الأحجام */
 table {
     width: 100%;
     table-layout: auto;
@@ -106,7 +102,7 @@ th {
 }
 
 td {
-    padding: 8px 10px !important;
+    padding: 8px 10px !important; /* مسافات داخلية صغيرة ومحشورة تماماً مثل مرجعك */
     vertical-align: middle;
     font-size: 11px !important;
 }
@@ -119,6 +115,7 @@ tr:hover {
     background-color: rgba(255, 255, 255, 0.005);
 }
 
+/* بادجات الاشتراكات الملكية الصغيرة والمضيئة بنعومة */
 .badge-vip-gold {
     background-color: rgba(250, 204, 21, 0.06) !important;
     color: #facc15 !important;
@@ -147,6 +144,17 @@ tr:hover {
     display: inline-block;
 }
 
+/* تعديل التصحيح: الأقسام يتم إخفاؤها برمجياً لضمان عمل التبويب */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active-section {
+    display: block !important;
+    animation: fadeInCompact 0.25s ease-out forwards;
+}
+
+/* style.css */
 .custom-table-container { 
     width: 100%; 
     overflow-x: auto; 
