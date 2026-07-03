@@ -406,8 +406,16 @@ ${data.device_id}
 <div>اللغة</div>
 <div class="text-white">${data.language || "--"}</div>
 
+
+<div>البطارية</div>
+<div class="text-white">
+    ${data.battery ?? '--'}%
 </div>
 
+<div>الشحن</div>
+<div class="${data.charging ? 'text-green-400' : 'text-gray-400'}">
+    ${data.charging ? '🔌 يشحن الآن' : '🔋 غير موصول'}
+</div>
 </div>
 
 
