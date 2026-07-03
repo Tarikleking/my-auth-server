@@ -717,31 +717,46 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
 });
 async function loadStats() {
 
-    const { count: usersCount } = await client
+    const { data: users } = await client
         .from("users")
-        .select("*", { count: "exact", head: true });
+        .select("*");
 
-    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const { data: keys } = await client
+        .from("keys")
+        .select("*");
 
-    const { count: onlineCount } = await client
-        .from("users")
-        .select("*", { count: "exact", head: true })
-        .gte("last_online", oneMinuteAgo);
+    const u = users || [];
+    const k = keys || [];
 
-    const { count: vipCount } = await client
-        .from("users")
-        .select("*", { count: "exact", head: true })
-        .eq("vip", true);
+    const now = Date.now();
 
-    const { count: bannedCount } = await client
-        .from("users")
-        .select("*", { count: "exact", head: true })
-        .eq("banned", true);
+    document.getElementById("statsUsers").textContent = u.length;
 
-    document.getElementById("statsUsers").textContent = usersCount || 0;
-    document.getElementById("statsOnline").textContent = onlineCount || 0;
-    document.getElementById("statsVip").textContent = vipCount || 0;
-    document.getElementById("statsBanned").textContent = bannedCount || 0;
+    document.getElementById("statsOnline").textContent =
+        u.filter(user =>
+            user.last_online &&
+            (now - new Date(user.last_online).getTime()) < 60000
+        ).length;
 
+    document.getElementById("statsVip").textContent =
+        u.filter(user => user.vip).length;
+
+    document.getElementById("statsBanned").textContent =
+        u.filter(user => user.banned).length;
+
+    document.getElementById("statsKeys").textContent =
+        k.length;
+
+    document.getElementById("statsKeysNew").textContent =
+        k.filter(key => key.status === "new").length;
+
+    document.getElementById("statsKeysUsed").textContent =
+        k.filter(key => key.status === "used").length;
+
+    document.getElementById("statsVipActive").textContent =
+        u.filter(user =>
+            user.vip &&
+            user.vip_until &&
+            new Date(user.vip_until) > new Date()
+        ).length;
 }
-checkSession();
