@@ -1,9 +1,8 @@
-
 /* KINGDZ ADMIN PANEL - COMPACT & ROYAL ULTRA-PREMIUM STYLES */
 :root {
     --purple-glow: rgba(168, 85, 247, 0.25);
-    --bg-dark-main: #0b0e14; /* درجة اللون الملكي الداكنة العميقة من الصورة */
-    --bg-dark-card: #111622; /* لون الكروت المدمجة */
+    --bg-dark-main: #0b0e14;
+    --bg-dark-card: #111622;
     --purple-accent: #a855f7;
 }
 
@@ -23,7 +22,6 @@ body {
     background-attachment: fixed;
 }
 
-/* الكروت الزجاجية المصغرة والمحكمة بحدود ناعمة جداً */
 .glass-card {
     background: var(--bg-dark-card);
     border: 1px solid rgba(255, 255, 255, 0.02);
@@ -32,7 +30,6 @@ body {
     -webkit-backdrop-filter: blur(8px);
 }
 
-/* أزرار القائمة الجانبية الصغيرة والمتقاربة */
 .sidebar {
     background-color: #0b0e14 !important;
     border-left: 1px solid rgba(255, 255, 255, 0.01) !important;
@@ -42,7 +39,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 12px !important; /* حجم صغير ومتقارب للمسافات لتجنب التضخم */
+    padding: 7px 12px !important;
     border-radius: 10px !important;
     color: #6b7280;
     font-weight: 700;
@@ -63,7 +60,6 @@ body {
     font-weight: 800;
 }
 
-/* تخصيص السكرول بار ليكون رفيعاً ومخفياً جزئياً لجمالية التصميم */
 .custom-scroll::-webkit-scrollbar {
     width: 3px;
     height: 3px;
@@ -79,17 +75,24 @@ body {
     background: rgba(168, 85, 247, 0.2);
 }
 
-/* تأثيرات الظهور السلس والديناميكي للأقسام والكروت */
 @keyframes fadeInCompact {
     from { opacity: 0; transform: translateY(3px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-.tab-content:not(.hidden), .glass-card {
+/* نظام إظهار وإخفاء الأقسام المصحح */
+.tab-content {
+    display: none;
+}
+.tab-content.active-section {
+    display: block !important;
     animation: fadeInCompact 0.25s ease-out forwards;
 }
 
-/* تنسيق الجداول الحادة والمحكمة الأحجام */
+.glass-card {
+    animation: fadeInCompact 0.25s ease-out forwards;
+}
+
 table {
     width: 100%;
     table-layout: auto;
@@ -103,7 +106,7 @@ th {
 }
 
 td {
-    padding: 8px 10px !important; /* مسافات داخلية صغيرة ومحشورة تماماً مثل مرجعك */
+    padding: 8px 10px !important;
     vertical-align: middle;
     font-size: 11px !important;
 }
@@ -116,7 +119,6 @@ tr:hover {
     background-color: rgba(255, 255, 255, 0.005);
 }
 
-/* بادجات الاشتراكات الملكية الصغيرة والمضيئة بنعومة */
 .badge-vip-gold {
     background-color: rgba(250, 204, 21, 0.06) !important;
     color: #facc15 !important;
@@ -145,54 +147,6 @@ tr:hover {
     display: inline-block;
 }
 
-/* إخفاء إجباري لعناصر الأقسام غير النشطة */
-.hidden {
-    display: none !important;
-}
-/* إصلاح إجباري لعرض البيانات في الجداول */
-#allUsersTable tr {
-    display: table-row !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-#allUsersTable td {
-    display: table-cell !important;
-    color: #d1d5db !important; /* لون النص ليكون واضحاً */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* التأكد من أن القسم الخاص بالمستخدمين ليس مخفياً بسبب كلاسات التايلويند */
-#users-section.hidden {
-    display: none !important;
-}
-
-#users-section {
-    display: block !important;
-}
-/* إجبار الجدول على الظهور بوضوح كامل */
-#users-section table {
-    background-color: #0b0e14 !important; /* نفس لون الخلفية المظلمة */
-    color: #ffffff !important;           /* لون الخط أبيض ناصع */
-}
-
-#users-section th {
-    color: #a855f7 !important;           /* لون مميز للـ Header */
-    border-bottom: 1px solid #333 !important;
-}
-
-#users-section td {
-    color: #e5e7eb !important;           /* لون نصي واضح جداً */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-/* حل مشكلة الاختفاء */
-.tab-content {
-    opacity: 1 !important;
-    display: block !important;
-    visibility: visible !important;
-}
-/* style.css */
 .custom-table-container { 
     width: 100%; 
     overflow-x: auto; 
