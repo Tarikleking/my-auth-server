@@ -149,3 +149,24 @@ tr:hover {
 .hidden {
     display: none !important;
 }
+/* إصلاح إجباري لعرض البيانات في الجداول */
+#allUsersTable tr {
+    display: table-row !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#allUsersTable td {
+    display: table-cell !important;
+    color: #d1d5db !important; /* لون النص ليكون واضحاً */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* التأكد من أن القسم الخاص بالمستخدمين ليس مخفياً بسبب كلاسات التايلويند */
+#users-section.hidden {
+    display: none !important;
+}
+
+#users-section {
+    display: block !important;
+}
