@@ -125,34 +125,28 @@ function renderMainUsersTable(users) {
 function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
     if (!tbody) return;
-
-    // مسح الجدول تماماً قبل إضافة أي شيء
     tbody.innerHTML = "";
 
-    // التأكد من وجود بيانات
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#666;">لا يوجد مستخدمون</td></tr>';
-        return;
-    }
-
-    // بناء الصفوف بشكل مباشر
     users.forEach(u => {
         const row = document.createElement("tr");
         row.style.borderBottom = "1px solid #222";
         
-        // هنا نحدد الأعمدة بدقة
         row.innerHTML = `
-            <td style="padding: 15px; color: white;">${u.device_id ? u.device_id.substring(0, 8) : '---'}</td>
-            <td style="padding: 15px; color: #aaa;">${u.country || 'FR'}</td>
-            <td style="padding: 15px; color: #ffcc00;">${u.vip ? 'VIP' : 'عادي'}</td>
-            <td style="padding: 15px; color: ${u.banned ? 'red' : '#4ade80'};">
-                ${u.banned ? 'محظور' : 'متصل'}
+            <td style="padding: 4px;">${u.country || '--'}</td>
+            <td style="padding: 4px;">${u.device_type || '--'}</td>
+            <td style="padding: 4px;">${u.client_status || '--'}</td>
+            <td style="padding: 4px;">${u.subscription_type || '--'}</td>
+            <td style="padding: 4px;">${u.duration || '0'}</td>
+            <td style="padding: 4px;">${u.expires_at || '--'}</td>
+            <td style="padding: 4px; color: ${u.cheat_detected ? '#f87171' : '#4ade80'}; font-weight: bold;">
+                ${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}
+            </td>
+            <td style="padding: 4px;">
+                <button style="padding: 2px 6px; font-size: 8px; background: #4f46e5; color: white; border: none; border-radius: 3px;">إدارة</button>
             </td>
         `;
         tbody.appendChild(row);
     });
-    
-    console.log("تم عرض عدد مستخدمين: " + users.length);
 }
 // 🔑 [محرك المفاتيح الحقيقي] 
 if (document.getElementById("btnGenerateKey")) {
