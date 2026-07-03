@@ -147,30 +147,66 @@ function renderMainUsersTable(users) {
     lucide.createIcons();
 }
 
-// [جدول المستخدمين الكامل - الميزة الجديدة مع كافة التفاصيل]
+// [جدول المستخدمين الكامل - الإصدار الاحترافي]
 function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
     if (!tbody) return;
-    
-    // تفريغ الجدول قبل التعبئة
-    tbody.innerHTML = ""; 
+
+    tbody.innerHTML = "";
+
+    const now = Date.now();
 
     users.forEach(u => {
+
+        const online =
+            u.last_online &&
+            (now - new Date(u.last_online).getTime()) < 60000;
+
+        const statusText = u.banned
+            ? "🚫 محظور"
+            : (online ? "🟢 متصل الآن" : "⚫ غير متصل");
+
+        const device =
+            u.model ||
+            u.device_type ||
+            u.manufacturer ||
+            "--";
+
+        const vip =
+            u.vip
+                ? '<span class="text-yellow-400 font-bold">👑 VIP</span>'
+                : '<span class="text-gray-400">FREE</span>';
+
         const row = document.createElement("tr");
+
         row.innerHTML = `
             <td>${u.country || '--'}</td>
-            <td>${u.device_type || '--'}</td>
-            <td>${u.client_status || '--'}</td>
+
+            <td>${device}</td>
+
+            <td>${statusText}</td>
+
+            <td>${vip}</td>
+
             <td>${u.subscription_type || '--'}</td>
+
             <td>${u.duration || '0'}</td>
+
             <td>${u.expires_at || '--'}</td>
-            <td style="color: ${u.cheat_detected ? '#f87171' : '#4ade80'}">
+
+            <td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">
                 ${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}
             </td>
+
             <td>
-                <button onclick="openDrawer('${u.device_id}')" class="bg-purple-600 px-3 py-1 rounded text-white">إدارة</button>
+                <button
+                    onclick="openDrawer('${u.device_id}')"
+                    class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white">
+                    إدارة
+                </button>
             </td>
         `;
+
         tbody.appendChild(row);
     });
 }
