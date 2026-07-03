@@ -127,28 +127,28 @@ function renderAllUsersTable(users) {
     if (!tbody) return;
 
     tbody.innerHTML = users.map(u => {
-        // حساب الأيام المتبقية
-        const expiry = new Date(u.expires_at);
+        const expiry = u.expires_at ? new Date(u.expires_at) : new Date();
         const now = new Date();
         const diffDays = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-        
+        const statusText = diffDays > 0 ? diffDays + " يوم" : "منتهي";
+
         return `
             <tr class="hover:bg-white/[0.02]">
-                <td class="p-3 font-bold text-white">${u.device_id.substring(0, 8)}...</td>
-                <td class="p-3 text-gray-400">${u.country || 'غير معروف'}</td>
-                <td class="p-3">
-                    <span class="px-2 py-0.5 rounded text-[9px] ${u.vip ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-400'}">
+                <td class="p-4 font-bold text-white">${u.device_id ? u.device_id.substring(0, 8) : '---'}</td>
+                <td class="p-4 text-gray-400">${u.country || 'غير معروف'}</td>
+                <td class="p-4">
+                    <span class="px-2 py-1 rounded-md text-[10px] ${u.vip ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-400'}">
                         ${u.vip ? 'VIP 👑' : 'عادي'}
                     </span>
                 </td>
-                <td class="p-3">
-                    <div class="${u.banned ? 'text-red-500' : 'text-green-400'} font-bold">
-                        ${u.banned ? '🚫 محظور' : '🟢 متصل'}
+                <td class="p-4">
+                    <div class="font-bold ${u.banned ? 'text-red-500' : 'text-green-400'}">
+                        ${u.banned ? 'محظور 🚫' : 'متصل 🟢'}
                     </div>
-                    <div class="text-[9px] text-gray-500">ينتهي بعد: ${diffDays > 0 ? diffDays + ' يوم' : 'منتهي'}</div>
+                    <div class="text-[9px] text-gray-500">ينتهي: ${statusText}</div>
                 </td>
-                <td class="p-3">
-                    <button onclick="openDrawer('${u.device_id}')" class="text-purple-400 font-bold">إدارة</button>
+                <td class="p-4">
+                    <button onclick="openDrawer('${u.device_id}')" class="bg-purple-500/10 text-purple-400 px-3 py-1 rounded-lg font-bold">إدارة</button>
                 </td>
             </tr>
         `;
