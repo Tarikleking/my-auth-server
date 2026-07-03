@@ -464,7 +464,19 @@ if (document.getElementById("btnRevokeVip")) {
         const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
         if (!targetDeviceId) return;
         const { error } = await client.from("users").update({ vip: false }).eq("device_id", targetDeviceId);
-        if (!error) { showToast("تم سحب VIP"); refreshDashboard(); }
+       if (!error) {
+
+    await addActivity(
+        "VIP",
+        "VIP_REVOKED",
+        targetDeviceId,
+        "تم سحب اشتراك VIP"
+    );
+
+    showToast("تم سحب VIP");
+    refreshDashboard();
+
+}
     };
 }
 
@@ -679,9 +691,20 @@ async function handleAction(action, deviceId) {
         "تم حظر المستخدم"
     );
 }
-    if (action === 'vip') await client.from('users').update({ vip: true }).eq('device_id', deviceId);
-    if (action === 'delete') await client.from('users').delete().eq('device_id', deviceId);
-    closeDrawer(); refreshDashboard();
+    if (action === 'vip') {
+
+    await client
+        .from('users')
+        .update({ vip: true })
+        .eq('device_id', deviceId);
+
+    await addActivity(
+        "VIP",
+        "VIP_GRANTED",
+        deviceId,
+        "تم منح اشتراك VIP"
+    );
+
 }
 
 function updateMainCharts(users) {
