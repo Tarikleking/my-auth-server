@@ -87,7 +87,7 @@ async function refreshDashboard() {
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
- 
+ await loadStats();
    
 }
 
@@ -95,7 +95,51 @@ function updateCounter(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value.toLocaleString();
 }
+async function loadStats() {
 
+    const { data: users } = await client
+        .from("users")
+        .select("*");
+
+    const { data: keys } = await client
+        .from("keys")
+        .select("*");
+
+    const u = users || [];
+    const k = keys || [];
+
+    const now = Date.now();
+
+    document.getElementById("statsUsers").textContent = u.length;
+
+    document.getElementById("statsOnline").textContent =
+        u.filter(user =>
+            user.last_online &&
+            (now - new Date(user.last_online).getTime()) < 60000
+        ).length;
+
+    document.getElementById("statsVip").textContent =
+        u.filter(user => user.vip).length;
+
+    document.getElementById("statsBanned").textContent =
+        u.filter(user => user.banned).length;
+
+    document.getElementById("statsKeys").textContent =
+        k.length;
+
+    document.getElementById("statsKeysNew").textContent =
+        k.filter(key => key.status === "new").length;
+
+    document.getElementById("statsKeysUsed").textContent =
+        k.filter(key => key.status === "used").length;
+
+    document.getElementById("statsVipActive").textContent =
+        u.filter(user =>
+            user.vip &&
+            user.vip_until &&
+            new Date(user.vip_until) > new Date()
+        ).length;
+}
 // 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي
 function renderMainUsersTable(users) {
     const tbody = document.getElementById("usersTable");
