@@ -464,17 +464,14 @@ ${data.login_count || 0}
 <div>أول دخول</div>
 
 <div class="text-white">
-
-${data.first_login || "--"}
-
+${formatDate(data.first_login)}
 </div>
 
 <div>آخر اتصال</div>
 
 <div class="text-white">
 
-${data.last_online || "--"}
-
+${formatDate(data.last_online)}
 </div>
 
 </div>
@@ -557,7 +554,19 @@ function afterLogin() {
         if (liveTimeEl) liveTimeEl.textContent = new Date().toLocaleTimeString('ar-SA', { hour12: false });
     }, 1000);
 }
+function formatDate(date) {
+    if (!date) return "--";
 
+    return new Date(date).toLocaleString("ar-DZ", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    });
+}
 client.channel('kingdz-realtime-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { refreshDashboard(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { refreshDashboard(); })
