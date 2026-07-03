@@ -416,7 +416,29 @@ shadow-purple-600/30">
         </div>
 
     </div>
+<div class="grid grid-cols-4 gap-4 mt-4">
 
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">🔑 إجمالي المفاتيح</div>
+        <div id="statsKeys" class="text-2xl font-bold text-cyan-400 mt-2">0</div>
+    </div>
+
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">🟣 مفاتيح جاهزة</div>
+        <div id="statsKeysNew" class="text-2xl font-bold text-green-400 mt-2">0</div>
+    </div>
+
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">🔴 مفاتيح مستعملة</div>
+        <div id="statsKeysUsed" class="text-2xl font-bold text-red-400 mt-2">0</div>
+    </div>
+
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">⏳ اشتراكات نشطة</div>
+        <div id="statsVipActive" class="text-2xl font-bold text-yellow-400 mt-2">0</div>
+    </div>
+
+</div>
 </section>
             <section id="activity-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">سجل نشاط الطاقم.</div></section>
             <section id="settings-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">إعدادات الاتصال بالسيرفر.</div></section>
@@ -450,3 +472,48 @@ shadow-purple-600/30">
 
 </body>
 </html>
+async function loadStats() {
+
+    const { data: users } = await client
+        .from("users")
+        .select("*");
+
+    const { data: keys } = await client
+        .from("keys")
+        .select("*");
+
+    if (!users || !keys) return;
+
+    const now = Date.now();
+
+    document.getElementById("statsUsers").textContent =
+        users.length;
+
+    document.getElementById("statsOnline").textContent =
+        users.filter(u =>
+            u.last_online &&
+            (now - new Date(u.last_online).getTime()) < 60000
+        ).length;
+
+    document.getElementById("statsVip").textContent =
+        users.filter(u => u.vip).length;
+
+    document.getElementById("statsBanned").textContent =
+        users.filter(u => u.banned).length;
+
+    document.getElementById("statsKeys").textContent =
+        keys.length;
+
+    document.getElementById("statsKeysNew").textContent =
+        keys.filter(k => k.status === "new").length;
+
+    document.getElementById("statsKeysUsed").textContent =
+        keys.filter(k => k.status === "used").length;
+
+    document.getElementById("statsVipActive").textContent =
+        users.filter(u =>
+            u.vip &&
+            u.vip_until &&
+            new Date(u.vip_until) > new Date()
+        ).length;
+}
