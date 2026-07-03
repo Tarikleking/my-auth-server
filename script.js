@@ -71,19 +71,16 @@ async function refreshDashboard() {
     updateCounter("usersCount", uData.length);
     updateCounter("keysCount", kData.filter(k => k.status === 'new').length);
     updateCounter("vipCount", uData.filter(u => u.vip === true).length);
-   const now = Date.now();
 
+    const onlineCount = uData.filter(u => {
+        return u.last_online &&
+               (Date.now() - new Date(u.last_online).getTime()) < 60000;
+    }).length;
 
-const now = Date.now();
+    updateCounter("onlineUsers", onlineCount);
 
-const onlineCount = uData.filter(u => {
-    return u.last_online &&
-           (now - new Date(u.last_online).getTime()) < 60000;
-}).length;
-
-updateCounter("onlineUsers", onlineCount);
     renderMainUsersTable(uData);
-    renderAllUsersTable(uData); 
+    renderAllUsersTable(uData);
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
