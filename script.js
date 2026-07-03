@@ -94,8 +94,9 @@ function renderMainUsersTable(users) {
         tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500 text-[10px]">لا توجد أجهزة متصلة بالسيرفر حالياً.</td></tr>`;
         return;
     }
-
+   
     const latest = users.slice(-4).reverse();
+     const now = Date.now();
     tbody.innerHTML = latest.map(u => `
         <tr class="hover:bg-white/[0.005]">
             <td class="p-2.5 pr-4">
@@ -108,9 +109,27 @@ function renderMainUsersTable(users) {
             <td class="p-2.5 text-gray-500 font-medium">${u.model || u.manufacturer || 'Smartphone'}</td>
             <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[9px] font-extrabold ${u.vip ? 'badge-vip-gold' : 'badge-monthly'}">${u.vip ? 'VIP👑' : 'FREE'}</span></td>
             <td class="p-2.5">
-                <span class="inline-flex items-center gap-1 font-bold ${u.banned ? 'text-red-400' : 'text-green-400'} text-[10px]">
+                <span class="inline-flex items-center gap-1 font-bold ${u.banne${
+u.banned
+? 'text-red-400'
+: (
+u.last_online &&
+(now - new Date(u.last_online).getTime()) < 60000
+)
+? 'text-green-400'
+: 'text-gray-500'
+}d ? 'text-red-400' : 'text-green-400'} text-[10px]">
                     <span class="w-1 h-1 rounded-full bg-current"></span>
-                    ${u.banned ? 'محظور' : 'متصل الآن'}
+                    ${u.banned ? 'محظور' : 'متصل${
+    u.banned
+        ? 'محظور'
+        : (
+            u.last_online &&
+            (now - new Date(u.last_online).getTime()) < 60000
+        )
+            ? '🟢 متصل الآن'
+            : '⚫ غير متصل'
+} الآن'}
                 </span>
             </td>
             <td class="p-2.5 text-center pl-4">
