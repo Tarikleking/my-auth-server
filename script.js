@@ -124,39 +124,20 @@ function renderMainUsersTable(users) {
 // [جدول المستخدمين الكامل - الميزة الجديدة مع كافة التفاصيل]
 function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
-    
-    // تصحيح: تأكد من أن العنصر موجود في الـ HTML
-    if (!tbody) {
-        console.error("خطأ: لم يتم العثور على العنصر allUsersTable في الصفحة!");
-        return;
-    }
+    if (!tbody) return;
 
-    // تصحيح: مسح الجدول قبل إعادة ملئه
-    tbody.innerHTML = "";
-
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-500">لا توجد بيانات مستخدمين لعرضها</td></tr>';
-        return;
-    }
-
-    // إضافة البيانات
+    // تحويل البيانات لنص مباشر للتأكد من أننا نرى شيئاً
     tbody.innerHTML = users.map(u => `
-        <tr class="border-b border-white/[0.05] hover:bg-white/[0.02]">
-            <td class="p-4 text-white font-bold">${u.device_id ? u.device_id.substring(0, 8) : 'N/A'}</td>
-            <td class="p-4 text-gray-400">${u.country || 'غير معروف'}</td>
-            <td class="p-4 text-[10px] text-yellow-500">${u.vip ? 'VIP' : 'عادي'}</td>
-            <td class="p-4 text-[10px] ${u.banned ? 'text-red-500' : 'text-green-500'}">
-                ${u.banned ? 'محظور' : 'متصل'}
-            </td>
-            <td class="p-4">
-                <button onclick="console.log('${u.device_id}')" class="text-purple-400">إدارة</button>
-            </td>
+        <tr style="border-bottom: 1px solid #222;">
+            <td style="padding: 15px;">${u.device_id ? u.device_id.substring(0, 8) : 'لا يوجد ID'}</td>
+            <td style="padding: 15px;">${u.country || 'غير معروف'}</td>
+            <td style="padding: 15px;">${u.vip ? 'VIP' : 'عادي'}</td>
+            <td style="padding: 15px;">${u.banned ? 'محظور' : 'متصل'}</td>
         </tr>
     `).join('');
     
-    console.log("تمت عملية حقن البيانات بنجاح في الجدول.");
+    console.log("عدد الصفوف التي تم إنشاؤها:", users.length);
 }
-
 // 🔑 [محرك المفاتيح الحقيقي] 
 if (document.getElementById("btnGenerateKey")) {
     document.getElementById("btnGenerateKey").onclick = async () => {
