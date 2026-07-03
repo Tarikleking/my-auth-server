@@ -74,14 +74,14 @@ async function refreshDashboard() {
    const now = Date.now();
 
 
-updateCounter("onlineUsers", onlineUsers);
-const onlineUsers = uData.filter(u => {
+const now = Date.now();
+
+const onlineCount = uData.filter(u => {
     return u.last_online &&
            (now - new Date(u.last_online).getTime()) < 60000;
 }).length;
 
-updateCounter("onlineUsers", onlineUsers);ngth);
-
+updateCounter("onlineUsers", onlineCount);
     renderMainUsersTable(uData);
     renderAllUsersTable(uData); 
     renderKeysTable(kData);
