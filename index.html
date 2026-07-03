@@ -320,20 +320,22 @@
                 </div>
             </section>
 
-           <section id="users-section" class="tab-content" style="display: block; padding: 20px; background: #0b0e14; color: white;">
-    <h2 style="margin-bottom: 20px;">إدارة المستخدمين (فحص)</h2>
-    <table style="width: 100%; border-collapse: collapse; text-align: right;">
-        <thead>
-            <tr style="border-bottom: 1px solid #444;">
-                <th style="padding: 10px;">المستخدم</th>
-                <th style="padding: 10px;">الدولة</th>
-                <th style="padding: 10px;">الاشتراك</th>
-                <th style="padding: 10px;">الحالة</th>
-            </tr>
-        </thead>
-        <tbody id="allUsersTable">
-            </tbody>
-    </table>
+          <section id="users-section" class="tab-content hidden">
+    <h2 style="color:white; margin-bottom:10px;">إدارة المستخدمين</h2>
+    <div class="glass-card">
+        <table id="mainUsersTable" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom:1px solid #333;">
+                    <th style="padding:10px; color:#aaa; text-align:right;">ID</th>
+                    <th style="padding:10px; color:#aaa; text-align:right;">الدولة</th>
+                    <th style="padding:10px; color:#aaa; text-align:right;">الاشتراك</th>
+                    <th style="padding:10px; color:#aaa; text-align:right;">الحالة</th>
+                </tr>
+            </thead>
+            <tbody id="allUsersTable">
+                </tbody>
+        </table>
+    </div>
 </section>
             <section id="stats-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">التقارير البيانية الموسعة.</div></section>
             <section id="activity-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">سجل نشاط الطاقم.</div></section>
