@@ -284,6 +284,8 @@ function renderKeysTable(keys) {
 
     lucide.createIcons();
 
+initSelectAllButton();
+
     const selectAll = document.getElementById("selectAllKeys");
 
     if (selectAll) {
@@ -610,5 +612,27 @@ client.channel('kingdz-realtime-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { refreshDashboard(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { refreshDashboard(); })
     .subscribe();
+function initSelectAllButton() {
 
+    const btn = document.getElementById("btnSelectAll");
+    if (!btn) return;
+
+    btn.onclick = function () {
+
+        const checkboxes = document.querySelectorAll(".key-checkbox");
+
+        if (checkboxes.length === 0) return;
+
+        const checkedCount = [...checkboxes].filter(cb => cb.checked).length;
+
+        const selectAll = checkedCount !== checkboxes.length;
+
+        checkboxes.forEach(cb => cb.checked = selectAll);
+
+        btn.innerHTML = selectAll
+            ? "❌ إلغاء التحديد"
+            : "☑ تحديد الكل";
+    };
+
+}
 checkSession();
