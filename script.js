@@ -973,32 +973,22 @@ container.innerHTML += `
 <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all duration-300">
 
     <!-- العنوان -->
-<div class="flex items-center mt-3 pt-2 border-t border-white/10">
+<div class="activity-card">
 
-    <!-- يمين البطاقة -->
-    <div class="ms-auto text-right">
-        <div class="${color} font-bold text-sm">
-            ${icon} ${log.action}
-        </div>
-
-        <div class="text-white text-sm mt-1">
-            ${log.details || "--"}
-        </div>
+    <div class="activity-content">
+        <div class="activity-title">${log.action}</div>
+        <div class="activity-desc">${description}</div>
+        <div class="activity-id">${log.target || ""}</div>
     </div>
 
-    <!-- يسار البطاقة -->
-    <div class="flex items-center gap-3 me-auto">
-
-        <button
-            onclick="deleteActivityLog('${log.id}')"
-            class="text-red-500 hover:text-red-400 text-lg">
-            🗑️
-        </button>
-
-        <span class="text-xs text-gray-400">
-            🕒 ${formatDate(log.created_at)}
+    <div class="activity-footer">
+        <span class="activity-time">
+            🕒 ${formattedTime}
         </span>
 
+        <button class="delete-log">
+            🗑️
+        </button>
     </div>
 
 </div>
