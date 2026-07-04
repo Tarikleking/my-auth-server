@@ -155,7 +155,13 @@ async function loadStats() {
             user.vip &&
             user.vip_until &&
             new Date(user.vip_until) > new Date()
-        ).length;
+            ).length;
+    document.getElementById("activeVipCount").textContent =
+    u.filter(user =>
+        user.vip &&
+        user.vip_until &&
+        new Date(user.vip_until) > new Date()
+    ).length;
 }
 // 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي
 function renderMainUsersTable(users) {
