@@ -973,46 +973,31 @@ container.innerHTML += `
 <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all duration-300">
 
     <!-- العنوان -->
-    <div class="flex items-center justify-between">
+<div class="flex items-center mt-3 pt-2 border-t border-white/10">
 
-        <div class="text-right flex-1">
-
-            <div class="${color} font-bold text-sm flex items-center justify-end gap-2">
-                <span>${icon}</span>
-                <span>${log.action}</span>
-            </div>
-
-            <div class="text-gray-200 text-sm mt-1">
-                ${log.details || "--"}
-            </div>
-
+    <!-- يمين البطاقة -->
+    <div class="ms-auto text-right">
+        <div class="${color} font-bold text-sm">
+            ${icon} ${log.action}
         </div>
 
+        <div class="text-white text-sm mt-1">
+            ${log.details || "--"}
+        </div>
     </div>
 
-    <!-- أسفل البطاقة -->
-    <div class="flex justify-between items-center mt-4">
+    <!-- يسار البطاقة -->
+    <div class="flex items-center gap-3 me-auto">
 
-        <!-- اليسار -->
-        <div class="flex items-center gap-3">
+        <button
+            onclick="deleteActivityLog('${log.id}')"
+            class="text-red-500 hover:text-red-400 text-lg">
+            🗑️
+        </button>
 
-            <button
-                onclick="deleteActivityLog('${log.id}')"
-                class="text-red-500 hover:text-red-400 transition text-lg"
-                title="حذف">
-                🗑️
-            </button>
-
-            <span class="text-xs text-gray-400">
-                🕒 ${formatDate(log.created_at)}
-            </span>
-
-        </div>
-
-        <!-- اليمين -->
-        <div class="text-xs text-gray-500 text-right">
-            ${log.device_id ? `🖥️ ${log.device_id}` : ""}
-        </div>
+        <span class="text-xs text-gray-400">
+            🕒 ${formatDate(log.created_at)}
+        </span>
 
     </div>
 
