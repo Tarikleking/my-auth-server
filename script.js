@@ -971,25 +971,30 @@ async function loadActivityLogs() {
         }
 container.innerHTML += `
 
-<div class="glass-card p-3 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all duration-300">
+<div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all">
 
-    <div class="text-right">
-
-        <div class="${color} font-bold text-sm flex items-center justify-end gap-2">
-            <span>${icon}</span>
-            <span>${log.action}</span>
-        </div>
-
-        <div class="text-white text-sm mt-1">
-            ${log.details || "--"}
-        </div>
-
-    </div>
-
-    <div class="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
+    <div class="flex justify-between items-start">
 
         <!-- يسار البطاقة -->
+        <div class="text-left">
+
+            <div class="${color} font-bold text-sm flex items-center gap-2">
+                <span>${icon}</span>
+                <span>${log.action}</span>
+            </div>
+
+            <div class="text-white text-sm mt-1">
+                ${log.details || "--"}
+            </div>
+
+        </div>
+
+        <!-- يمين البطاقة -->
         <div class="flex items-center gap-3">
+
+            <span class="text-xs text-gray-400">
+                🕒 ${formatDate(log.created_at)}
+            </span>
 
             <button
                 onclick="deleteActivityLog('${log.id}')"
@@ -998,18 +1003,19 @@ container.innerHTML += `
                 🗑️
             </button>
 
-            <span class="text-xs text-gray-400">
-                🕒 ${formatDate(log.created_at)}
-            </span>
-
-        </div>
-
-        <!-- يمين البطاقة -->
-        <div class="text-gray-500 text-xs">
-            ${log.device_id || ""}
         </div>
 
     </div>
+
+    ${
+        log.device_id
+            ? `
+            <div class="mt-3 text-xs text-gray-500 border-t border-white/10 pt-2">
+                ${log.device_id}
+            </div>
+            `
+            : ""
+    }
 
 </div>
 
