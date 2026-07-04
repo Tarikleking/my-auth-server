@@ -453,6 +453,7 @@ async function deleteKeyRow(id) {
 if (document.getElementById("btnGrantVip")) {
     document.getElementById("btnGrantVip").onclick = async () => {
         const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
+        
         if (!targetDeviceId) return;
         const { error } = await client.from("users").update({ vip: true }).eq("device_id", targetDeviceId);
       if (!error) {
@@ -690,35 +691,55 @@ class="col-span-2 bg-white/5 text-gray-300 py-2 rounded-lg font-bold">
 }
 
 async function handleAction(action, deviceId) {
-    if (action === 'ban') {
-    await client
-        .from('users')
-        .update({ banned: true })
-        .eq('device_id', deviceId);
 
-    await addActivity(
-        "USER",
-        "USER_BANNED",
-        deviceId,
-        "تم حظر المستخدم"
-    );
+    if (action === "ban") {
+
+        await client
+            .from("users")
+            .update({ banned: true })
+            .eq("device_id", deviceId);
+
+        await addActivity(
+            "USER",
+            "USER_BANNED",
+            deviceId,
+            "تم حظر المستخدم"
+        );
+    }
+
+    if (action === "vip") {
+
+        await client
+            .from("users")
+            .update({ vip: true })
+            .eq("device_id", deviceId);
+
+        await addActivity(
+            "VIP",
+            "VIP_GRANTED",
+            deviceId,
+            "تم منح اشتراك VIP"
+        );
+    }
+
+    if (action === "delete") {
+
+        await client
+            .from("users")
+            .delete()
+            .eq("device_id", deviceId);
+
+        await addActivity(
+            "USER",
+            "USER_DELETED",
+            deviceId,
+            "تم حذف المستخدم نهائياً"
+        );
+    }
+
+    closeDrawer();
+    refreshDashboard();
 }
-    if (action === 'vip') {
-
-    await client
-        .from('users')
-        .update({ vip: true })
-        .eq('device_id', deviceId);
-
-    await addActivity(
-        "VIP",
-        "VIP_GRANTED",
-        deviceId,
-        "تم منح اشتراك VIP"
-    );
-
-}
-
 function updateMainCharts(users) {
     const lineCtx = document.getElementById("statsChart")?.getContext("2d");
     if (!lineCtx) return;
