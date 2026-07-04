@@ -104,8 +104,8 @@ async function refreshDashboard() {
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
- await loadStats();
-   
+await loadStats();
+await loadActivityLogs();
 }
 
 function updateCounter(id, value) {
@@ -832,6 +832,17 @@ function formatDate(date) {
 client.channel('kingdz-realtime-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { refreshDashboard(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { refreshDashboard(); })
+    .on(
+    'postgres_changes',
+    {
+        event: '*',
+        schema: 'public',
+        table: 'activity_logs'
+    },
+    () => {
+        loadActivityLogs();
+    }
+)
     .subscribe();
 document.getElementById("btnCopyAllKeys")?.addEventListener("click", async () => {
 
@@ -913,5 +924,36 @@ refreshDashboard();
 
 });
 
+async function loadActivityLogs() {
 
+    const tbody = document.getElementById("activityTable");
+    if (!tbody) return;
+
+    const { data, error } = await client
+        .from("activity_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    data.forEach(log => {
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${formatDate(log.created_at)}</td>
+            <td>${log.type}</td>
+            <td>${log.action}</td>
+            <td>${log.device_id || "--"}</td>
+            <td>${log.details || "--"}</td>
+        </tr>
+        `;
+    });
+
+}
 checkSession();
