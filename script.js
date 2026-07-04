@@ -926,8 +926,8 @@ refreshDashboard();
 
 async function loadActivityLogs() {
 
-    const tbody = document.getElementById("activityTable");
-    if (!tbody) return;
+    const container = document.getElementById("activityLogs");
+    if (!container) return;
 
     const { data, error } = await client
         .from("activity_logs")
@@ -937,21 +937,67 @@ async function loadActivityLogs() {
 
     if (error) {
         console.error(error);
+        container.innerHTML =
+            `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`;
         return;
     }
 
-    tbody.innerHTML = "";
+    if (!data || data.length === 0) {
+        container.innerHTML =
+            `<div class="text-gray-500 text-center py-8">لا توجد سجلات نشاط</div>`;
+        return;
+    }
+
+    container.innerHTML = "";
 
     data.forEach(log => {
 
-        tbody.innerHTML += `
-        <tr>
-            <td>${formatDate(log.created_at)}</td>
-            <td>${log.type}</td>
-            <td>${log.action}</td>
-            <td>${log.device_id || "--"}</td>
-            <td>${log.details || "--"}</td>
-        </tr>
+        let color = "text-purple-400";
+        let icon = "📋";
+
+        if (log.type === "USER") {
+            color = "text-red-400";
+            icon = "👤";
+        }
+
+        if (log.type === "VIP") {
+            color = "text-yellow-400";
+            icon = "👑";
+        }
+
+        if (log.type === "KEY") {
+            color = "text-cyan-400";
+            icon = "🔑";
+        }
+
+        container.innerHTML += `
+            <div class="glass-card p-4 rounded-xl border border-white/5">
+
+                <div class="flex justify-between items-start">
+
+                    <div>
+
+                        <div class="${color} font-bold">
+                            ${icon} ${log.action}
+                        </div>
+
+                        <div class="text-gray-300 text-sm mt-1">
+                            ${log.details || "--"}
+                        </div>
+
+                        <div class="text-gray-500 text-xs mt-2">
+                            الجهاز: ${log.device_id || "--"}
+                        </div>
+
+                    </div>
+
+                    <div class="text-gray-500 text-xs">
+                        ${formatDate(log.created_at)}
+                    </div>
+
+                </div>
+
+            </div>
         `;
     });
 
