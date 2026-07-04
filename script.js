@@ -469,7 +469,29 @@ async function deleteUserRow(deviceId) {
         }
     }
 }
+async function deleteKeyRow(id) {
 
+    if (confirm("حذف المفتاح نهائياً؟")) {
+
+        const { error } = await client
+            .from("keys")
+            .delete()
+            .eq("id", id);
+
+        if (!error) {
+
+            await addActivity(
+                "KEY",
+                "KEY_DELETED",
+                "",
+                "تم حذف مفتاح"
+            );
+
+            showToast("تم الحذف");
+            refreshDashboard();
+        }
+    }
+}
 // 💎 [التحكم VIP]
 if (document.getElementById("btnGrantVip")) {
     document.getElementById("btnGrantVip").onclick = async () => {
