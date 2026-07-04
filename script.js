@@ -5,6 +5,7 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
 let statsChart = null;
+let deviceChart = null;
 
 async function addActivity(type, action, deviceId = "", details = "") {
 
@@ -104,10 +105,137 @@ async function refreshDashboard() {
     renderKeysTable(kData);
     renderBannedTable(uData);
     updateMainCharts(uData);
+    updateDeviceChart(uData);
 await loadStats();
 await loadActivityLogs();
 }
+function updateDeviceChart(users) {
 
+    const canvas = document.getElementById("deviceChart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    const brands = {};
+
+    users.forEach(user => {
+
+        const brand =
+            user.brand ||
+            user.manufacturer ||
+            "Unknown";
+
+        brands[brand] = (brands[brand] || 0) + 1;
+
+    });
+
+    const labels = Object.keys(brands);
+    const values = Object.values(brands);
+
+    if (deviceChart)
+        deviceChart.destroy();
+
+    deviceChart = new Chart(ctx, {
+
+        type: "doughnut",
+
+        data: {
+
+            labels,
+
+            datasets: [{
+
+                data: values,
+
+                backgroundColor: [
+
+                    "#8b5cf6",
+                    "#22c55e",
+                    "#06b6d4",
+                    "#f59e0b",
+                    "#ef4444",
+                    "#ec4899",
+                    "#6366f1"
+
+                ],
+
+                borderWidth: 0
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            plugins: {
+
+                legend: {
+
+                    display: false
+
+                }
+
+            },
+
+            cutout: "72%"
+
+        }
+
+    });
+
+    const total =
+        users.length;
+
+    document.getElementById("totalDeviceCount").textContent =
+        total;
+
+    const list =
+        document.getElementById("deviceStatsList");
+
+    if (!list) return;
+
+    if (labels.length === 0) {
+
+        list.innerHTML =
+            `<div class="text-center text-gray-500 text-[10px]">
+            لا توجد بيانات
+            </div>`;
+
+        return;
+
+    }
+
+    list.innerHTML =
+        labels.map((label, i) => {
+
+            const percent =
+                Math.round(values[i] / total * 100);
+
+            return `
+
+<div class="flex justify-between text-[10px]">
+
+<span class="text-gray-300">
+
+${label}
+
+</span>
+
+<span class="text-purple-400 font-bold">
+
+${percent}%
+
+</span>
+
+</div>
+
+`;
+
+        }).join("");
+
+}
 function updateCounter(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value.toLocaleString();
