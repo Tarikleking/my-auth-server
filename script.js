@@ -1002,4 +1002,9 @@ async function loadActivityLogs() {
     });
 
 }
+document.getElementById("btnRefreshActivity")?.addEventListener("click", () => {
+    loadActivityLogs();
+    showToast("تم تحديث سجل النشاط");
+});
+loadActivityLogs();
 checkSession();
