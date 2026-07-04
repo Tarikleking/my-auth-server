@@ -137,13 +137,15 @@
             <section id="home-section" class="tab-content">
                 <div class="flex justify-between items-end mb-6">
                     <div class="text-right">
-                        <h1 class="text-xl font-black tracking-tight mb-1 flex items-center gap-1.5 text-white">أهلاً بك، كينج دي زد 👑</h1>
-                        <p class="text-gray-500 text-[11px] font-medium">إليك أداء المنصة الشامل والملخص اليومي.</p>
+                        <h1 class="text-xl font-black tracking-tight mb-1 flex items-center gap-1.5 text-white">أهلاً بك،سيد طارق 👑</h1>
+                        <p class="text-gray-500 text-[11px] font-medium">مراقبة النظام والإحصائيات بشكل مباشر.</p>
                     </div>
                     <div class="glass-card px-3.5 py-1.5 rounded-xl border border-white/[0.02] flex items-center gap-3 shadow-sm">
                         <div class="text-right">
                             <p class="text-[8px] text-gray-500 font-bold mb-0.5">التوقيت الحالي للمنصة</p>
-                            <h3 class="text-sm font-black text-white tracking-wide font-mono leading-none" id="liveTime">--:--:--</h3>
+<h3
+id="liveTime"
+class="text-lg font-black tracking-widest text-yellow-400 font-mono">
                         </div>
                     </div>
                 </div>
@@ -191,7 +193,17 @@ id="activeVipCount">
                                 <h2 class="text-sm font-black text-white" id="totalDeviceCount">0</h2>
                             </div>
                         </div>
-                        <div class="mt-4 space-y-1.5" id="deviceStatsList"></div>
+<div
+id="deviceStatsList"
+class="mt-4 space-y-2">
+
+<div class="text-center text-gray-600 text-[10px]">
+
+بانتظار البيانات...
+
+</div>
+
+</div>
                     </div>
 
                     <div class="col-span-6 glass-card p-4 rounded-[1.5rem] h-48">
@@ -199,15 +211,43 @@ id="activeVipCount">
                     </div>
 
                     <div class="col-span-3 glass-card p-4 rounded-[1.5rem] flex flex-col justify-between">
-                        <h3 class="text-[11px] font-bold text-gray-200 mb-2">النشاط المباشر</h3>
-                        <div class="flex-1 space-y-2.5 relative" id="liveActivityFeed"></div>
+<div class="flex justify-between items-center mb-3">
+    <h3 class="text-[11px] font-bold text-gray-200">
+        النشاط المباشر
+    </h3>
+
+    <span class="text-[9px] text-green-400 bg-green-500/10 px-2 py-1 rounded-full">
+        LIVE
+    </span>
+</div>
+<div
+    id="liveActivityFeed"
+    class="flex-1 space-y-2 overflow-y-auto custom-scroll pr-1 min-h-[180px]">
+
+    <div class="text-center text-gray-600 text-[10px] py-10">
+
+        لا يوجد نشاط حالياً
+
+    </div>
+
+</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-12 gap-3.5">
                     <div class="col-span-3 glass-card p-4 rounded-[1.5rem]">
                         <h3 class="text-[11px] font-bold text-gray-200 mb-3">الدول الأكثر استخداماً</h3>
-                        <div class="space-y-2.5" id="countriesList"></div>
+<div
+id="countriesList"
+class="space-y-2">
+
+<div class="text-center text-gray-600 text-[10px] py-8">
+
+لا توجد بيانات
+
+</div>
+
+</div>
                     </div>
 
                     <div class="col-span-9 glass-card rounded-[1.5rem] overflow-hidden">
@@ -228,6 +268,16 @@ id="activeVipCount">
                                     </tr>
                                 </thead>
                                 <tbody id="usersTable" class="divide-y divide-white/[0.01]"></tbody>
+                                <tr>
+
+<td colspan="6"
+class="text-center py-10 text-gray-600">
+
+لا يوجد مستخدمون حالياً
+
+</td>
+
+</tr>
                             </table>
                         </div>
                     </div>
