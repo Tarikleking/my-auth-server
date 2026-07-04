@@ -444,46 +444,53 @@ shadow-purple-600/30">
 
     <div class="glass-card p-5 rounded-xl">
 
-        <!-- العنوان -->
-        <div class="mb-6">
+<!-- العنوان -->
 
-            <h2 class="text-3xl font-bold text-white flex items-center gap-2">
-                📋 سجل نشاط النظام
-            </h2>
+<div class="flex flex-col gap-5 mb-8">
 
-            <p class="text-gray-400 text-sm mt-2">
-                متابعة جميع عمليات لوحة التحكم لحظة بلحظة
-            </p>
+    <div>
 
-        </div>
+        <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+            📋 سجل نشاط النظام
+        </h2>
 
-        <!-- أدوات السجل -->
-        <div class="flex items-center gap-3 mb-6">
-
-            <button
-                id="btnRefreshActivity"
-                class="glass-btn px-4 py-2 rounded-lg text-sm">
-                🔄 تحديث
-            </button>
-
-            <input
-                id="activitySearch"
-                type="text"
-                placeholder="بحث..."
-                class="glass-input px-3 py-2 rounded-lg text-sm w-64">
-
-        </div>
-
-        <!-- السجلات -->
-        <div id="activityLogs" class="space-y-3">
-
-            <div class="text-center text-gray-500 py-10">
-                جاري تحميل السجلات...
-            </div>
-
-        </div>
+        <p class="text-gray-400 mt-2">
+            متابعة جميع عمليات لوحة التحكم لحظة بلحظة
+        </p>
 
     </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+
+        <button
+            id="btnRefreshActivity"
+            class="glass-btn px-5 py-2 rounded-xl">
+
+            🔄 تحديث
+
+        </button>
+
+        <input
+            id="activitySearch"
+            type="text"
+            placeholder="🔍 ابحث في السجل..."
+            class="glass-input px-4 py-2 rounded-xl w-80">
+
+        <select
+            id="activityFilter"
+            class="glass-input px-4 py-2 rounded-xl">
+
+            <option value="ALL">كل العمليات</option>
+            <option value="USER">المستخدمون</option>
+            <option value="KEY">المفاتيح</option>
+            <option value="VIP">VIP</option>
+            <option value="BAN">الحظر</option>
+
+        </select>
+
+    </div>
+
+</div>
 
 </section>
             <section id="settings-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">إعدادات الاتصال بالسيرفر.</div></section>
