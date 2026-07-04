@@ -440,7 +440,60 @@ shadow-purple-600/30">
 
 </div>
 </section>
-    </section>     
+            
+    <section id="activity-section" class="tab-content hidden">
+
+    <div class="glass-card rounded-2xl p-6">
+
+        <!-- Header -->
+
+        <div class="mb-6">
+
+            <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+                📋 سجل نشاط النظام
+            </h2>
+
+            <p class="text-gray-400 mt-2">
+                متابعة جميع عمليات لوحة التحكم لحظة بلحظة
+            </p>
+
+        </div>
+
+        <!-- Toolbar -->
+
+        <div class="flex flex-wrap items-center gap-3 mb-6">
+
+            <button
+                id="btnRefreshActivity"
+                class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 transition">
+
+                🔄 تحديث
+
+            </button>
+
+            <input
+                id="activitySearch"
+                type="text"
+                placeholder="🔍 ابحث داخل السجل..."
+                class="flex-1 min-w-[260px] bg-[#161b26] border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-purple-500">
+
+        </div>
+
+        <!-- Logs -->
+
+        <div id="activityLogs" class="space-y-2">
+
+            <div class="text-center text-gray-500 py-10">
+
+                جاري تحميل السجلات...
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section> 
             
             <section id="settings-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">إعدادات الاتصال بالسيرفر.</div></section>
 
