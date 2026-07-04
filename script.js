@@ -969,6 +969,45 @@ async function loadActivityLogs() {
             color = "text-cyan-400";
             icon = "🔑";
         }
+        let actionName = log.action;
+
+switch (log.action) {
+
+    case "VIP_GRANTED":
+        actionName = "منح اشتراك VIP";
+        break;
+
+    case "VIP_REVOKED":
+        actionName = "سحب اشتراك VIP";
+        break;
+
+    case "USER_DELETED":
+        actionName = "حذف مستخدم";
+        break;
+
+    case "USER_BANNED":
+        actionName = "حظر مستخدم";
+        break;
+
+    case "USER_UNBANNED":
+        actionName = "فك حظر مستخدم";
+        break;
+
+    case "KEY_CREATED":
+        actionName = "إنشاء مفتاح";
+        break;
+
+    case "KEY_DELETED":
+        actionName = "حذف مفتاح";
+        break;
+
+    case "KEYS_DELETED":
+        actionName = "حذف عدة مفاتيح";
+        break;
+
+    default:
+        actionName = log.action;
+}
 container.innerHTML += `
 
 <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all">
@@ -980,7 +1019,7 @@ container.innerHTML += `
 
             <div class="${color} font-bold text-sm flex items-center gap-2">
                 <span>${icon}</span>
-                <span>${log.action}</span>
+                <span>${actionName}</span>
             </div>
 
             <div class="text-white text-sm mt-1">
