@@ -197,3 +197,32 @@ tr:hover {
     background:rgba(168,85,247,.12);
     transition:.25s;
 }
+.activity-card{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.activity-content{
+    text-align:right;
+}
+
+.activity-footer{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    gap:12px;
+}
+
+.activity-time{
+    color:#bfbfbf;
+    font-size:13px;
+}
+
+.delete-log{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color:#8fffd8;
+    font-size:18px;
+}
