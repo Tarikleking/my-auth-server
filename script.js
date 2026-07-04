@@ -819,7 +819,7 @@ function afterLogin() {
     refreshDashboard();
     setInterval(() => {
         const liveTimeEl = document.getElementById("liveTime");
-        if (liveTimeEl) liveTimeEl.textContent = new Date().toLocaleTimeString('ar-SA', { hour12: false });
+        if (liveTimeEl) liveTimeEl.textContent = new Date().toLocaleTimeString('en-GB', {     hour12: false });
     }, 1000);
 }
 function formatDate(date) {
