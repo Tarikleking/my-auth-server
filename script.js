@@ -447,28 +447,21 @@ async function liftUserBan(deviceId) {
 }
 
 async function deleteUserRow(deviceId) {
+
     if (confirm("حذف الجهاز نهائياً؟")) {
-        const { error } = await client.from("users").delete().eq("device_id", deviceId);
-        if (!error) { showToast("تم الحذف"); refreshDashboard(); }
-    }
-}
-
-async function deleteKeyRow(id) {
-
-    if (confirm("حذف المفتاح نهائياً؟")) {
 
         const { error } = await client
-            .from("keys")
+            .from("users")
             .delete()
-            .eq("id", id);
+            .eq("device_id", deviceId);
 
         if (!error) {
 
             await addActivity(
-                "KEY",
-                "KEY_DELETED",
-                "",
-                "تم حذف مفتاح"
+                "USER",
+                "USER_DELETED",
+                deviceId,
+                "تم حذف المستخدم نهائياً"
             );
 
             showToast("تم الحذف");
