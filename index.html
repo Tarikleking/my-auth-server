@@ -444,54 +444,37 @@ shadow-purple-600/30">
 
     <div class="glass-card p-5 rounded-xl">
 
-        
-<div class="flex items-center justify-between mb-5">
+        <!-- العنوان -->
+        <div class="mb-6">
 
-    <div>
+            <h2 class="text-3xl font-bold text-white flex items-center gap-2">
+                📋 سجل نشاط النظام
+            </h2>
 
-    <h2 class="text-3xl font-bold text-white flex items-center gap-2">
-        📋 سجل نشاط النظام
-    </h2>
+            <p class="text-gray-400 text-sm mt-2">
+                متابعة جميع عمليات لوحة التحكم لحظة بلحظة
+            </p>
 
-    <p class="text-gray-400 text-sm mt-1">
-        متابعة جميع عمليات لوحة التحكم لحظة بلحظة
-    </p>
+        </div>
 
-</div>
+        <!-- أدوات السجل -->
+        <div class="flex items-center gap-3 mb-6">
 
-<div class="flex items-center gap-2">
+            <button
+                id="btnRefreshActivity"
+                class="glass-btn px-4 py-2 rounded-lg text-sm">
+                🔄 تحديث
+            </button>
 
-    <button
-        id="btnRefreshActivity"
-        class="glass-btn px-4 py-2 rounded-lg text-sm">
-        🔄 تحديث
-    </button>
+            <input
+                id="activitySearch"
+                type="text"
+                placeholder="بحث..."
+                class="glass-input px-3 py-2 rounded-lg text-sm w-64">
 
-    <input
-        id="activitySearch"
-        type="text"
-        placeholder="بحث..."
-        class="glass-input px-3 py-2 rounded-lg text-sm w-48">
+        </div>
 
-</div>
-
-    <div class="flex gap-2">
-
-        <input
-            id="activitySearch"
-            type="text"
-            placeholder="بحث..."
-            class="bg-[#161b26] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500">
-
-        <button
-            id="btnRefreshActivity"
-            class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white">
-            🔄 تحديث
-        </button>
-
-    </div>
-
-</div>
+        <!-- السجلات -->
         <div id="activityLogs" class="space-y-3">
 
             <div class="text-center text-gray-500 py-10">
@@ -502,7 +485,8 @@ shadow-purple-600/30">
 
     </div>
 
-</section>            <section id="settings-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">إعدادات الاتصال بالسيرفر.</div></section>
+</section>
+            <section id="settings-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">إعدادات الاتصال بالسيرفر.</div></section>
 
             <footer class="mt-8 flex justify-between items-center text-[9px] text-gray-600 font-semibold border-t border-white/[0.01] pt-3 px-1">
                 <div>الإصدار 2.5.1</div>
