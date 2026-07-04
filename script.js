@@ -970,30 +970,50 @@ async function loadActivityLogs() {
             icon = "🔑";
         }
 container.innerHTML += `
-<div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all duration-300">
 
-    <!-- العنوان -->
-<div class="activity-card">
+<div class="glass-card p-3 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all duration-300">
 
-    <div class="activity-content">
-        <div class="activity-title">${log.action}</div>
-        <div class="activity-desc">${description}</div>
-        <div class="activity-id">${log.target || ""}</div>
+    <div class="text-right">
+
+        <div class="${color} font-bold text-sm flex items-center justify-end gap-2">
+            <span>${icon}</span>
+            <span>${log.action}</span>
+        </div>
+
+        <div class="text-white text-sm mt-1">
+            ${log.details || "--"}
+        </div>
+
     </div>
 
-    <div class="activity-footer">
-        <span class="activity-time">
-            🕒 ${formattedTime}
-        </span>
+    <div class="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
 
-        <button class="delete-log">
-            🗑️
-        </button>
+        <!-- يسار البطاقة -->
+        <div class="flex items-center gap-3">
+
+            <button
+                onclick="deleteActivityLog('${log.id}')"
+                class="text-red-500 hover:text-red-400 transition text-lg"
+                title="حذف السجل">
+                🗑️
+            </button>
+
+            <span class="text-xs text-gray-400">
+                🕒 ${formatDate(log.created_at)}
+            </span>
+
+        </div>
+
+        <!-- يمين البطاقة -->
+        <div class="text-gray-500 text-xs">
+            ${log.device_id || ""}
+        </div>
+
     </div>
 
 </div>
+
 `;
-        
     });
 
 }
