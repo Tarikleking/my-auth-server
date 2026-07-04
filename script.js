@@ -969,41 +969,38 @@ async function loadActivityLogs() {
             color = "text-cyan-400";
             icon = "🔑";
         }
+container.innerHTML += `
 
-        container.innerHTML += `
+<div class="glass-card p-3 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all duration-300">
 
-<div class="flex items-center gap-3 mb-2">
+    <div class="flex justify-between items-start">
 
-    <div class="w-36 text-[10px] text-gray-500 text-left">
-        ${formatDate(log.created_at)}
-    </div>
+        <div class="flex-1">
 
-    <div class="glass-card flex-1 p-2 rounded-lg border border-white/5 hover:border-purple-500/40 transition-all duration-300">
-
-        <div class="flex justify-between items-center">
-
-            <div>
-
-                <div class="${color} font-semibold text-xs">
-                    ${icon} ${log.action}
-                </div>
-
-                <div class="text-gray-200 text-xs mt-0.5">
-                    ${log.details || "--"}
-                </div>
-
-                <div class="text-gray-500 text-[10px] mt-1">
-                    📱 ${log.device_id || "--"}
-                </div>
-
+            <div class="${color} font-semibold text-sm">
+                ${icon} ${log.action}
             </div>
 
-            <button
-                onclick="deleteActivityLog('${log.id}')"
-                class="text-red-500 hover:text-red-400 text-base transition"
-                title="حذف السجل">
-                🗑️
-            </button>
+            <div class="text-gray-200 text-sm mt-1">
+                ${log.details || "--"}
+            </div>
+
+            <div class="flex items-center justify-between mt-3">
+
+                <div class="text-purple-300 text-xs">
+                    🕒 ${formatDate(log.created_at)}
+                </div>
+
+                <button
+                    onclick="deleteActivityLog('${log.id}')"
+                    class="text-red-500 hover:text-red-400 transition"
+                    title="حذف السجل">
+
+                    🗑️
+
+                </button>
+
+            </div>
 
         </div>
 
@@ -1012,6 +1009,7 @@ async function loadActivityLogs() {
 </div>
 
 `;
+        
     });
 
 }
