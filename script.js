@@ -971,17 +971,15 @@ async function loadActivityLogs() {
         }
 
         container.innerHTML += `
-            <div class="glass-card p-4 rounded-xl border border-white/5">
-
+<div class="glass-card p-3 rounded-lg border border-white/5 hover:border-purple-500/40 transition-all duration-300">
                 <div class="flex justify-between items-start">
 
                     <div>
 
-                        <div class="${color} font-bold">
+<div class="${color} font-semibold text-sm">
                             ${icon} ${log.action}
                         </div>
-
-                        <div class="text-gray-300 text-sm mt-1">
+<div class="text-gray-300 text-xs mt-1">
                             ${log.details || "--"}
                         </div>
 
@@ -991,15 +989,45 @@ async function loadActivityLogs() {
 
                     </div>
 
-                    <div class="text-gray-500 text-xs">
-                        ${formatDate(log.created_at)}
-                    </div>
+<div class="flex flex-col items-end gap-2">
+
+<div class="text-gray-500 text-[10px]">
+        ${formatDate(log.created_at)}
+    </div>
+
+    <button
+        onclick="deleteActivityLog('${log.id}')"
+        class="text-red-500 hover:text-red-400 text-lg transition"
+        title="حذف السجل">
+        🗑️
+    </button>
+
+</div>
 
                 </div>
 
             </div>
         `;
     });
+
+}
+async function deleteActivityLog(id) {
+
+    if (!confirm("حذف هذا السجل؟")) return;
+
+    const { error } = await client
+        .from("activity_logs")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        showToast("فشل حذف السجل");
+        console.error(error);
+        return;
+    }
+
+    showToast("تم حذف السجل");
+    loadActivityLogs();
 
 }
 document.getElementById("btnRefreshActivity")?.addEventListener("click", () => {
