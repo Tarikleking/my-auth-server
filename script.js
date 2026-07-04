@@ -328,7 +328,18 @@ if (document.getElementById("btnGenerateKey")) {
             }]);
             if (!error) successCount++;
         }
-        if (successCount > 0) { showToast("تم توليد " + successCount + " مفتاح"); refreshDashboard(); }
+       if (successCount > 0) {
+
+    await addActivity(
+        "KEY",
+        "KEY_CREATED",
+        "",
+        "تم إنشاء " + successCount + " مفتاح"
+    );
+
+    showToast("تم توليد " + successCount + " مفتاح");
+    refreshDashboard();
+}
     };
 }
 
@@ -443,9 +454,26 @@ async function deleteUserRow(deviceId) {
 }
 
 async function deleteKeyRow(id) {
+
     if (confirm("حذف المفتاح نهائياً؟")) {
-        const { error } = await client.from("keys").delete().eq("id", id);
-        if (!error) { showToast("تم الحذف"); refreshDashboard(); }
+
+        const { error } = await client
+            .from("keys")
+            .delete()
+            .eq("id", id);
+
+        if (!error) {
+
+            await addActivity(
+                "KEY",
+                "KEY_DELETED",
+                "",
+                "تم حذف مفتاح"
+            );
+
+            showToast("تم الحذف");
+            refreshDashboard();
+        }
     }
 }
 
@@ -852,14 +880,21 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
         .in("id", ids);
 
     if (error) {
-        showToast("فشل الحذف");
-        console.error(error);
-        return;
-    }
+    showToast("فشل الحذف");
+    console.error(error);
+    return;
+}
 
-    showToast(`تم حذف ${ids.length} مفتاح`);
+await addActivity(
+    "KEY",
+    "KEYS_DELETED",
+    "",
+    "تم حذف " + ids.length + " مفتاح"
+);
 
-    refreshDashboard();
+showToast(`تم حذف ${ids.length} مفتاح`);
+
+refreshDashboard();
 
 });
 
