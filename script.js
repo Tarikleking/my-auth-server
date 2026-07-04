@@ -1010,7 +1010,7 @@ container.innerHTML += `
     ${
         log.device_id
             ? `
-            <div class="mt-3 text-xs text-gray-500 border-t border-white/10 pt-2">
+            <div class="mt-3 text-xs text-gray-500 
                 ${log.device_id}
             </div>
             `
