@@ -1220,4 +1220,71 @@ document.getElementById("btnRefreshActivity")?.addEventListener("click", () => {
     showToast("تم تحديث سجل النشاط");
 });
 loadActivityLogs();
+async function loadSettings() {
+
+    const { data, error } = await client
+        .from("settings")
+        .select("*")
+        .eq("id",1)
+        .single();
+
+    if (error || !data) return;
+
+    document.getElementById("mod_enabled").checked = data.mod_enabled;
+    document.getElementById("vip_enabled").checked = data.vip_enabled;
+    document.getElementById("force_update").checked = data.force_update;
+
+    document.getElementById("latest_version").value =
+        data.latest_version || "";
+
+    document.getElementById("message").value =
+        data.message || "";
+
+    document.getElementById("maintenance_message").value =
+        data.maintenance_message || "";
+
+    document.getElementById("update_url").value =
+        data.update_url || "";
+}
+
+document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
+
+    const { error } = await client
+        .from("settings")
+        .update({
+
+            mod_enabled:
+                document.getElementById("mod_enabled").checked,
+
+            vip_enabled:
+                document.getElementById("vip_enabled").checked,
+
+            force_update:
+                document.getElementById("force_update").checked,
+
+            latest_version:
+                document.getElementById("latest_version").value,
+
+            message:
+                document.getElementById("message").value,
+
+            maintenance_message:
+                document.getElementById("maintenance_message").value,
+
+            update_url:
+                document.getElementById("update_url").value
+
+        })
+        .eq("id",1);
+
+    if(error){
+        showToast("فشل حفظ الإعدادات");
+        console.error(error);
+        return;
+    }
+
+    showToast("تم حفظ الإعدادات بنجاح");
+});
+
+loadSettings();
 checkSession();
