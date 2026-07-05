@@ -551,8 +551,65 @@ shadow-purple-600/30">
 
 </section> 
             
-            <section id="settings-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">إعدادات الاتصال بالسيرفر.</div></section>
+<section id="settings-section" class="tab-content hidden">
 
+<div class="glass-card p-6 rounded-xl space-y-5">
+
+<h2 class="text-lg font-bold text-white">
+⚙️ الإعدادات العامة
+</h2>
+
+<div class="grid grid-cols-2 gap-4">
+
+<label class="flex items-center justify-between">
+<span>تفعيل المود</span>
+<input type="checkbox" id="mod_enabled">
+</label>
+
+<label class="flex items-center justify-between">
+<span>تفعيل VIP</span>
+<input type="checkbox" id="vip_enabled">
+</label>
+
+<label class="flex items-center justify-between">
+<span>إجبار التحديث</span>
+<input type="checkbox" id="force_update">
+</label>
+
+</div>
+
+<div>
+<label class="block mb-1 text-sm">آخر إصدار</label>
+<input id="latest_version"
+class="w-full bg-[#111827] rounded-lg p-2 border border-white/10">
+</div>
+
+<div>
+<label class="block mb-1 text-sm">رسالة التطبيق</label>
+<textarea id="message"
+class="w-full bg-[#111827] rounded-lg p-2 border border-white/10"></textarea>
+</div>
+
+<div>
+<label class="block mb-1 text-sm">رسالة الصيانة</label>
+<textarea id="maintenance_message"
+class="w-full bg-[#111827] rounded-lg p-2 border border-white/10"></textarea>
+</div>
+
+<div>
+<label class="block mb-1 text-sm">رابط التحديث</label>
+<input id="update_url"
+class="w-full bg-[#111827] rounded-lg p-2 border border-white/10">
+</div>
+
+<button id="btnSaveSettings"
+class="bg-purple-600 hover:bg-purple-700 px-5 py-2 rounded-lg font-bold">
+💾 حفظ الإعدادات
+</button>
+
+</div>
+
+</section>
             <footer class="mt-8 flex justify-between items-center text-[9px] text-gray-600 font-semibold border-t border-white/[0.01] pt-3 px-1">
                 <div>الإصدار 2.5.1</div>
                 <div>جميع الحقوق محفوظة &copy; لـ KingDZ</div>
