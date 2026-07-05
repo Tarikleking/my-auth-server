@@ -143,7 +143,9 @@
                     <div class="glass-card px-3.5 py-1.5 rounded-xl border border-white/[0.02] flex items-center gap-3 shadow-sm">
                         <div class="text-right">
                             <p class="text-[8px] text-gray-500 font-bold mb-0.5">التوقيت الحالي للمنصة</p>
-                            <h3 id="liveTime" class="text-lg font-black tracking-widest text-yellow-400 font-mono"></h3>
+<h3
+id="liveTime"
+class="text-lg font-black tracking-widest text-yellow-400 font-mono">
                         </div>
                     </div>
                 </div>
@@ -170,32 +172,386 @@
                         <div class="h-4 w-full opacity-60"><canvas id="miniChart4"></canvas></div>
                     </div>
                     <div class="glass-card p-3.5 rounded-[1.25rem] border border-white/[0.02]">
-                        <p class="text-[10px] text-gray-500 font-bold mb-0.5">اشتراكات VIP النشطة</p>
-                        <h2 class="text-lg font-black tracking-tight mb-1 text-yellow-400" id="activeVipCount">0</h2>
+                        <p class="text-[10px] text-gray-500 font-bold mb-0.5">
+اشتراكات VIP النشطة
+</p>
+
+<h2 class="text-lg font-black tracking-tight mb-1 text-yellow-400"
+id="activeVipCount">
+0
+</h2>
                         <div class="h-4 w-full opacity-60"><canvas id="miniChart5"></canvas></div>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto custom-scroll">
-                    <table class="w-full text-right border-collapse text-[11px]">
+                <div class="grid grid-cols-12 gap-3.5 mb-6">
+                    <div class="col-span-3 glass-card p-4 rounded-[1.5rem] flex flex-col justify-between">
+                        <h3 class="text-[11px] font-bold text-gray-200 mb-3">توزيع الأجهزة</h3>
+                        <div class="relative h-32">
+                            <canvas id="deviceChart"></canvas>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <h2 class="text-sm font-black text-white" id="totalDeviceCount">0</h2>
+                            </div>
+                        </div>
+<div
+id="deviceStatsList"
+class="mt-4 space-y-2">
+
+<div class="text-center text-gray-600 text-[10px]">
+
+بانتظار البيانات...
+
+</div>
+
+</div>
+                    </div>
+
+                    <div class="col-span-6 glass-card p-4 rounded-[1.5rem] h-48">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+
+                    <div class="col-span-3 glass-card p-4 rounded-[1.5rem] flex flex-col justify-between">
+<div class="flex justify-between items-center mb-3">
+    <h3 class="text-[11px] font-bold text-gray-200">
+        النشاط المباشر
+    </h3>
+
+    <span class="text-[9px] text-green-400 bg-green-500/10 px-2 py-1 rounded-full">
+        LIVE
+    </span>
+</div>
+<div
+    id="liveActivityFeed"
+    class="flex-1 space-y-2 overflow-y-auto custom-scroll pr-1 min-h-[180px]">
+
+    <div class="text-center text-gray-600 text-[10px] py-10">
+
+        لا يوجد نشاط حالياً
+
+    </div>
+
+</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-3.5">
+                    <div class="col-span-3 glass-card p-4 rounded-[1.5rem]">
+                        <h3 class="text-[11px] font-bold text-gray-200 mb-3">الدول الأكثر استخداماً</h3>
+<div
+id="countriesList"
+class="space-y-2">
+
+<div class="text-center text-gray-600 text-[10px] py-8">
+
+لا توجد بيانات
+
+</div>
+
+</div>
+                    </div>
+
+                    <div class="col-span-9 glass-card rounded-[1.5rem] overflow-hidden">
+                        <div class="p-4 border-b border-white/[0.015] bg-white/[0.002]">
+                            <h3 class="text-[11px] font-bold text-gray-200">آخر المستخدمين النشطين</h3>
+                        </div>
+                        <div class="overflow-x-auto custom-scroll">
+                            <table class="w-full text-right border-collapse text-[11px]">
+                                <thead>
+                                    <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
+
+                                        <th class="p-2.5 pr-4">المستخدم</th>
+                                        <th class="p-2.5">الدولة</th>
+                                        <th class="p-2.5">الجهاز</th>
+                                        <th class="p-2.5">نوع الاشتراك</th>
+                                        <th class="p-2.5">الحالة</th>
+                                        <th class="p-2.5 text-center pl-4">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTable" class="divide-y divide-white/[0.01]"></tbody>
+                                <tr>
+
+<td colspan="6"
+class="text-center py-10 text-gray-600">
+
+لا يوجد مستخدمون حالياً
+
+</td>
+
+</tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="keys-section" class="tab-content hidden">
+                <div class="mb-4">
+                    <h2 class="text-sm font-black text-white">إدارة مفاتيح التفعيل</h2>
+                    <p class="text-gray-500 text-[10px]">توليد ومراقبة رموز التفعيل الحية بالسيرفر.</p>
+                </div>
+                <div class="glass-card p-4 rounded-xl mb-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] text-purple-300 font-bold mb-2">
+🛡️ نوع الاشتراك
+</label>
+                            <select id="keyType" class="bg-[#111622] border border-white/10 text-gray-300 text-[11px] rounded-lg p-2.5 w-full focus:outline-none focus:border-purple-500">
+    <option value="1 دقيقة">تجريبي (1 دقيقة)</option>
+    <option value="1 ساعة">ساعة واحدة (1 ساعة)</option>
+    <option value="1 يوم">يومي (1 يوم)</option>
+    <option value="1 أسبوع">أسبوعي (1 أسبوع)</option>
+    <option value="1 شهر">شهري (1 شهر)</option>
+    <option value="1 سنة">سنوي (1 سنة)</option>
+</select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-purple-300 font-bold mb-2">
+⏳ مدة الاشتراك
+</label>
+                            <input type="number" id="keyDuration" value="30" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-purple-300 font-bold mb-2">
+📦 عدد المفاتيح
+</label>
+                            <input type="number" id="keyAmount" value="1" min="1" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none">
+                        </div>
+                       <button
+id="btnGenerateKey"
+class="col-span-2 h-12 rounded-xl
+bg-gradient-to-r
+from-purple-600
+to-fuchsia-600
+text-white
+font-black
+text-sm
+hover:scale-[1.02]
+transition-all
+shadow-lg
+shadow-purple-600/30">
+🚀 توليد المفاتيح
+</button>
+                    </div>
+                </div>
+                <div class="glass-card rounded-xl overflow-hidden">
+                    <div class="p-3 border-b border-white/[0.015]">
+
+    <div class="flex justify-between items-center mb-3">
+        <span class="font-bold text-white">المفاتيح المنشأة</span>
+        <span id="keysTotalBadge" class="text-purple-400">0 مفتاح</span>
+    </div>
+
+    <div class="flex gap-2">
+
+       <button id="btnSelectAll"
+    class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition">
+    ☑ تحديد الكل
+</button>
+
+        <button id="btnCopyAllKeys"
+            class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition">
+            📋 نسخ الكل
+        </button>
+<button id="btnDeleteSelected"
+    class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] transition">
+    🗑 حذف المحدد
+</button>
+    </div>
+
+</div>
+                    <table class="w-full text-right text-[11px]">
                         <thead>
                             <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
-                                <th class="p-2.5 pr-4">المستخدم</th>
-                                <th class="p-2.5">الدولة</th>
-                                <th class="p-2.5">الجهاز</th>
-                                <th class="p-2.5">نوع الاشتراك</th>
-                                <th class="p-2.5">الحالة</th>
-                                <th class="p-2.5 text-center pl-4">الإجراءات</th>
+                               <th class="p-2 text-center">تحديد</th>
+                                <th class="p-2 pr-4">المفتاح</th>
+                                <th class="p-2">الرتبة</th>
+                                <th class="p-2">المدة</th>
+                                <th class="p-2">الحالة</th>
+                                <th class="p-2 text-center pl-4">إجراء</th>
                             </tr>
                         </thead>
-                        <tbody id="usersTable" class="divide-y divide-white/[0.01]">
-                            <tr>
-                                <td colspan="6" class="text-center py-10 text-gray-600">لا يوجد مستخدمون حالياً</td>
-                            </tr>
-                        </tbody>
+                        <tbody id="keysListTable" class="divide-y divide-white/[0.01]"></tbody>
                     </table>
                 </div>
             </section>
+
+            <section id="ban-section" class="tab-content hidden">
+                <div class="mb-4"><h2 class="text-sm font-black text-white">جدار حظر الأجهزة والـ HWID</h2></div>
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-4 glass-card p-4 rounded-xl h-fit">
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[9px] text-gray-500 font-bold mb-1">معرّف الجهاز (Device ID)</label>
+                                <input type="text" id="banDeviceId" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none" placeholder="أدخل الـ ID بدقة">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] text-gray-500 font-bold mb-1">سبب الحظر</label>
+                                <input type="text" id="banReason" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none" placeholder="مخالفة السياسات...">
+                            </div>
+                            <button id="btnApplyBan" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] py-1.5 rounded-lg transition-all">تطبيق الحظر</button>
+                        </div>
+                    </div>
+                    <div class="col-span-8 glass-card rounded-xl overflow-hidden">
+                        <table class="w-full text-right text-[11px]">
+                            <thead>
+                                <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
+                                    <th class="p-2 pr-4">الجهاز المحظور</th>
+                                    <th class="p-2">السبب</th>
+                                    <th class="p-2 text-center pl-4">الإجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bannedDevicesTable" class="divide-y divide-white/[0.01]"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="vip-section" class="tab-content hidden">
+                <div class="mb-4"><h2 class="text-sm font-black text-white">إدارة اشتراكات ورتب VIP</h2></div>
+                <div class="glass-card p-4 rounded-xl max-w-md">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-[9px] text-gray-500 font-bold mb-1">Device ID الخاص بالعميل</label>
+                            <input type="text" id="vipDeviceId" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none" placeholder="معرّف الجهاز المسجل">
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btnGrantVip" class="flex-1 bg-yellow-500 text-black font-bold text-[11px] py-1.5 rounded-lg transition-all">ترقية لحساب VIP ✨</button>
+                            <button id="btnRevokeVip" class="flex-1 bg-white/5 text-red-400 font-bold text-[11px] py-1.5 rounded-lg transition-all border border-white/5">سحب الرتبة</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+<section id="users-section" class="tab-content hidden">
+    <div class="custom-table-container">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>الدولة</th>
+                    <th>نوع الجهاز</th>
+                    <th>حالة العميل</th>
+                    <th>نوع الاشتراك</th>
+                    <th>مدة الاشتراك</th>
+                    <th>تاريخ الانتهاء</th>
+                    <th>فحص الغش</th>
+                    <th>إجراء</th>
+                </tr>
+            </thead>
+            <tbody id="allUsersTable"></tbody>
+        </table>
+    </div>
+</section>
+<section id="stats-section" class="tab-content hidden">
+
+    <div class="mb-4">
+        <h2 class="text-sm font-black text-white">الإحصائيات</h2>
+        <p class="text-gray-500 text-[10px]">
+            إحصائيات مباشرة من قاعدة البيانات.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-4 gap-4">
+
+        <div class="glass-card p-4 rounded-xl">
+            <div class="text-gray-400 text-[10px]">👥 إجمالي المستخدمين</div>
+            <div id="statsUsers" class="text-2xl font-bold text-white mt-2">0</div>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl">
+            <div class="text-gray-400 text-[10px]">🟢 المتصلون الآن</div>
+            <div id="statsOnline" class="text-2xl font-bold text-green-400 mt-2">0</div>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl">
+            <div class="text-gray-400 text-[10px]">👑 مستخدمو VIP</div>
+            <div id="statsVip" class="text-2xl font-bold text-yellow-400 mt-2">0</div>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl">
+            <div class="text-gray-400 text-[10px]">🚫 المحظورون</div>
+            <div id="statsBanned" class="text-2xl font-bold text-red-400 mt-2">0</div>
+        </div>
+
+    </div>
+<div class="grid grid-cols-4 gap-4 mt-4">
+
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">🔑 إجمالي المفاتيح</div>
+        <div id="statsKeys" class="text-2xl font-bold text-cyan-400 mt-2">0</div>
+    </div>
+
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">🟣 مفاتيح جاهزة</div>
+        <div id="statsKeysNew" class="text-2xl font-bold text-green-400 mt-2">0</div>
+    </div>
+
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">🔴 مفاتيح مستعملة</div>
+        <div id="statsKeysUsed" class="text-2xl font-bold text-red-400 mt-2">0</div>
+    </div>
+
+    <div class="glass-card p-4 rounded-xl">
+        <div class="text-gray-400 text-[10px]">⏳ اشتراكات نشطة</div>
+        <div id="statsVipActive" class="text-2xl font-bold text-yellow-400 mt-2">0</div>
+    </div>
+
+</div>
+</section>
+            
+    <section id="activity-section" class="tab-content hidden">
+
+    <div class="glass-card rounded-2xl p-6">
+
+        <!-- Header -->
+
+        <div class="mb-6">
+
+            <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+                📋 سجل نشاط النظام
+            </h2>
+
+            <p class="text-gray-400 mt-2">
+                متابعة جميع عمليات لوحة التحكم لحظة بلحظة
+            </p>
+
+        </div>
+
+        <!-- Toolbar -->
+
+        <div class="flex flex-wrap items-center gap-3 mb-6">
+
+            <button
+                id="btnRefreshActivity"
+                class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 transition">
+
+                🔄 تحديث
+
+            </button>
+
+            <input
+                id="activitySearch"
+                type="text"
+                placeholder="🔍 ابحث داخل السجل..."
+                class="flex-1 min-w-[260px] bg-[#161b26] border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-purple-500">
+
+        </div>
+
+        <!-- Logs -->
+
+        <div id="activityLogs" class="space-y-2">
+
+            <div class="text-center text-gray-500 py-10">
+
+                جاري تحميل السجلات...
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section> 
+            
+            <section id="settings-section" class="tab-content hidden"><div class="glass-card p-4 rounded-xl text-gray-400">إعدادات الاتصال بالسيرفر.</div></section>
 
             <footer class="mt-8 flex justify-between items-center text-[9px] text-gray-600 font-semibold border-t border-white/[0.01] pt-3 px-1">
                 <div>الإصدار 2.5.1</div>
@@ -212,5 +568,17 @@
 
     <script src="script.js"></script>
     <script>lucide.createIcons();</script>
+    <div id="userDrawer" class="fixed inset-y-0 right-[-450px] w-[450px] bg-[#0b0e14] border-l border-white/10 shadow-2xl z-50 transition-all duration-300 ease-in-out p-6 overflow-y-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-sm font-black text-white">تفاصيل المستخدم</h3>
+        <button onclick="closeDrawer()" class="p-2 hover:bg-white/10 rounded-lg text-gray-400">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+    <div id="drawerContent" class="space-y-6 text-[11px] text-gray-400">
+        <div class="flex items-center justify-center h-64 text-gray-600">جاري تحميل البيانات...</div>
+    </div>
+</div>
+
 </body>
 </html>
