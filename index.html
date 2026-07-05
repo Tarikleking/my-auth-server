@@ -550,25 +550,26 @@ shadow-purple-600/30">
     </div>
 
 </section> 
-   <section id="settings-section" class="tab-content hidden">
+  <section id="settings-section" class="tab-content hidden">
 
-<div class="space-y-6">
+<div class="space-y-5">
 
     <!-- Header -->
-    <div class="glass-card rounded-2xl p-6 border border-purple-500/10">
+    <div class="glass-card rounded-2xl border border-purple-500/10 p-5">
         <div class="flex items-center justify-between">
 
             <div class="text-right">
-                <h2 class="text-3xl font-black text-white flex items-center gap-3">
-                    ⚙️ الإعدادات العامة
+                <h2 class="text-2xl font-black text-white flex items-center gap-2">
+                    <span class="text-xl">⚙️</span>
+                    الإعدادات العامة
                 </h2>
 
-                <p class="text-gray-500 mt-2 text-sm">
-                    التحكم الكامل بإعدادات النظام والتطبيق.
+                <p class="text-[11px] text-gray-500 mt-1">
+                    إدارة إعدادات النظام والتطبيق.
                 </p>
             </div>
 
-            <div class="w-16 h-16 rounded-2xl bg-purple-600/15 border border-purple-500/20 flex items-center justify-center text-3xl">
+            <div class="w-12 h-12 rounded-xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-lg">
                 ⚙️
             </div>
 
@@ -577,69 +578,78 @@ shadow-purple-600/30">
 
     <!-- Switches -->
 
-    <div class="grid grid-cols-3 gap-5">
+    <div class="grid grid-cols-3 gap-4">
 
-        <div class="glass-card rounded-2xl p-5 border border-white/5">
+        <div class="glass-card rounded-xl p-4 border border-white/5 hover:border-purple-500/20 transition">
 
-            <div class="flex justify-between items-center">
+            <div class="flex items-center justify-between">
 
                 <div>
 
-                    <h3 class="text-white font-bold">
+                    <h3 class="text-sm font-bold text-white">
                         🚀 تفعيل المود
                     </h3>
 
-                    <p class="text-gray-500 text-xs mt-1">
-                        تشغيل أو إيقاف النظام الداخلي
+                    <p class="text-[10px] text-gray-500 mt-1">
+                        تشغيل النظام
                     </p>
 
                 </div>
 
-                <input type="checkbox" id="mod_enabled" class="scale-125">
+                <input
+                id="mod_enabled"
+                type="checkbox"
+                class="scale-110 cursor-pointer">
 
             </div>
 
         </div>
 
-        <div class="glass-card rounded-2xl p-5 border border-white/5">
+        <div class="glass-card rounded-xl p-4 border border-white/5 hover:border-yellow-500/20 transition">
 
-            <div class="flex justify-between items-center">
+            <div class="flex items-center justify-between">
 
                 <div>
 
-                    <h3 class="text-yellow-300 font-bold">
+                    <h3 class="text-sm font-bold text-yellow-300">
                         👑 تفعيل VIP
                     </h3>
 
-                    <p class="text-gray-500 text-xs mt-1">
-                        السماح بالاشتراكات المميزة
+                    <p class="text-[10px] text-gray-500 mt-1">
+                        الاشتراكات المميزة
                     </p>
 
                 </div>
 
-                <input type="checkbox" id="vip_enabled" class="scale-125">
+                <input
+                id="vip_enabled"
+                type="checkbox"
+                class="scale-110 cursor-pointer">
 
             </div>
 
         </div>
 
-        <div class="glass-card rounded-2xl p-5 border border-white/5">
+        <div class="glass-card rounded-xl p-4 border border-white/5 hover:border-cyan-500/20 transition">
 
-            <div class="flex justify-between items-center">
+            <div class="flex items-center justify-between">
 
                 <div>
 
-                    <h3 class="text-cyan-300 font-bold">
+                    <h3 class="text-sm font-bold text-cyan-300">
                         🔄 إجبار التحديث
                     </h3>
 
-                    <p class="text-gray-500 text-xs mt-1">
-                        منع تشغيل الإصدارات القديمة
+                    <p class="text-[10px] text-gray-500 mt-1">
+                        منع الإصدارات القديمة
                     </p>
 
                 </div>
 
-                <input type="checkbox" id="force_update" class="scale-125">
+                <input
+                id="force_update"
+                type="checkbox"
+                class="scale-110 cursor-pointer">
 
             </div>
 
@@ -649,33 +659,35 @@ shadow-purple-600/30">
 
     <!-- Version -->
 
-    <div class="glass-card rounded-2xl p-6">
+    <div class="glass-card rounded-2xl p-5">
 
-        <h3 class="text-xl font-black text-purple-300 mb-5">
+        <h3 class="text-base font-black text-purple-300 mb-4">
             📦 معلومات الإصدار
         </h3>
 
-        <div class="space-y-5">
+        <div class="grid grid-cols-2 gap-4">
 
             <div>
 
-                <label class="text-gray-400 text-sm mb-2 block">
+                <label class="block text-[11px] text-gray-400 mb-2">
                     آخر إصدار
                 </label>
 
-                <input id="latest_version"
-                class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white">
+                <input
+                id="latest_version"
+                class="w-full h-11 rounded-xl bg-[#111827] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500">
 
             </div>
 
             <div>
 
-                <label class="text-gray-400 text-sm mb-2 block">
+                <label class="block text-[11px] text-gray-400 mb-2">
                     رابط التحديث
                 </label>
 
-                <input id="update_url"
-                class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white">
+                <input
+                id="update_url"
+                class="w-full h-11 rounded-xl bg-[#111827] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500">
 
             </div>
 
@@ -685,31 +697,31 @@ shadow-purple-600/30">
 
     <!-- Messages -->
 
-    <div class="grid grid-cols-2 gap-5">
+    <div class="grid grid-cols-2 gap-4">
 
         <div class="glass-card rounded-2xl p-5">
 
-            <h3 class="text-lg font-bold text-white mb-4">
+            <h3 class="text-base font-bold text-white mb-3">
                 💬 رسالة التطبيق
             </h3>
 
             <textarea
             id="message"
-            rows="8"
-            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white resize-none"></textarea>
+            rows="7"
+            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-sm text-white resize-none outline-none focus:border-purple-500"></textarea>
 
         </div>
 
         <div class="glass-card rounded-2xl p-5">
 
-            <h3 class="text-lg font-bold text-white mb-4">
+            <h3 class="text-base font-bold text-white mb-3">
                 🛠 رسالة الصيانة
             </h3>
 
             <textarea
             id="maintenance_message"
-            rows="8"
-            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white resize-none"></textarea>
+            rows="7"
+            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-sm text-white resize-none outline-none focus:border-purple-500"></textarea>
 
         </div>
 
@@ -717,13 +729,13 @@ shadow-purple-600/30">
 
     <!-- Save -->
 
-    <div class="flex justify-center">
+    <div class="flex justify-end">
 
         <button
         id="btnSaveSettings"
-        class="px-10 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:scale-105 transition-all shadow-xl shadow-purple-600/30 font-black text-white text-lg">
+        class="px-7 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:scale-[1.03] transition-all shadow-lg shadow-purple-600/25 text-sm font-black text-white">
 
-            💾 حفظ جميع التغييرات
+            💾 حفظ التغييرات
 
         </button>
 
