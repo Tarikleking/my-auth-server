@@ -328,3 +328,9 @@ cursor:pointer;
 background:#00c853;
 
 }
+h1,
+h2,
+h3{
+    user-select: none;
+    caret-color: transparent !important;
+}
