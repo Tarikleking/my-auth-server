@@ -1,8 +1,10 @@
+
+
 /* KINGDZ ADMIN PANEL - COMPACT & ROYAL ULTRA-PREMIUM STYLES */
 :root {
     --purple-glow: rgba(168, 85, 247, 0.25);
-    --bg-dark-main: #0b0e14;
-    --bg-dark-card: #111622;
+    --bg-dark-main: #0b0e14; /* درجة اللون الملكي الداكنة العميقة من الصورة */
+    --bg-dark-card: #111622; /* لون الكروت المدمجة */
     --purple-accent: #a855f7;
 }
 
@@ -22,6 +24,7 @@ body {
     background-attachment: fixed;
 }
 
+/* الكروت الزجاجية المصغرة والمحكمة بحدود ناعمة جداً */
 .glass-card {
     background: var(--bg-dark-card);
     border: 1px solid rgba(255, 255, 255, 0.02);
@@ -30,6 +33,7 @@ body {
     -webkit-backdrop-filter: blur(8px);
 }
 
+/* أزرار القائمة الجانبية الصغيرة والمتقاربة */
 .sidebar {
     background-color: #0b0e14 !important;
     border-left: 1px solid rgba(255, 255, 255, 0.01) !important;
@@ -39,7 +43,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 12px !important;
+    padding: 7px 12px !important; /* حجم صغير ومتقارب للمسافات لتجنب التضخم */
     border-radius: 10px !important;
     color: #6b7280;
     font-weight: 700;
@@ -60,6 +64,7 @@ body {
     font-weight: 800;
 }
 
+/* تخصيص السكرول بار ليكون رفيعاً ومخفياً جزئياً لجمالية التصميم */
 .custom-scroll::-webkit-scrollbar {
     width: 3px;
     height: 3px;
@@ -75,6 +80,7 @@ body {
     background: rgba(168, 85, 247, 0.2);
 }
 
+/* تأثيرات الظهور السلس والديناميكي للأقسام والكروت */
 @keyframes fadeInCompact {
     from { opacity: 0; transform: translateY(3px); }
     to { opacity: 1; transform: translateY(0); }
@@ -84,6 +90,7 @@ body {
     animation: fadeInCompact 0.25s ease-out forwards;
 }
 
+/* تنسيق الجداول الحادة والمحكمة الأحجام */
 table {
     width: 100%;
     table-layout: auto;
@@ -97,7 +104,7 @@ th {
 }
 
 td {
-    padding: 8px 10px !important;
+    padding: 8px 10px !important; /* مسافات داخلية صغيرة ومحشورة تماماً مثل مرجعك */
     vertical-align: middle;
     font-size: 11px !important;
 }
@@ -110,6 +117,7 @@ tr:hover {
     background-color: rgba(255, 255, 255, 0.005);
 }
 
+/* بادجات الاشتراكات الملكية الصغيرة والمضيئة بنعومة */
 .badge-vip-gold {
     background-color: rgba(250, 204, 21, 0.06) !important;
     color: #facc15 !important;
@@ -138,144 +146,83 @@ tr:hover {
     display: inline-block;
 }
 
+/* إخفاء إجباري لعناصر الأقسام غير النشطة */
 .hidden {
     display: none !important;
 }
+/* ===========================
+   KINGDZ USERS TABLE
+=========================== */
 
-.custom-table-container {
-    width: 100%;
-    overflow-x: auto;
-    background: #111622;
-    border: 1px solid rgba(168, 85, 247, 0.15);
-    border-radius: 18px;
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+.custom-table-container{
+    width:100%;
+    overflow-x:auto;
+    background:#111622;
+    border:1px solid rgba(168,85,247,.15);
+    border-radius:18px;
+    box-shadow:0 10px 35px rgba(0,0,0,.35);
 }
 
-.custom-table {
-    width: 100%;
-    border-collapse: collapse;
+.custom-table{
+    width:100%;
+    border-collapse:collapse;
 }
 
-.custom-table thead {
-    background: linear-gradient(90deg, #7c3aed, #9333ea);
+.custom-table thead{
+    background:linear-gradient(90deg,#7c3aed,#9333ea);
 }
 
-.custom-table thead th {
-    color: #fff !important;
-    font-size: 15px !important;
-    font-weight: 700;
-    padding: 16px !important;
-    text-align: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.custom-table thead th{
+    color:#fff !important;
+    font-size:15px !important;
+    font-weight:700;
+    padding:16px !important;
+    text-align:center;
+    border-bottom:1px solid rgba(255,255,255,.1);
 }
 
-.custom-table tbody td {
-    color: #e5e7eb !important;
-    font-size: 14px !important;
-    padding: 15px !important;
-    text-align: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+.custom-table tbody td{
+    color:#e5e7eb !important;
+    font-size:14px !important;
+    padding:15px !important;
+    text-align:center;
+    border-bottom:1px solid rgba(255,255,255,.05);
 }
 
-.custom-table tbody tr:nth-child(even) {
-    background: #171f30;
+.custom-table tbody tr:nth-child(even){
+    background:#171f30;
 }
 
-.custom-table tbody tr:hover {
-    background: rgba(168, 85, 247, 0.12);
-    transition: 0.25s;
+.custom-table tbody tr:hover{
+    background:rgba(168,85,247,.12);
+    transition:.25s;
+}
+.activity-card{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
 }
 
-.activity-card {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+.activity-content{
+    text-align:right;
 }
 
-.activity-content {
-    text-align: right;
+.activity-footer{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    gap:12px;
 }
 
-.activity-footer {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 12px;
+.activity-time{
+    color:#bfbfbf;
+    font-size:13px;
 }
 
-.activity-time {
-    color: #bfbfbf;
-    font-size: 13px;
-}
-
-.delete-log {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #8fffd8;
-    font-size: 18px;
-}
-
-.update-panel {
-    background: #1b1b1b;
-    padding: 20px;
-    border-radius: 15px;
-    margin-top: 20px;
-}
-
-.update-panel input,
-.update-panel textarea {
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    border: none;
-    border-radius: 10px;
-    background: #2b2b2b;
-    color: white;
-}
-
-.progress-box {
-    width: 100%;
-    height: 18px;
-    background: #333;
-    border-radius: 30px;
-    overflow: hidden;
-    margin-top: 15px;
-}
-
-#uploadBar {
-    width: 0%;
-    height: 100%;
-    background: #00c853;
-    transition: 0.25s;
-}
-
-#uploadPercent {
-    text-align: center;
-    margin-top: 8px;
-    font-weight: bold;
-}
-
-#uploadApk,
-#saveUpdate {
-    width: 100%;
-    padding: 13px;
-    margin-top: 12px;
-    border: none;
-    border-radius: 12px;
-    background: #2196F3;
-    color: white;
-    font-weight: bold;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-#saveUpdate {
-    background: #00c853;
-}
-
-h1, h2, h3, input, textarea, button, span, th, td {
-    user-select: none;
-    caret-color: transparent !important;
+.delete-log{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color:#8fffd8;
+    font-size:18px;
 }
