@@ -550,26 +550,25 @@ shadow-purple-600/30">
     </div>
 
 </section> 
-  <section id="settings-section" class="tab-content hidden">
+<section id="settings-section" class="tab-content hidden">
 
-<div class="space-y-5">
+<div class="space-y-6">
 
     <!-- Header -->
-    <div class="glass-card rounded-2xl border border-purple-500/10 p-5">
+    <div class="glass-card rounded-2xl p-6 border border-purple-500/10">
         <div class="flex items-center justify-between">
 
             <div class="text-right">
-                <h2 class="text-2xl font-black text-white flex items-center gap-2">
-                    <span class="text-xl">⚙️</span>
-                    الإعدادات العامة
+                <h2 class="text-3xl font-black text-white flex items-center gap-3">
+                    ⚙️ الإعدادات العامة
                 </h2>
 
-                <p class="text-[11px] text-gray-500 mt-1">
-                    إدارة إعدادات النظام والتطبيق.
+                <p class="text-gray-500 mt-2 text-sm">
+                    التحكم الكامل بإعدادات النظام والتطبيق.
                 </p>
             </div>
 
-            <div class="w-12 h-12 rounded-xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-lg">
+            <div class="w-14 h-14 rounded-2xl bg-purple-600/15 border border-purple-500/20 flex items-center justify-center text-2xl">
                 ⚙️
             </div>
 
@@ -578,78 +577,102 @@ shadow-purple-600/30">
 
     <!-- Switches -->
 
-    <div class="grid grid-cols-3 gap-4">
+    <div class="grid grid-cols-3 gap-5">
 
-        <div class="glass-card rounded-xl p-4 border border-white/5 hover:border-purple-500/20 transition">
+        <!-- MOD -->
 
-            <div class="flex items-center justify-between">
+        <div class="glass-card rounded-2xl p-5 border border-white/5">
+
+            <div class="flex justify-between items-center">
 
                 <div>
 
-                    <h3 class="text-sm font-bold text-white">
+                    <h3 class="text-white font-bold">
                         🚀 تفعيل المود
                     </h3>
 
-                    <p class="text-[10px] text-gray-500 mt-1">
-                        تشغيل النظام
+                    <p class="text-gray-500 text-xs mt-1">
+                        تشغيل أو إيقاف النظام الداخلي
                     </p>
 
                 </div>
 
-                <input
-                id="mod_enabled"
-                type="checkbox"
-                class="scale-110 cursor-pointer">
+                <label class="relative inline-flex cursor-pointer">
+
+                    <input id="mod_enabled" type="checkbox" class="sr-only peer">
+
+                    <div class="w-12 h-6 bg-[#1b2333] rounded-full transition peer-checked:bg-purple-600
+                    after:content-[''] after:absolute after:top-0.5 after:right-0.5
+                    after:w-5 after:h-5 after:bg-white after:rounded-full
+                    after:transition-all peer-checked:after:-translate-x-6"></div>
+
+                </label>
 
             </div>
 
         </div>
 
-        <div class="glass-card rounded-xl p-4 border border-white/5 hover:border-yellow-500/20 transition">
+        <!-- VIP -->
 
-            <div class="flex items-center justify-between">
+        <div class="glass-card rounded-2xl p-5 border border-white/5">
+
+            <div class="flex justify-between items-center">
 
                 <div>
 
-                    <h3 class="text-sm font-bold text-yellow-300">
+                    <h3 class="text-yellow-300 font-bold">
                         👑 تفعيل VIP
                     </h3>
 
-                    <p class="text-[10px] text-gray-500 mt-1">
-                        الاشتراكات المميزة
+                    <p class="text-gray-500 text-xs mt-1">
+                        السماح بالاشتراكات المميزة
                     </p>
 
                 </div>
 
-                <input
-                id="vip_enabled"
-                type="checkbox"
-                class="scale-110 cursor-pointer">
+                <label class="relative inline-flex cursor-pointer">
+
+                    <input id="vip_enabled" type="checkbox" class="sr-only peer">
+
+                    <div class="w-12 h-6 bg-[#1b2333] rounded-full transition peer-checked:bg-yellow-500
+                    after:content-[''] after:absolute after:top-0.5 after:right-0.5
+                    after:w-5 after:h-5 after:bg-white after:rounded-full
+                    after:transition-all peer-checked:after:-translate-x-6"></div>
+
+                </label>
 
             </div>
 
         </div>
 
-        <div class="glass-card rounded-xl p-4 border border-white/5 hover:border-cyan-500/20 transition">
+        <!-- UPDATE -->
 
-            <div class="flex items-center justify-between">
+        <div class="glass-card rounded-2xl p-5 border border-white/5">
+
+            <div class="flex justify-between items-center">
 
                 <div>
 
-                    <h3 class="text-sm font-bold text-cyan-300">
+                    <h3 class="text-cyan-300 font-bold">
                         🔄 إجبار التحديث
                     </h3>
 
-                    <p class="text-[10px] text-gray-500 mt-1">
-                        منع الإصدارات القديمة
+                    <p class="text-gray-500 text-xs mt-1">
+                        منع تشغيل الإصدارات القديمة
                     </p>
 
                 </div>
 
-                <input
-                id="force_update"
-                type="checkbox"
-                class="scale-110 cursor-pointer">
+                <label class="relative inline-flex cursor-pointer">
+
+                    <input id="force_update" type="checkbox" class="sr-only peer">
+
+                    <div class="w-12 h-6 bg-[#1b2333] rounded-full transition peer-checked:bg-cyan-500
+                    after:content-[''] after:absolute after:top-0.5 after:right-0.5
+                    after:w-5 after:h-5 after:bg-white after:rounded-full
+                    after:transition-all peer-checked:after:-translate-x-6"></div>
+
+                </label>
 
             </div>
 
@@ -659,35 +682,33 @@ shadow-purple-600/30">
 
     <!-- Version -->
 
-    <div class="glass-card rounded-2xl p-5">
+    <div class="glass-card rounded-2xl p-6">
 
-        <h3 class="text-base font-black text-purple-300 mb-4">
+        <h3 class="text-xl font-black text-purple-300 mb-5">
             📦 معلومات الإصدار
         </h3>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-5">
 
             <div>
 
-                <label class="block text-[11px] text-gray-400 mb-2">
+                <label class="text-gray-400 text-sm mb-2 block">
                     آخر إصدار
                 </label>
 
-                <input
-                id="latest_version"
-                class="w-full h-11 rounded-xl bg-[#111827] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500">
+                <input id="latest_version"
+                class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white">
 
             </div>
 
             <div>
 
-                <label class="block text-[11px] text-gray-400 mb-2">
+                <label class="text-gray-400 text-sm mb-2 block">
                     رابط التحديث
                 </label>
 
-                <input
-                id="update_url"
-                class="w-full h-11 rounded-xl bg-[#111827] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500">
+                <input id="update_url"
+                class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white">
 
             </div>
 
@@ -697,31 +718,31 @@ shadow-purple-600/30">
 
     <!-- Messages -->
 
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-2 gap-5">
 
         <div class="glass-card rounded-2xl p-5">
 
-            <h3 class="text-base font-bold text-white mb-3">
+            <h3 class="text-lg font-bold text-white mb-4">
                 💬 رسالة التطبيق
             </h3>
 
             <textarea
             id="message"
-            rows="7"
-            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-sm text-white resize-none outline-none focus:border-purple-500"></textarea>
+            rows="8"
+            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white resize-none"></textarea>
 
         </div>
 
         <div class="glass-card rounded-2xl p-5">
 
-            <h3 class="text-base font-bold text-white mb-3">
+            <h3 class="text-lg font-bold text-white mb-4">
                 🛠 رسالة الصيانة
             </h3>
 
             <textarea
             id="maintenance_message"
-            rows="7"
-            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-sm text-white resize-none outline-none focus:border-purple-500"></textarea>
+            rows="8"
+            class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white resize-none"></textarea>
 
         </div>
 
@@ -729,13 +750,13 @@ shadow-purple-600/30">
 
     <!-- Save -->
 
-    <div class="flex justify-end">
+    <div class="flex justify-center">
 
         <button
         id="btnSaveSettings"
-        class="px-7 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:scale-[1.03] transition-all shadow-lg shadow-purple-600/25 text-sm font-black text-white">
+        class="px-10 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:scale-105 transition-all shadow-xl shadow-purple-600/30 font-black text-white text-lg">
 
-            💾 حفظ التغييرات
+            💾 حفظ جميع التغييرات
 
         </button>
 
