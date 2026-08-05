@@ -4,11 +4,7 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 // 🔐 توكن مش هاردكود
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 
-// 🧠 تحقق من وجود التوكن
-if (!ADMIN_TOKEN) {
-  alert("Session expired");
-  window.location.href = "/login.html";
-}
+
 
 // 🔥 api() نسخة قوية
 async function api(action, data = {}) {
