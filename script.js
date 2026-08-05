@@ -1,4 +1,90 @@
 /* KINGDZ ADMIN PANEL - SUPABASE REALTIME & EDGE ENGINE */
+const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-users";
+
+// 🔐 توكن مش هاردكود
+let ADMIN_TOKEN = localStorage.getItem("admin_token");
+
+// 🧠 تحقق من وجود التوكن
+if (!ADMIN_TOKEN) {
+  alert("Session expired");
+  window.location.href = "/login.html";
+}
+
+// 🔥 api() نسخة قوية
+async function api(action, data = {}) {
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+
+        // 🔐 JWT
+        "Authorization": "Bearer " + ADMIN_TOKEN,
+
+        // 🧠 حماية إضافية (signature بسيطة)
+        "x-client-check": btoa(action + "_secure")
+      },
+      body: JSON.stringify({
+        action,
+        ...data,
+        timestamp: Date.now() // ⏱️ ضد replay attack
+      })
+    });
+
+    // 🚫 لو التوكن مات
+    if (res.status === 401) {
+      localStorage.removeItem("admin_token");
+      alert("Unauthorized");
+      window.location.href = "/login.html";
+      return;
+    }
+
+    // 🚫 spam / rate limit
+    if (res.status === 429) {
+      alert("Slow down!");
+      return;
+    }
+
+    if (!res.ok) {
+      console.error("API ERROR:", res.status);
+      return null;
+    }
+
+    return await res.json();
+
+  } catch (err) {
+    console.error("NETWORK ERROR:", err);
+    return null;
+  }
+}
+
+// 🔥 يمنع التلاعب بالـ console (basic)
+(function () {
+  const devtools = /./;
+  devtools.toString = function () {
+    this.opened = true;
+  };
+
+  setInterval(function () {
+    if (devtools.opened) {
+      document.body.innerHTML = "Blocked";
+    }
+  }, 1000);
+})();
+
+// 🚫 🔐 تعطيل inspect (حماية إضافية)
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+document.addEventListener("keydown", e => {
+  if (
+    e.key === "F12" ||
+    (e.ctrlKey && e.shiftKey && e.key === "I") ||
+    (e.ctrlKey && e.key === "u")
+  ) {
+    e.preventDefault();
+  }
+});
+
 const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -9,17 +95,15 @@ let deviceChart = null;
 
 async function addActivity(type, action, deviceId = "", details = "") {
 
-    const { error } = await client
-        .from("activity_logs")
-        .insert([{
-            type,
-            action,
-            device_id: deviceId,
-            details
-        }]);
+    const res = await api("add_activity", {
+        type,
+        action,
+        device_id: deviceId,
+        details
+    });
 
-    if (error) {
-        console.error("Activity Log Error:", error);
+    if (res && res.error) {
+        console.error("Activity Log Error:", res.error);
     }
 
 }
@@ -62,13 +146,17 @@ if (document.getElementById("loginBtn")) {
         const errorEl = document.getElementById("loginError");
         if(errorEl) errorEl.textContent = "";
         
-        const { error } = await client.auth.signInWithPassword({
-    email,
-    password
-});
+        const { data, error } = await client.auth.signInWithPassword({
+            email,
+            password
+        });
         if (error) { 
             if(errorEl) errorEl.textContent = "بيانات الدخول خاطئة!"; 
             return; 
+        }
+        if (data && data.session && data.session.access_token) {
+            localStorage.setItem("admin_token", data.session.access_token);
+            ADMIN_TOKEN = data.session.access_token;
         }
         checkSession();
     };
@@ -77,17 +165,18 @@ if (document.getElementById("loginBtn")) {
 if (document.getElementById("logout")) {
     document.getElementById("logout").onclick = async () => {
         await client.auth.signOut();
+        localStorage.removeItem("admin_token");
         location.reload();
     };
 }
 
 // 3. المحرك الموحد لجلب البيانات الحقيقية من جدولين (keys و users)
 async function refreshDashboard() {
-    const { data: usersData } = await client.from("users").select("*");
-    const { data: keysData } = await client.from("keys").select("*");
+    const usersRes = await api("get_all_users");
+    const keysRes = await api("get_keys");
 
-    const uData = usersData || [];
-    const kData = keysData || [];
+    const uData = (usersRes && (usersRes.data || usersRes)) || [];
+    const kData = (keysRes && (keysRes.data || keysRes)) || [];
 
     updateCounter("usersCount", uData.length);
     updateCounter("keysCount", kData.filter(k => k.status === 'new').length);
@@ -242,16 +331,11 @@ function updateCounter(id, value) {
 }
 async function loadStats() {
 
-    const { data: users } = await client
-        .from("users")
-        .select("*");
+    const usersRes = await api("get_all_users");
+    const keysRes = await api("get_keys");
 
-    const { data: keys } = await client
-        .from("keys")
-        .select("*");
-
-    const u = users || [];
-    const k = keys || [];
+    const u = (usersRes && (usersRes.data || usersRes)) || [];
+    const k = (keysRes && (keysRes.data || keysRes)) || [];
 
     const now = Date.now();
 
@@ -456,11 +540,15 @@ if (document.getElementById("btnGenerateKey")) {
                 case "1 سنة": expireDate.setFullYear(expireDate.getFullYear() + 1); break;
             }
             
-            const { error } = await client.from("keys").insert([{
-                key: randomCode, duration: durationType, duration_type: durationType, status: "new", 
-                created_at: new Date().toISOString(), expires_at: expireDate.toISOString()
-            }]);
-            if (!error) successCount++;
+            const res = await api("create_key", {
+                key: randomCode,
+                duration: durationType,
+                duration_type: durationType,
+                status: "new",
+                created_at: new Date().toISOString(),
+                expires_at: expireDate.toISOString()
+            });
+            if (res && !res.error) successCount++;
         }
        if (successCount > 0) {
 
@@ -539,8 +627,8 @@ if (document.getElementById("btnApplyBan")) {
     document.getElementById("btnApplyBan").onclick = async () => {
         const targetDeviceId = document.getElementById("banDeviceId").value.trim();
         if (!targetDeviceId) return;
-        const { error } = await client.from("users").update({ banned: true }).eq("device_id", targetDeviceId);
-        if (!error) { showToast("تم الحظر 🚫"); refreshDashboard(); }
+        const res = await api("ban_user", { device_id: targetDeviceId, banned: true });
+        if (res && !res.error) { showToast("تم الحظر 🚫"); refreshDashboard(); }
     };
 }
 
@@ -559,12 +647,9 @@ function renderBannedTable(users) {
 
 async function liftUserBan(deviceId) {
 
-    const { error } = await client
-        .from("users")
-        .update({ banned: false })
-        .eq("device_id", deviceId);
+    const res = await api("ban_user", { device_id: deviceId, banned: false });
 
-    if (!error) {
+    if (res && !res.error) {
 
         await addActivity(
             "USER",
@@ -584,12 +669,9 @@ async function deleteUserRow(deviceId) {
 
     if (confirm("حذف الجهاز نهائياً؟")) {
 
-        const { error } = await client
-            .from("users")
-            .delete()
-            .eq("device_id", deviceId);
+        const res = await api("delete_user", { device_id: deviceId });
 
-        if (!error) {
+        if (res && !res.error) {
 
             await addActivity(
                 "USER",
@@ -607,12 +689,9 @@ async function deleteKeyRow(id) {
 
     if (confirm("حذف المفتاح نهائياً؟")) {
 
-        const { error } = await client
-            .from("keys")
-            .delete()
-            .eq("id", id);
+        const res = await api("delete_key", { id });
 
-        if (!error) {
+        if (res && !res.error) {
 
             await addActivity(
                 "KEY",
@@ -632,8 +711,8 @@ if (document.getElementById("btnGrantVip")) {
         const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
         
         if (!targetDeviceId) return;
-        const { error } = await client.from("users").update({ vip: true }).eq("device_id", targetDeviceId);
-      if (!error) {
+        const res = await api("update_vip", { device_id: targetDeviceId, vip: true });
+      if (res && !res.error) {
 
     await addActivity(
         "VIP",
@@ -653,8 +732,8 @@ if (document.getElementById("btnRevokeVip")) {
     document.getElementById("btnRevokeVip").onclick = async () => {
         const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
         if (!targetDeviceId) return;
-        const { error } = await client.from("users").update({ vip: false }).eq("device_id", targetDeviceId);
-       if (!error) {
+        const res = await api("update_vip", { device_id: targetDeviceId, vip: false });
+       if (res && !res.error) {
 
     await addActivity(
         "VIP",
@@ -684,13 +763,10 @@ async function loadUserDetails(deviceId) {
 
     const content = document.getElementById("drawerContent");
 
-    const { data, error } = await client
-        .from("users")
-        .select("*")
-        .eq("device_id", deviceId)
-        .single();
+    const res = await api("get_user_details", { device_id: deviceId });
+    const data = (res && (res.data || res)) || null;
 
-    if (error) {
+    if (!res || res.error || !data) {
         content.innerHTML = "حدث خطأ";
         return;
     }
@@ -871,10 +947,7 @@ async function handleAction(action, deviceId) {
 
     if (action === "ban") {
 
-        await client
-            .from("users")
-            .update({ banned: true })
-            .eq("device_id", deviceId);
+        await api("ban_user", { device_id: deviceId, banned: true });
 
         await addActivity(
             "USER",
@@ -886,10 +959,7 @@ async function handleAction(action, deviceId) {
 
     if (action === "vip") {
 
-        await client
-            .from("users")
-            .update({ vip: true })
-            .eq("device_id", deviceId);
+        await api("update_vip", { device_id: deviceId, vip: true });
 
         await addActivity(
             "VIP",
@@ -901,10 +971,7 @@ async function handleAction(action, deviceId) {
 
     if (action === "delete") {
 
-        await client
-            .from("users")
-            .delete()
-            .eq("device_id", deviceId);
+        await api("delete_user", { device_id: deviceId });
 
         await addActivity(
             "USER",
@@ -1034,14 +1101,11 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
 
     const ids = checked.map(cb => Number(cb.dataset.id));
 
-    const { error } = await client
-        .from("keys")
-        .delete()
-        .in("id", ids);
+    const res = await api("delete_keys_batch", { ids });
 
-    if (error) {
+    if (!res || res.error) {
     showToast("فشل الحذف");
-    console.error(error);
+    console.error(res ? res.error : "No response");
     return;
 }
 
@@ -1063,14 +1127,11 @@ async function loadActivityLogs() {
     const container = document.getElementById("activityLogs");
     if (!container) return;
 
-    const { data, error } = await client
-        .from("activity_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
+    const res = await api("get_logs");
+    const data = (res && (res.data || res)) || null;
 
-    if (error) {
-        console.error(error);
+    if (!res || res.error) {
+        console.error(res ? res.error : "No response");
         container.innerHTML =
             `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`;
         return;
@@ -1200,14 +1261,11 @@ async function deleteActivityLog(id) {
 
     if (!confirm("حذف هذا السجل؟")) return;
 
-    const { error } = await client
-        .from("activity_logs")
-        .delete()
-        .eq("id", id);
+    const res = await api("delete_log", { id });
 
-    if (error) {
+    if (!res || res.error) {
         showToast("فشل حذف السجل");
-        console.error(error);
+        console.error(res ? res.error : "No response");
         return;
     }
 
@@ -1222,13 +1280,10 @@ document.getElementById("btnRefreshActivity")?.addEventListener("click", () => {
 loadActivityLogs();
 async function loadSettings() {
 
-    const { data, error } = await client
-        .from("settings")
-        .select("*")
-        .eq("id",1)
-        .single();
+    const res = await api("get_settings");
+    const data = (res && (res.data || res)) || null;
 
-    if (error || !data) return;
+    if (!res || res.error || !data) return;
 
     document.getElementById("mod_enabled").checked = data.mod_enabled;
     document.getElementById("vip_enabled").checked = data.vip_enabled;
@@ -1249,37 +1304,19 @@ async function loadSettings() {
 
 document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
 
-    const { error } = await client
-        .from("settings")
-        .update({
+    const res = await api("update_settings", {
+        mod_enabled: document.getElementById("mod_enabled").checked,
+        vip_enabled: document.getElementById("vip_enabled").checked,
+        force_update: document.getElementById("force_update").checked,
+        latest_version: document.getElementById("latest_version").value,
+        message: document.getElementById("message").value,
+        maintenance_message: document.getElementById("maintenance_message").value,
+        update_url: document.getElementById("update_url").value
+    });
 
-            mod_enabled:
-                document.getElementById("mod_enabled").checked,
-
-            vip_enabled:
-                document.getElementById("vip_enabled").checked,
-
-            force_update:
-                document.getElementById("force_update").checked,
-
-            latest_version:
-                document.getElementById("latest_version").value,
-
-            message:
-                document.getElementById("message").value,
-
-            maintenance_message:
-                document.getElementById("maintenance_message").value,
-
-            update_url:
-                document.getElementById("update_url").value
-
-        })
-        .eq("id",1);
-
-    if(error){
+    if(!res || res.error){
         showToast("فشل حفظ الإعدادات");
-        console.error(error);
+        console.error(res ? res.error : "No response");
         return;
     }
 
