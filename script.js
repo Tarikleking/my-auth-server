@@ -28,12 +28,18 @@ async function api(action, data = {}) {
     });
 
     // 🚫 لو التوكن مات
-        if (res.status === 401) {
+    // 🚫 لو التوكن مات
+    if (res.status === 401) {
       localStorage.removeItem("admin_token");
-      alert("انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً");
-      location.reload(); // يقوم بتحديث الصفحة وإظهار نموذج تسجيل الدخول الموجود في index.html تلقائياً
+      ADMIN_TOKEN = null;
+      
+      // إخفاء لوحة التحكم وإظهار صفحة تسجيل الدخول مباشرة بدون تحديث الصفحة
+      if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "none";
+      if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
+      
       return;
     }
+
 
 
     // 🚫 spam / rate limit
