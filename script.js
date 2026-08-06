@@ -1208,9 +1208,11 @@ switch (log.action) {
 }
 container.innerHTML += `
 
-<div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all">
+<div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">
 
-    <div class="flex justify-between items-start">
+    <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${log.id}">
+
+    <div class="flex-1 flex justify-between items-start">
 
         <!-- يسار البطاقة -->
         <div class="text-left">
@@ -1280,6 +1282,40 @@ document.getElementById("btnRefreshActivity")?.addEventListener("click", () => {
     loadActivityLogs();
     showToast("تم تحديث سجل النشاط");
 });
+
+// زر تحديد الكل لسجلات النشاط
+document.getElementById("btnSelectAllLogs")?.addEventListener("click", () => {
+    const checkboxes = document.querySelectorAll(".log-checkbox");
+    if (checkboxes.length === 0) return;
+    
+    const allChecked = [...checkboxes].every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+});
+
+// زر حذف السجلات المحددة
+document.getElementById("btnDeleteSelectedLogs")?.addEventListener("click", async () => {
+    const checked = [...document.querySelectorAll(".log-checkbox:checked")];
+
+    if (checked.length === 0) {
+        showToast("حدد سجلاً واحداً على الأقل");
+        return;
+    }
+
+    if (!confirm(`سيتم حذف ${checked.length} سجل، هل أنت متأكد؟`))
+        return;
+
+    const ids = checked.map(cb => cb.dataset.id);
+
+    let successCount = 0;
+    for (const id of ids) {
+        const res = await api("delete_log", { id });
+        if (res && !res.error) successCount++;
+    }
+
+    showToast(`تم حذف ${successCount} سجل بنجاح`);
+    loadActivityLogs();
+});
+
 loadActivityLogs();
 async function loadSettings() {
 
