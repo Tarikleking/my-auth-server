@@ -1365,30 +1365,24 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
 loadSettings();
 checkSession();
 
-// دالة لجلب الأجهزة وتعبئة القائمة المنسدلة في قسم VIP
+// دالة لجلب الأجهزة وتعبئة القائمة المنسدلة في قسم VIP عبر الـ API الخاص بالموقع
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
     try {
-        // افتراض أنك تستخدم دالة لجلب المستخدمين من الـ Edge Function أو الـ Supabase مباشرة
-        const { data: users, error } = await supabase
-            .from("users")
-            .select("device_id, vip, created_at")
-            .order("id", { ascending: false });
+        // استخدام دالة الـ api الموجودة في مشروعك لجلب المستخدمين
+        const res = await api("get_all_users"); // أو الكود المعتمد في مشروعك لجلب المستخدمين
+        const users = (res && (res.data || res)) || [];
 
-        if (error) throw error;
-
-        // تفريغ القائمة وإضافة الخيار الافتراضي
         selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
 
-        if (users && users.length > 0) {
+        if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
                 const option = document.createElement("option");
-                option.value = user.device_id;
-                // عرض تفاصيل توضيحية بجانب الـ ID (مثل حالة الـ VIP)
+                option.value = user.device_id || user.id;
                 const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
-                option.textContent = `جهاز: ${user.device_id} - ${vipStatus}`;
+                option.textContent = `جهاز: ${user.device_id || user.id} - ${vipStatus}`;
                 selectElement.appendChild(option);
             });
         } else {
@@ -1402,15 +1396,13 @@ async function loadVipDevicesDropdown() {
     }
 }
 
-// استدعاء الدالة عند فتح صفحة VIP أو عند تحميل الصفحة الرئيسية
+// استدعاء الدالة عند فتح الصفحة وعند الضغط على تبويب VIP
 document.addEventListener("DOMContentLoaded", () => {
-    loadVipDevicesDropdown();
+    setTimeout(loadVipDevicesDropdown, 1000);
 });
 
-// إذا كنت تستخدم نظام تبديل التبويبات (Tabs)، قم باستدعاء الدالة عند الضغط على زر تبويب VIP أيضاً
 document.querySelectorAll('[data-target="vip-section"]').forEach(tab => {
     tab.addEventListener("click", () => {
         loadVipDevicesDropdown();
     });
 });
-
