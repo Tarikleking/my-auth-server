@@ -1368,33 +1368,27 @@ loadSettings();
 checkSession();
 
 // ==========================================================
-// 💎 دالة جلب وتعبئة قائمة الأجهزة (محدثة وتعمل بنسبة 100%)
+// 💎 دالة جلب الأجهزة من الذاكرة المحلية للوحة التحكم مباشرة
 // ==========================================================
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
     try {
-        // جلب جدول users مباشرة مع تحديد عمود device_id و vip فقط لضمان السرعة والدقة
-        const { data: users, error } = await client
-            .from('users')
-            .select('device_id, vip');
-
-        if (error) {
-            console.error("Supabase Error:", error);
-            return;
-        }
+        // جلب البيانات عبر دالة لوحة التحكم الأساسية المضمونة 100%
+        const usersRes = await api("get_all_users");
+        const users = (usersRes && (usersRes.data || usersRes)) || [];
 
         // تفريغ القائمة وإضافة الخيار الافتراضي
         selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
-                const deviceId = user.device_id;
+                const deviceId = user.device_id || user.id;
                 if (!deviceId) return;
                 
                 const option = document.createElement("option");
-                option.value = deviceId; // القيمة التي ستُحفظ عند الاختيار
+                option.value = deviceId;
                 const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
                 option.textContent = `جهاز: ${deviceId} - ${vipStatus}`;
                 selectElement.appendChild(option);
@@ -1407,20 +1401,20 @@ async function loadVipDevicesDropdown() {
             selectElement.appendChild(option);
         }
     } catch (err) {
-        console.error("خطأ أثناء جلب الأجهزة لقائمة VIP:", err);
+        console.error("خطأ في جلب الأجهزة:", err);
     }
 }
 
-// تشغيل الدالة فور النقر على تبويب إدارة VIP في القائمة الجانبية
+// تشغيلها فور الضغط على أي زر أو تبويب يحتوي على vip
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function() {
-        if (this.getAttribute('data-target') === 'vip-section') {
-            setTimeout(loadVipDevicesDropdown, 150);
+        if (this.getAttribute('data-target') === 'vip-section' || this.textContent.includes('VIP')) {
+            setTimeout(loadVipDevicesDropdown, 100);
         }
     });
 });
 
-// تشغيلها أيضاً مرة واحدة بعد تحميل الصفحة
+// تشغيلها عند بدء تشغيل اللوحة
 document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(loadVipDevicesDropdown, 1000);
+    setTimeout(loadVipDevicesDropdown, 800);
 });
