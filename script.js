@@ -28,12 +28,13 @@ async function api(action, data = {}) {
     });
 
     // 🚫 لو التوكن مات
-    if (res.status === 401) {
+        if (res.status === 401) {
       localStorage.removeItem("admin_token");
-      alert("Unauthorized");
-      window.location.href = "/login.html";
+      alert("انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً");
+      location.reload(); // يقوم بتحديث الصفحة وإظهار نموذج تسجيل الدخول الموجود في index.html تلقائياً
       return;
     }
+
 
     // 🚫 spam / rate limit
     if (res.status === 429) {
