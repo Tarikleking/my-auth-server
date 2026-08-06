@@ -1366,23 +1366,28 @@ loadSettings();
 checkSession();
 
 // دالة لجلب الأجهزة وتعبئة القائمة المنسدلة في قسم VIP عبر الـ API الخاص بالموقع
+// دالة محسنة لجلب الأجهزة وتعبئة القائمة المنسدلة في قسم VIP
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
     try {
-        // استخدام دالة الـ api الموجودة في مشروعك لجلب المستخدمين
-        const res = await api("get_all_users"); // أو الكود المعتمد في مشروعك لجلب المستخدمين
-        const users = (res && (res.data || res)) || [];
+        // استخدام دالة جلب المستخدمين المعتمَدة في النظام
+        const usersRes = await api("get_all_users");
+        const users = (usersRes && (usersRes.data || usersRes)) || [];
 
+        // الحفاظ على الخيار الافتراضي
         selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
+                const deviceId = user.device_id || user.id;
+                if (!deviceId) return;
+                
                 const option = document.createElement("option");
-                option.value = user.device_id || user.id;
+                option.value = deviceId;
                 const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
-                option.textContent = `جهاز: ${user.device_id || user.id} - ${vipStatus}`;
+                option.textContent = `جهاز: ${deviceId.substring(0, 16)}... - ${vipStatus}`;
                 selectElement.appendChild(option);
             });
         } else {
@@ -1396,13 +1401,9 @@ async function loadVipDevicesDropdown() {
     }
 }
 
-// استدعاء الدالة عند فتح الصفحة وعند الضغط على تبويب VIP
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(loadVipDevicesDropdown, 1000);
-});
-
-document.querySelectorAll('[data-target="vip-section"]').forEach(tab => {
+// ربط الدالة بجميع الأزرار والتبويبات الخاصة بقسم VIP لضمان عملها فور فتح القسم
+document.querySelectorAll('[data-target="vip-section"], [onclick*="vip-section"]').forEach(tab => {
     tab.addEventListener("click", () => {
-        loadVipDevicesDropdown();
+        setTimeout(loadVipDevicesDropdown, 200);
     });
 });
