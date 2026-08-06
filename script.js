@@ -1364,3 +1364,53 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
 
 loadSettings();
 checkSession();
+
+// دالة لجلب الأجهزة وتعبئة القائمة المنسدلة في قسم VIP
+async function loadVipDevicesDropdown() {
+    const selectElement = document.getElementById("vipDeviceId");
+    if (!selectElement) return;
+
+    try {
+        // افتراض أنك تستخدم دالة لجلب المستخدمين من الـ Edge Function أو الـ Supabase مباشرة
+        const { data: users, error } = await supabase
+            .from("users")
+            .select("device_id, vip, created_at")
+            .order("id", { ascending: false });
+
+        if (error) throw error;
+
+        // تفريغ القائمة وإضافة الخيار الافتراضي
+        selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
+
+        if (users && users.length > 0) {
+            users.forEach(user => {
+                const option = document.createElement("option");
+                option.value = user.device_id;
+                // عرض تفاصيل توضيحية بجانب الـ ID (مثل حالة الـ VIP)
+                const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
+                option.textContent = `جهاز: ${user.device_id} - ${vipStatus}`;
+                selectElement.appendChild(option);
+            });
+        } else {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "لا توجد أجهزة مسجلة حالياً";
+            selectElement.appendChild(option);
+        }
+    } catch (err) {
+        console.error("خطأ أثناء جلب الأجهزة لقائمة VIP:", err);
+    }
+}
+
+// استدعاء الدالة عند فتح صفحة VIP أو عند تحميل الصفحة الرئيسية
+document.addEventListener("DOMContentLoaded", () => {
+    loadVipDevicesDropdown();
+});
+
+// إذا كنت تستخدم نظام تبديل التبويبات (Tabs)، قم باستدعاء الدالة عند الضغط على زر تبويب VIP أيضاً
+document.querySelectorAll('[data-target="vip-section"]').forEach(tab => {
+    tab.addEventListener("click", () => {
+        loadVipDevicesDropdown();
+    });
+});
+
