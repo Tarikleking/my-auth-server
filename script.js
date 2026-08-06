@@ -28,7 +28,6 @@ async function api(action, data = {}) {
     });
 
     // 🚫 لو التوكن مات
-    // 🚫 لو التوكن مات
     if (res.status === 401) {
       localStorage.removeItem("admin_token");
       ADMIN_TOKEN = null;
@@ -198,8 +197,11 @@ async function refreshDashboard() {
     renderBannedTable(uData);
     updateMainCharts(uData);
     updateDeviceChart(uData);
-await loadStats();
-await loadActivityLogs();
+    await loadStats();
+    await loadActivityLogs();
+    
+    // ⭐ تحديث قائمة أجهزة VIP تلقائياً مع كل عملية تحديث للوحة
+    await loadVipDevicesDropdown();
 }
 function updateDeviceChart(users) {
 
@@ -1365,14 +1367,14 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
 loadSettings();
 checkSession();
 
-// دالة لجلب الأجهزة وتعبئة القائمة المنسدلة في قسم VIP عبر الـ API الخاص بالموقع
-// دالة محسنة لجلب الأجهزة وتعبئة القائمة المنسدلة في قسم VIP
+// ==========================================================
+// 💎 دالة جلب وتعبئة قائمة الأجهزة المنسدلة في قسم VIP (محسنة)
+// ==========================================================
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
     try {
-        // استخدام دالة جلب المستخدمين المعتمَدة في النظام
         const usersRes = await api("get_all_users");
         const users = (usersRes && (usersRes.data || usersRes)) || [];
 
@@ -1401,9 +1403,14 @@ async function loadVipDevicesDropdown() {
     }
 }
 
-// ربط الدالة بجميع الأزرار والتبويبات الخاصة بقسم VIP لضمان عملها فور فتح القسم
-document.querySelectorAll('[data-target="vip-section"], [onclick*="vip-section"]').forEach(tab => {
-    tab.addEventListener("click", () => {
-        setTimeout(loadVipDevicesDropdown, 200);
+// ربط الدالة بالتبويبات والأزرار لضمان عملها فور الانتقال لقسم الـ VIP
+document.querySelectorAll('[data-target*="vip"], [onclick*="vip"], .nav-item').forEach(element => {
+    element.addEventListener("click", () => {
+        setTimeout(loadVipDevicesDropdown, 150);
     });
+});
+
+// تشغيلها مرة واحدة فور اكتمال تحميل الصفحة
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(loadVipDevicesDropdown, 1000);
 });
