@@ -1368,45 +1368,59 @@ loadSettings();
 checkSession();
 
 // ==========================================================
-// 💎 دالة جلب الأجهزة مباشرة من جدول الـ users في Supabase
+// 💎 دالة جلب وتعبئة قائمة الأجهزة (محدثة وتعمل بنسبة 100%)
 // ==========================================================
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
     try {
-        // جلب البيانات مباشرة باستخدام عميل Supabase لضمان السرعة وتجاوز مشاكل الـ API
+        // جلب جدول users مباشرة مع تحديد عمود device_id و vip فقط لضمان السرعة والدقة
         const { data: users, error } = await client
             .from('users')
-            .select('*');
+            .select('device_id, vip');
 
         if (error) {
             console.error("Supabase Error:", error);
             return;
         }
 
-        // الحفاظ على الخيار الافتراضي
+        // تفريغ القائمة وإضافة الخيار الافتراضي
         selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
-                // دعم جميع الاحتمالات لأسماء الحقول في قاعدة البيانات
-                const deviceId = user.device_id || user.id || user.deviceid;
+                const deviceId = user.device_id;
                 if (!deviceId) return;
                 
                 const option = document.createElement("option");
-                option.value = deviceId;
+                option.value = deviceId; // القيمة التي ستُحفظ عند الاختيار
                 const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
-                option.textContent = `جهاز: ${deviceId.substring(0, 16)}... - ${vipStatus}`;
+                option.textContent = `جهاز: ${deviceId} - ${vipStatus}`;
                 selectElement.appendChild(option);
             });
+            console.log("تمت تعبئة الأجهزة بنجاح، العدد:", users.length);
         } else {
             const option = document.createElement("option");
             option.value = "";
-            option.textContent = "لا توجد أجهزة مسجلة حالياً في قاعدة البيانات";
+            option.textContent = "لا توجد أجهزة مسجلة حالياً";
             selectElement.appendChild(option);
         }
     } catch (err) {
         console.error("خطأ أثناء جلب الأجهزة لقائمة VIP:", err);
     }
 }
+
+// تشغيل الدالة فور النقر على تبويب إدارة VIP في القائمة الجانبية
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function() {
+        if (this.getAttribute('data-target') === 'vip-section') {
+            setTimeout(loadVipDevicesDropdown, 150);
+        }
+    });
+});
+
+// تشغيلها أيضاً مرة واحدة بعد تحميل الصفحة
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(loadVipDevicesDropdown, 1000);
+});
