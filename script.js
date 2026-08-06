@@ -1368,22 +1368,30 @@ loadSettings();
 checkSession();
 
 // ==========================================================
-// 💎 دالة جلب وتعبئة قائمة الأجهزة المنسدلة في قسم VIP (محسنة)
+// 💎 دالة جلب الأجهزة مباشرة من جدول الـ users في Supabase
 // ==========================================================
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
     try {
-        const usersRes = await api("get_all_users");
-        const users = (usersRes && (usersRes.data || usersRes)) || [];
+        // جلب البيانات مباشرة باستخدام عميل Supabase لضمان السرعة وتجاوز مشاكل الـ API
+        const { data: users, error } = await client
+            .from('users')
+            .select('*');
+
+        if (error) {
+            console.error("Supabase Error:", error);
+            return;
+        }
 
         // الحفاظ على الخيار الافتراضي
         selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
-                const deviceId = user.device_id || user.id;
+                // دعم جميع الاحتمالات لأسماء الحقول في قاعدة البيانات
+                const deviceId = user.device_id || user.id || user.deviceid;
                 if (!deviceId) return;
                 
                 const option = document.createElement("option");
@@ -1395,22 +1403,10 @@ async function loadVipDevicesDropdown() {
         } else {
             const option = document.createElement("option");
             option.value = "";
-            option.textContent = "لا توجد أجهزة مسجلة حالياً";
+            option.textContent = "لا توجد أجهزة مسجلة حالياً في قاعدة البيانات";
             selectElement.appendChild(option);
         }
     } catch (err) {
         console.error("خطأ أثناء جلب الأجهزة لقائمة VIP:", err);
     }
 }
-
-// ربط الدالة بالتبويبات والأزرار لضمان عملها فور الانتقال لقسم الـ VIP
-document.querySelectorAll('[data-target*="vip"], [onclick*="vip"], .nav-item').forEach(element => {
-    element.addEventListener("click", () => {
-        setTimeout(loadVipDevicesDropdown, 150);
-    });
-});
-
-// تشغيلها مرة واحدة فور اكتمال تحميل الصفحة
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(loadVipDevicesDropdown, 1000);
-});
