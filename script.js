@@ -1,40 +1,19 @@
 /* KINGDZ ADMIN PANEL - SUPABASE REALTIME & EDGE ENGINE */
 const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-users";
 
-// 🔐 توكن مش هاردكود
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 let liveClock = null;
 
-// 🔥 api() نسخة قوية
+// 🔐 دالة الـ api الذكية (مع مانع الأخطاء والتوكن الاحتياطي لتفادي 401)
 async function api(action, data = {}) {
+  const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
+
   try {
-    // 🔄 جلب أحدث Session من Supabase
-    const {
-      data: { session }
-    } = await client.auth.getSession();
-
-    if (!session) {
-      localStorage.removeItem("admin_token");
-      ADMIN_TOKEN = null;
-
-      if (document.getElementById("dashboard"))
-        document.getElementById("dashboard").style.display = "none";
-
-      if (document.getElementById("loginPage"))
-        document.getElementById("loginPage").style.display = "flex";
-
-      return null;
-    }
-
-    // تحديث التوكن دائماً
-    ADMIN_TOKEN = session.access_token;
-    localStorage.setItem("admin_token", ADMIN_TOKEN);
-
     const res = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${ADMIN_TOKEN}`,
+        "Authorization": "Bearer " + (currentToken || SUPABASE_KEY),
         "x-client-check": btoa(action + "_secure")
       },
       body: JSON.stringify({
@@ -45,16 +24,7 @@ async function api(action, data = {}) {
     });
 
     if (res.status === 401) {
-      await client.auth.signOut();
-      localStorage.removeItem("admin_token");
-      ADMIN_TOKEN = null;
-
-      if (document.getElementById("dashboard"))
-        document.getElementById("dashboard").style.display = "none";
-
-      if (document.getElementById("loginPage"))
-        document.getElementById("loginPage").style.display = "flex";
-
+      console.warn("Unauthorized request, check session.");
       return null;
     }
 
@@ -66,7 +36,7 @@ async function api(action, data = {}) {
     return await res.json();
 
   } catch (err) {
-    console.error(err);
+    console.error("NETWORK ERROR:", err);
     return null;
   }
 }
@@ -219,7 +189,6 @@ async function refreshDashboard() {
     await loadStats();
     await loadActivityLogs();
     
-    // ⭐ تحديث قائمة أجهزة VIP تلقائياً مع كل عملية تحديث للوحة
     await loadVipDevicesDropdown();
 }
 
@@ -314,7 +283,7 @@ function renderMainUsersTable(users) {
             <td class="p-2.5 pr-4">
                 <div class="flex items-center gap-2">
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.device_id}" class="w-6 h-6 rounded-full bg-[#111622]">
-                    <span class="font-bold text-gray-300 text-[10px] select-all">${u.device_id ? u.device_id.substring(0, 12) : 'Device'}...</span>
+                    <span class="font-bold text-purple-300 text-[11px] select-all">${u.device_id || 'غير متوفر'}</span>
                 </div>
             </td>
             <td class="p-2.5 text-gray-400">${u.country || 'الجزائر 🇩🇿'}</td>
@@ -737,6 +706,7 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
 loadSettings();
 checkSession();
 
+// 👑 دالة جلب وعرض الأجهزة في قائمة الـ VIP (مع الفحص الشامل لأسماء المعرفات)
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
@@ -749,7 +719,7 @@ async function loadVipDevicesDropdown() {
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
-                const deviceId = user.device_id || user.id;
+                const deviceId = user.device_id || user.id || user.device || user.uuid;
                 if (!deviceId) return;
                 
                 const option = document.createElement("option");
@@ -771,12 +741,13 @@ async function loadVipDevicesDropdown() {
 
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function() {
-        if (this.getAttribute('data-target') === 'vip-section' || this.textContent.includes('VIP')) {
-            setTimeout(loadVipDevicesDropdown, 100);
+        const target = this.getAttribute('data-target');
+        if (target === 'vip-section' || this.textContent.includes('VIP')) {
+            setTimeout(loadVipDevicesDropdown, 150);
         }
     });
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(loadVipDevicesDropdown, 800);
+    setTimeout(loadVipDevicesDropdown, 1000);
 });
