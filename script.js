@@ -712,37 +712,42 @@ async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
-    // تغيير بسيط: عرض حالة التحميل
-    selectElement.innerHTML = '<option>جاري الاتصال بالسيرفر...</option>';
+    // حالة التحميل بخط صغير
+    selectElement.innerHTML = '<option style="font-size: 12px;">جاري تحميل الأجهزة...</option>';
 
-    const usersRes = await api("get_all_users");
-    
-    // إذا وصل هنا ولم تظهر الأجهزة، سنعرض لك "الخطأ" أو "النتيجة" داخل القائمة نفسها
-    if (!usersRes) {
-        selectElement.innerHTML = '<option>خطأ: لم يتم الاتصال بالسيرفر</option>';
-        return;
+    try {
+        const usersRes = await api("get_all_users");
+        const users = (usersRes && (usersRes.data || usersRes)) || [];
+
+        // تفريغ القائمة
+        selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز</option>';
+
+        if (Array.isArray(users) && users.length > 0) {
+            users.forEach(user => {
+                const deviceId = user.device_id || user.id || user.device || user.uuid;
+                if (!deviceId) return;
+
+                const option = document.createElement("option");
+                option.value = deviceId;
+                
+                // هنا التعديل: نص صغير ومرتب
+                const vipLabel = user.vip ? "⭐ VIP" : "عادي";
+                // نقتطع المعرف ليظهر بشكل أجمل في الهاتف (أول 12 حرف فقط)
+                const shortId = deviceId.substring(0, 12) + "...";
+                
+                option.textContent = `${shortId} [${vipLabel}]`;
+                
+                // تنسيقات CSS للقائمة المنسدلة لضمان صغر الحجم
+                option.style.fontSize = "12px";
+                option.style.fontFamily = "monospace";
+                
+                selectElement.appendChild(option);
+            });
+        } else {
+            selectElement.innerHTML = '<option>لا توجد أجهزة</option>';
+        }
+    } catch (e) {
+        selectElement.innerHTML = '<option>خطأ في الاتصال</option>';
+        console.error(e);
     }
-
-    const users = (usersRes.data || usersRes);
-    
-    // فحص إذا كان السيرفر أرجع خطأ صريحاً
-    if (usersRes.error) {
-        selectElement.innerHTML = '<option>خطأ من السيرفر: ' + usersRes.error + '</option>';
-        return;
-    }
-
-    if (!Array.isArray(users) || users.length === 0) {
-        selectElement.innerHTML = '<option>السيرفر فارغ أو لا توجد أجهزة</option>';
-        return;
-    }
-
-    // إذا وصلنا لهنا، فالمفترض أن البيانات وصلت
-    selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز...</option>';
-    users.forEach(user => {
-        const deviceId = user.device_id || user.id || "معرف غير معروف";
-        const option = document.createElement("option");
-        option.value = deviceId;
-        option.textContent = deviceId;
-        selectElement.appendChild(option);
-    });
 }
