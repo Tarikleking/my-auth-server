@@ -189,7 +189,7 @@ async function refreshDashboard() {
     await loadStats();
     await loadActivityLogs();
     
-    await loadVipDevicesDropdown();
+    await loadNewVipList();
 }
 
 function updateDeviceChart(users) {
