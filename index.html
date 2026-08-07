@@ -134,7 +134,6 @@
                 </div>
             </header>
 
-            <!-- القسم الرئيسي (تم استبدال البطاقات باللوحة المدمجة الاحترافية مع الحفاظ على المعرفات IDs) -->
             <section id="home-section" class="tab-content space-y-6">
                 <div class="flex justify-between items-end mb-2">
                     <div class="text-right">
@@ -149,7 +148,6 @@
                     </div>
                 </div>
 
-                <!-- لوحة البيانات المدمجة الاحترافية (بديل البطاقات) -->
                 <div class="bg-[#0b0e14] border border-white/5 rounded-2xl p-6 shadow-2xl">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-lg font-bold text-white flex items-center gap-2">
@@ -160,8 +158,6 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        
-                        <!-- القسم الأول: المستخدمين -->
                         <div class="space-y-4">
                             <h3 class="text-xs font-bold text-purple-400 uppercase tracking-widest">إدارة المستخدمين</h3>
                             <div class="space-y-2">
@@ -176,7 +172,6 @@
                             </div>
                         </div>
 
-                        <!-- القسم الثاني: الاشتراكات والأمان -->
                         <div class="space-y-4">
                             <h3 class="text-xs font-bold text-yellow-400 uppercase tracking-widest">الاشتراكات والأمان</h3>
                             <div class="space-y-2">
@@ -191,7 +186,6 @@
                             </div>
                         </div>
 
-                        <!-- القسم الثالث: البيانات والعمليات -->
                         <div class="space-y-4">
                             <h3 class="text-xs font-bold text-cyan-400 uppercase tracking-widest">العمليات والبيانات</h3>
                             <div class="space-y-2">
@@ -207,10 +201,8 @@
                         </div>
                     </div>
 
-                    <!-- خط فاصل خفيف -->
                     <div class="my-6 border-t border-white/5"></div>
 
-                    <!-- تذييل الإحصائيات (صف واحد ممتد) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="flex justify-between items-center px-4 py-3 bg-gradient-to-r from-emerald-900/20 to-transparent border border-emerald-500/10 rounded-lg">
                             <span class="text-sm text-gray-300">حالة أكواد التفعيل (مستعملة / كلي)</span>
@@ -224,10 +216,7 @@
                 </div>
 
                 <div class="grid grid-cols-12 gap-3.5 mb-6">
-                    <div class="col-span-3 glass-card p-4 rounded-[1.5rem] flex flex-col justify-between" style="display:none;">
-                        <!-- مخفي احترازياً لكي لا يتأثر الكود البرمجي لـ Chart -->
-                    </div>
-
+                    <div class="col-span-3 glass-card p-4 rounded-[1.5rem] flex flex-col justify-between" style="display:none;"></div>
                     <div class="col-span-12 glass-card p-4 rounded-[1.5rem] h-64">
                         <canvas id="statsChart"></canvas>
                     </div>
@@ -383,46 +372,34 @@
                 </div>
             </section>
 
+            <!-- 🎯 قسم الإحصائيات المعدل ليصبح جدولاً تفصيلياً للإيميلات ومحاولات الباسورد وأكواد التفعيل -->
             <section id="stats-section" class="tab-content hidden">
                 <div class="mb-4">
-                    <h2 class="text-sm font-black text-white">الإحصائيات المتقدمة والنشاط</h2>
-                    <p class="text-gray-500 text-[10px]">إحصائيات الإيميلات، محاولات كلمة المرور، وأكواد التفعيل مباشرة من قاعدة البيانات.</p>
-                </div>
-                
-                <div class="grid grid-cols-4 gap-4 mb-4">
-                    <div class="glass-card p-4 rounded-xl">
-                        <div class="text-gray-400 text-[10px]">👥 إجمالي المستخدمين</div>
-                        <div id="statsUsers" class="text-2xl font-bold text-white mt-2">0</div>
-                    </div>
-                    <div class="glass-card p-4 rounded-xl">
-                        <div class="text-gray-400 text-[10px]">🟢 المتصلون الآن</div>
-                        <div id="statsOnline" class="text-2xl font-bold text-green-400 mt-2">0</div>
-                    </div>
-                    <div class="glass-card p-4 rounded-xl">
-                        <div class="text-gray-400 text-[10px]">👑 مستخدمو VIP</div>
-                        <div id="statsVip" class="text-2xl font-bold text-yellow-400 mt-2">0</div>
-                    </div>
-                    <div class="glass-card p-4 rounded-xl">
-                        <div class="text-gray-400 text-[10px]">🚫 المحظورون</div>
-                        <div id="statsBanned" class="text-2xl font-bold text-red-400 mt-2">0</div>
-                    </div>
+                    <h2 class="text-sm font-black text-white">قائمة الإيميلات ومفاتيح التفعيل</h2>
+                    <p class="text-gray-500 text-[10px]">متابعة جميع الإيميلات (الجديدة والقديمة)، محاولات تغيير كلمة المرور، وأكواد التفعيل الخاصة بكل مستخدم.</p>
                 </div>
 
-                <div class="grid grid-cols-3 gap-4 mb-4">
-                    <div class="glass-card p-4 rounded-xl border border-purple-500/20 bg-purple-500/5">
-                        <div class="text-purple-300 text-[11px] font-bold mb-1">📧 الإيميلات الجديدة المسجلة</div>
-                        <div id="statsNewEmails" class="text-3xl font-black text-white mt-2">0</div>
-                        <p class="text-gray-500 text-[9px] mt-1">الحسابات التي تم إنشاؤها حديثاً</p>
-                    </div>
-                    <div class="glass-card p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
-                        <div class="text-yellow-300 text-[11px] font-bold mb-1">🔑 تغيير / محاولات كلمة المرور</div>
-                        <div id="statsPasswordChanges" class="text-3xl font-black text-white mt-2">0</div>
-                        <p class="text-gray-500 text-[9px] mt-1">المستخدمون الذين حاولوا تغيير كلمات مرورهم</p>
-                    </div>
-                    <div class="glass-card p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
-                        <div class="text-blue-300 text-[11px] font-bold mb-1">🎫 معلومات أكواد التفعيل</div>
-                        <div id="statsActivationKeysInfo" class="text-2xl font-black text-white mt-2">0 / 0</div>
-                        <p class="text-gray-500 text-[9px] mt-1">المستخدمة / الإجمالي عند تسجيل مستخدم جديد</p>
+                <div class="glass-card rounded-xl overflow-hidden border border-white/10 p-4">
+                    <div class="overflow-x-auto custom-scroll">
+                        <table class="w-full text-right border-collapse text-[11px]">
+                            <thead>
+                                <tr class="text-[10px] text-gray-400 border-b border-white/10 bg-white/5">
+                                    <th class="p-3">البريد الإلكتروني (الإيميل)</th>
+                                    <th class="p-3">حالة تغيير كلمة المرور</th>
+                                    <th class="p-3">كود التفعيل الخاص</th>
+                                    <th class="p-3 text-center">التاريخ / الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statsDataTable" class="divide-y divide-white/5">
+                                <!-- سيتم جلب وعرض البيانات هنا تلقائياً عبر السكريبت الخاص بك -->
+                                <tr>
+                                    <td class="p-3 text-white font-medium">user@example.com</td>
+                                    <td class="p-3"><span class="px-2 py-1 bg-yellow-500/10 text-yellow-400 rounded-lg">حاول التغيير</span></td>
+                                    <td class="p-3 font-mono text-purple-400 font-bold tracking-wider">KING-DZ-XXXX</td>
+                                    <td class="p-3 text-gray-500 text-center">نشط</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
