@@ -190,6 +190,7 @@ async function refreshDashboard() {
     await loadActivityLogs();
     
     await loadNewVipList();
+    await loadNewBanList();
 }
 
 function updateDeviceChart(users) {
@@ -706,7 +707,7 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
 loadSettings();
 checkSession();
 
-// 👑 دالة جلب وعرض الأجهزة في قائمة الـ VIP بالشكل المختصر والنجمة فقط
+// 👑 دالة جلب وعرض الأجهزة في قائمة الـ VIP (المعرف كاملاً مع نجمة ذهبية للمميز أو رمادية للعادي)
 async function loadNewVipList() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
@@ -724,8 +725,37 @@ async function loadNewVipList() {
 
                 const option = document.createElement("option");
                 option.value = deviceId;
+
+                const badge = user.vip ? "⭐" : "☆";
+
+                option.textContent = `${badge} ${deviceId}`;
+                selectElement.appendChild(option);
+            });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 🚫 دالة جلب وعرض الأجهزة في قائمة الحظر بنفس التنسيق الأنيق
+async function loadNewBanList() {
+    const selectElement = document.getElementById("banDeviceId");
+    if (!selectElement) return;
+
+    selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز للحظر...</option>';
+
+    try {
+        const usersRes = await api("get_all_users");
+        const users = (usersRes && (usersRes.data || usersRes)) || [];
+
+        if (Array.isArray(users) && users.length > 0) {
+            users.forEach(user => {
+                const deviceId = user.device_id || user.id || user.device || user.uuid;
+                if (!deviceId) return;
+
+                const option = document.createElement("option");
+                option.value = deviceId;
                 
-                // نجمة ذهبية للمميز، ونجمة مفرغة/رمادية للعادي
                 const badge = user.vip ? "⭐" : "☆";
                 
                 option.textContent = `${badge} ${deviceId}`;
