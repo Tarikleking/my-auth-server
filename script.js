@@ -288,30 +288,26 @@ async function loadStats(uData = null, kData = null) {
         document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;
     }
 
-    // 🎯 تعبئة الجدول الجديد الخاص بالإيميلات وأكواد التفعيل ديناميكياً
+    // 🎯 تعبئة الجدول مباشرة من بيانات registrations الحقيقية التي ظهرت في الصورة
     const statsDataTable = document.getElementById("statsDataTable");
     if (statsDataTable) {
-        if (u.length === 0) {
-            statsDataTable.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
+        if (rData.length === 0) {
+            statsDataTable.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">لا توجد إيميلات مسجلة حالياً</td></tr>`;
         } else {
-            statsDataTable.innerHTML = u.map(user => {
-                const registration = rData.find(r => r.device_id === user.device_id);
-                const email = (registration && registration.email) || "غير متوفر خارج التسجيل";
-                const activationKey = (registration && registration.activation_key) || "KING-DZ-XXXX";
+            statsDataTable.innerHTML = rData.map(reg => {
+                const email = reg.email || "غير متوفر";
+                const activationKey = reg.activation_key || "KING-DZ-XXXX";
+                const statusText = reg.status || "pending";
                 
-                const passwordStatus = '<span class="px-2 py-1 bg-gray-500/10 text-gray-400 rounded-lg">عادي</span>';
-                
-                let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">نشط</span>';
-                if (user.banned) {
-                    statusHtml = '<span class="px-2 py-1 bg-red-500/10 text-red-400 rounded-lg">محظور</span>';
-                } else if (user.vip) {
-                    statusHtml = '<span class="px-2 py-1 bg-yellow-500/10 text-yellow-400 rounded-lg">VIP</span>';
+                let statusHtml = `<span class="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg">${statusText}</span>`;
+                if (reg.approved) {
+                    statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">موافق عليه</span>';
                 }
 
                 return `
                     <tr>
                         <td class="p-3 text-white font-medium select-all">${email}</td>
-                        <td class="p-3">${passwordStatus}</td>
+                        <td class="p-3"><span class="px-2 py-1 bg-gray-500/10 text-gray-400 rounded-lg">${reg.username || 'عادي'}</span></td>
                         <td class="p-3 font-mono text-purple-400 font-bold tracking-wider select-all">${activationKey}</td>
                         <td class="p-3 text-gray-400 text-center">${statusHtml}</td>
                     </tr>
