@@ -293,36 +293,39 @@
                 </div>
             </section>
 
-            <section id="ban-section" class="tab-content hidden">
-                <div class="mb-4"><h2 class="text-sm font-black text-white">جدار حظر الأجهزة والـ HWID</h2></div>
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-4 glass-card p-4 rounded-xl h-fit">
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-[9px] text-gray-500 font-bold mb-1">معرّف الجهاز (Device ID)</label>
-                                <input type="text" id="banDeviceId" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none" placeholder="أدخل الـ ID بدقة">
-                            </div>
-                            <div>
-                                <label class="block text-[9px] text-gray-500 font-bold mb-1">سبب الحظر</label>
-                                <input type="text" id="banReason" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none" placeholder="مخالفة السياسات...">
-                            </div>
-                            <button id="btnApplyBan" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] py-1.5 rounded-lg transition-all">تطبيق الحظر</button>
-                        </div>
-                    </div>
-                    <div class="col-span-8 glass-card rounded-xl overflow-hidden">
-                        <table class="w-full text-right text-[11px]">
-                            <thead>
-                                <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
-                                    <th class="p-2 pr-4">الجهاز المحظور</th>
-                                    <th class="p-2">السبب</th>
-                                    <th class="p-2 text-center pl-4">الإجراء</th>
-                                </tr>
-                            </thead>
-                            <tbody id="bannedDevicesTable" class="divide-y divide-white/[0.01]"></tbody>
-                        </table>
-                    </div>
+<section id="ban-section" class="tab-content hidden">
+    <div class="mb-4"><h2 class="text-sm font-black text-white">جدار حظر الأجهزة والـ HWID</h2></div>
+    <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-4 glass-card p-4 rounded-xl h-fit">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[9px] text-gray-500 font-bold mb-1">معرّف الجهاز (Device ID)</label>
+                    <select id="banDeviceId" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-2.5 px-2 text-[11px] text-gray-300 outline-none max-h-48 overflow-y-auto focus:border-purple-500">
+                        <option value="" disabled selected>اختر الجهاز للحظر...</option>
+                    </select>
                 </div>
-            </section>
+                <div>
+                    <label class="block text-[9px] text-gray-500 font-bold mb-1">سبب الحظر</label>
+                    <input type="text" id="banReason" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none" placeholder="مخالفة السياسات...">
+                </div>
+                <button id="btnApplyBan" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] py-1.5 rounded-lg transition-all">تطبيق الحظر</button>
+            </div>
+        </div>
+        <div class="col-span-8 glass-card rounded-xl overflow-hidden">
+            <table class="w-full text-right text-[11px]">
+                <thead>
+                    <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
+                        <th class="p-2 pr-4">الجهاز المحظور</th>
+                        <th class="p-2">السبب</th>
+                        <th class="p-2 text-center pl-4">الإجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="bannedDevicesTable" class="divide-y divide-white/[0.01]"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
 
             <!-- قسم إدارة VIP المعدل ليصبح قائمة منسدلة مع سكرول -->
             <section id="vip-section" class="tab-content hidden">
