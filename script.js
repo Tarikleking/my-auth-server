@@ -725,10 +725,10 @@ async function loadNewVipList() {
                 const option = document.createElement("option");
                 option.value = deviceId;
                 
-                // إظهار المعرف كاملاً مع النجمة فقط للـ VIP
-                const status = user.vip ? "⭐" : "";
+                // نجمة ذهبية للمميز، ونجمة مفرغة/رمادية للعادي
+                const badge = user.vip ? "⭐" : "☆";
                 
-                option.textContent = `${deviceId} ${status}`;
+                option.textContent = `${badge} ${deviceId}`;
                 selectElement.appendChild(option);
             });
         }
