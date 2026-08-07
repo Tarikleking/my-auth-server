@@ -707,7 +707,7 @@ loadSettings();
 checkSession();
 
 // 👑 دالة جلب وعرض الأجهزة في قائمة الـ VIP بالشكل المختصر والنجمة فقط
-async function loadVipDevicesDropdown() {
+async function loadNewVipList() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
@@ -724,10 +724,10 @@ async function loadVipDevicesDropdown() {
 
                 const option = document.createElement("option");
                 option.value = deviceId;
-                
+
                 const shortId = deviceId.substring(0, 8);
                 const status = user.vip ? "⭐" : "";
-                
+
                 option.textContent = `${shortId} ${status}`;
                 selectElement.appendChild(option);
             });
