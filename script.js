@@ -707,47 +707,42 @@ loadSettings();
 checkSession();
 
 // 👑 دالة جلب وعرض الأجهزة في قائمة الـ VIP (مع الفحص الشامل لأسماء المعرفات)
+
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
-    try {
-        const usersRes = await api("get_all_users");
-        const users = (usersRes && (usersRes.data || usersRes)) || [];
+    // تغيير بسيط: عرض حالة التحميل
+    selectElement.innerHTML = '<option>جاري الاتصال بالسيرفر...</option>';
 
-        selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
-
-        if (Array.isArray(users) && users.length > 0) {
-            users.forEach(user => {
-                const deviceId = user.device_id || user.id || user.device || user.uuid;
-                if (!deviceId) return;
-                
-                const option = document.createElement("option");
-                option.value = deviceId;
-                const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
-                option.textContent = `معرف: ${deviceId} (${vipStatus})`;
-                selectElement.appendChild(option);
-            });
-        } else {
-            const option = document.createElement("option");
-            option.value = "";
-            option.textContent = "لا توجد أجهزة مسجلة في القاعدة";
-            selectElement.appendChild(option);
-        }
-    } catch (err) {
-        console.error("خطأ في جلب الأجهزة:", err);
+    const usersRes = await api("get_all_users");
+    
+    // إذا وصل هنا ولم تظهر الأجهزة، سنعرض لك "الخطأ" أو "النتيجة" داخل القائمة نفسها
+    if (!usersRes) {
+        selectElement.innerHTML = '<option>خطأ: لم يتم الاتصال بالسيرفر</option>';
+        return;
     }
-}
 
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function() {
-        const target = this.getAttribute('data-target');
-        if (target === 'vip-section' || this.textContent.includes('VIP')) {
-            setTimeout(loadVipDevicesDropdown, 150);
-        }
+    const users = (usersRes.data || usersRes);
+    
+    // فحص إذا كان السيرفر أرجع خطأ صريحاً
+    if (usersRes.error) {
+        selectElement.innerHTML = '<option>خطأ من السيرفر: ' + usersRes.error + '</option>';
+        return;
+    }
+
+    if (!Array.isArray(users) || users.length === 0) {
+        selectElement.innerHTML = '<option>السيرفر فارغ أو لا توجد أجهزة</option>';
+        return;
+    }
+
+    // إذا وصلنا لهنا، فالمفترض أن البيانات وصلت
+    selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز...</option>';
+    users.forEach(user => {
+        const deviceId = user.device_id || user.id || "معرف غير معروف";
+        const option = document.createElement("option");
+        option.value = deviceId;
+        option.textContent = deviceId;
+        selectElement.appendChild(option);
     });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(loadVipDevicesDropdown, 1000);
-});
+}
