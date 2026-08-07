@@ -161,7 +161,7 @@ if (document.getElementById("logout")) {
     };
 }
 
-// 3. المحرك الموحد لجلب البيانات الحقيقية من جدولين (keys و users) وإحصائيات القسم الجديد
+// 3. المحرك الموحد لجلب البيانات الحقيقية وتعبئة جدول الإحصائيات الجديد
 async function refreshDashboard() {
     const usersRes = await api("get_all_users");
     const keysRes = await api("get_keys");
@@ -249,7 +249,7 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-// 📈 دالة تحديث الإحصائيات وقسم الإحصائيات المتقدم الجديد بنظام اللوحة المدمجة
+// 📈 دالة تحديث الإحصائيات وجلب البيانات لجدول الإيميلات وأكواد التفعيل الجديد
 async function loadStats(uData = null, kData = null) {
     let u = uData;
     let k = kData;
@@ -276,16 +276,36 @@ async function loadStats(uData = null, kData = null) {
     if(document.getElementById("statsVipActive")) document.getElementById("statsVipActive").textContent = activeVips;
     if(document.getElementById("activeVipCount")) document.getElementById("activeVipCount").textContent = activeVips;
 
-    const newEmailsCount = u.filter(user => user.email || user.user_email).length;
-    if(document.getElementById("statsNewEmails")) document.getElementById("statsNewEmails").textContent = newEmailsCount;
-
-    const passwordChangesCount = u.filter(user => user.password_changed || user.password_attempts > 0 || user.reset_password_count > 0).length;
-    if(document.getElementById("statsPasswordChanges")) document.getElementById("statsPasswordChanges").textContent = passwordChangesCount;
-
     const usedKeysCount = k.filter(key => key.status === "used").length;
     const totalKeysCount = k.length;
     if(document.getElementById("statsActivationKeysInfo")) {
         document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;
+    }
+
+    // 🎯 تعبئة الجدول الجديد الخاص بالإيميلات وأكواد التفعيل ديناميكياً
+    const statsDataTable = document.getElementById("statsDataTable");
+    if (statsDataTable) {
+        if (u.length === 0) {
+            statsDataTable.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
+        } else {
+            statsDataTable.innerHTML = u.map(user => {
+                const email = user.email || user.user_email || "غير متوفر";
+                const passwordStatus = user.password_changed || user.password_attempts > 0 
+                    ? '<span class="px-2 py-1 bg-yellow-500/10 text-yellow-400 rounded-lg">حاول التغيير</span>' 
+                    : '<span class="px-2 py-1 bg-gray-500/10 text-gray-400 rounded-lg">عادي</span>';
+                const activationKey = user.activation_key || user.key || user.used_key || "KING-DZ-XXXX";
+                const statusText = user.banned ? "محظور" : "نشط";
+
+                return `
+                    <tr>
+                        <td class="p-3 text-white font-medium select-all">${email}</td>
+                        <td class="p-3">${passwordStatus}</td>
+                        <td class="p-3 font-mono text-purple-400 font-bold tracking-wider select-all">${activationKey}</td>
+                        <td class="p-3 text-gray-400 text-center">${statusText}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
     }
 }
 
