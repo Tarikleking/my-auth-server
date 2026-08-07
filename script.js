@@ -740,21 +740,33 @@ checkSession();
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
+
     try {
         const usersRes = await api("get_all_users");
         const users = (usersRes && (usersRes.data || usersRes)) || [];
+
         selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
+
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
                 const deviceId = user.device_id || user.id;
                 if (!deviceId) return;
+                
                 const option = document.createElement("option");
                 option.value = deviceId;
-                option.textContent = `جهاز: ${deviceId} - ${user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]'}`;
+                const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
+                option.textContent = `معرف: ${deviceId} (${vipStatus})`;
                 selectElement.appendChild(option);
             });
+        } else {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "لا توجد أجهزة مسجلة في القاعدة";
+            selectElement.appendChild(option);
         }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+        console.error("خطأ في جلب الأجهزة:", err);
+    }
 }
 
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -765,4 +777,6 @@ document.querySelectorAll('.nav-item').forEach(item => {
     });
 });
 
-document.addEventListener("DOMContentLoaded", () => { setTimeout(loadVipDevicesDropdown, 800); });
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(loadVipDevicesDropdown, 800);
+});
