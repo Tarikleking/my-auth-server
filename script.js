@@ -111,7 +111,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         const targetEl = document.getElementById(targetSection);
         if (targetEl) {
             targetEl.classList.remove('hidden');
-            if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section') {
+            if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {
                 refreshDashboard();
             }
         }
@@ -161,7 +161,7 @@ if (document.getElementById("logout")) {
     };
 }
 
-// 3. المحرك الموحد لجلب البيانات الحقيقية من جدولين (keys و users)
+// 3. المحرك الموحد لجلب البيانات الحقيقية من جدولين (keys و users) وإحصائيات القسم الجديد
 async function refreshDashboard() {
     const usersRes = await api("get_all_users");
     const keysRes = await api("get_keys");
@@ -186,7 +186,8 @@ async function refreshDashboard() {
     renderBannedTable(uData);
     updateMainCharts(uData);
     updateDeviceChart(uData);
-    await loadStats();
+    
+    await loadStats(uData, kData);
     await loadActivityLogs();
     
     await loadNewVipList();
@@ -248,23 +249,49 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-async function loadStats() {
-    const usersRes = await api("get_all_users");
-    const keysRes = await api("get_keys");
+// 📈 دالة تحديث الإحصائيات وقسم الإحصائيات المتقدم الجديد
+async function loadStats(uData = null, kData = null) {
+    let u = uData;
+    let k = kData;
 
-    const u = (usersRes && (usersRes.data || usersRes)) || [];
-    const k = (keysRes && (keysRes.data || keysRes)) || [];
+    if (!u || !k) {
+        const usersRes = await api("get_all_users");
+        const keysRes = await api("get_keys");
+        u = (usersRes && (usersRes.data || usersRes)) || [];
+        k = (keysRes && (keysRes.data || keysRes)) || [];
+    }
 
     const now = Date.now();
-    document.getElementById("statsUsers").textContent = u.length;
-    document.getElementById("statsOnline").textContent = u.filter(user => user.last_online && (now - new Date(user.last_online).getTime()) < 60000).length;
-    document.getElementById("statsVip").textContent = u.filter(user => user.vip).length;
-    document.getElementById("statsBanned").textContent = u.filter(user => user.banned).length;
-    document.getElementById("statsKeys").textContent = k.length;
-    document.getElementById("statsKeysNew").textContent = k.filter(key => key.status === "new").length;
-    document.getElementById("statsKeysUsed").textContent = k.filter(key => key.status === "used").length;
-    document.getElementById("statsVipActive").textContent = u.filter(user => user.vip && user.vip_until && new Date(user.vip_until) > new Date()).length;
-    document.getElementById("activeVipCount").textContent = u.filter(user => user.vip && user.vip_until && new Date(user.vip_until) > new Date()).length;
+    
+    // تحديث إحصائيات الصفحة الرئيسية والقسم المتقدم
+    if(document.getElementById("statsUsers")) document.getElementById("statsUsers").textContent = u.length;
+    if(document.getElementById("statsOnline")) document.getElementById("statsOnline").textContent = u.filter(user => user.last_online && (now - new Date(user.last_online).getTime()) < 60000).length;
+    if(document.getElementById("statsVip")) document.getElementById("statsVip").textContent = u.filter(user => user.vip).length;
+    if(document.getElementById("statsBanned")) document.getElementById("statsBanned").textContent = u.filter(user => user.banned).length;
+    
+    if(document.getElementById("statsKeys")) document.getElementById("statsKeys").textContent = k.length;
+    if(document.getElementById("statsKeysNew")) document.getElementById("statsKeysNew").textContent = k.filter(key => key.status === "new").length;
+    if(document.getElementById("statsKeysUsed")) document.getElementById("statsKeysUsed").textContent = k.filter(key => key.status === "used").length;
+    
+    const activeVips = u.filter(user => user.vip && user.vip_until && new Date(user.vip_until) > new Date()).length;
+    if(document.getElementById("statsVipActive")) document.getElementById("statsVipActive").textContent = activeVips;
+    if(document.getElementById("activeVipCount")) document.getElementById("activeVipCount").textContent = activeVips;
+
+    // 🌟 تحديث الحقول الثلاثة الخاصة بالقسم الجديد في قسم الإحصائيات (stats-section)
+    // 1. الإيميلات الجديدة المسجلة (نعتمد على حقل email أو السجلات التي تحتوي على البريد)
+    const newEmailsCount = u.filter(user => user.email || user.user_email).length;
+    if(document.getElementById("statsNewEmails")) document.getElementById("statsNewEmails").textContent = newEmailsCount;
+
+    // 2. تغيير / محاولات كلمة المرور (نعتمد على حقل password_changes أو password_attempts أو الحسابات التي قامت بعمليات تعديل)
+    const passwordChangesCount = u.filter(user => user.password_changed || user.password_attempts > 0 || user.reset_password_count > 0).length;
+    if(document.getElementById("statsPasswordChanges")) document.getElementById("statsPasswordChanges").textContent = passwordChangesCount;
+
+    // 3. معلومات أكواد التفعيل (المستعملة / الإجمالي العام للمفاتيح)
+    const usedKeysCount = k.filter(key => key.status === "used").length;
+    const totalKeysCount = k.length;
+    if(document.getElementById("statsActivationKeysInfo")) {
+        document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;
+    }
 }
 
 // 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي
