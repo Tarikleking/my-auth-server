@@ -712,15 +712,11 @@ async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
 
-    // حالة التحميل بخط صغير
-    selectElement.innerHTML = '<option style="font-size: 12px;">جاري تحميل الأجهزة...</option>';
+    selectElement.innerHTML = '<option value="" disabled selected>اختر...</option>';
 
     try {
         const usersRes = await api("get_all_users");
         const users = (usersRes && (usersRes.data || usersRes)) || [];
-
-        // تفريغ القائمة
-        selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز</option>';
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
@@ -730,24 +726,15 @@ async function loadVipDevicesDropdown() {
                 const option = document.createElement("option");
                 option.value = deviceId;
                 
-                // هنا التعديل: نص صغير ومرتب
-                const vipLabel = user.vip ? "⭐ VIP" : "عادي";
-                // نقتطع المعرف ليظهر بشكل أجمل في الهاتف (أول 12 حرف فقط)
-                const shortId = deviceId.substring(0, 12) + "...";
+                // تقصير النص لأقصى درجة ليصبح صغير جداً
+                const shortId = deviceId.substring(0, 8); // أول 8 حروف فقط
+                const status = user.vip ? "⭐" : "•";
                 
-                option.textContent = `${shortId} [${vipLabel}]`;
-                
-                // تنسيقات CSS للقائمة المنسدلة لضمان صغر الحجم
-                option.style.fontSize = "12px";
-                option.style.fontFamily = "monospace";
-                
+                option.textContent = `${shortId} ${status}`;
                 selectElement.appendChild(option);
             });
-        } else {
-            selectElement.innerHTML = '<option>لا توجد أجهزة</option>';
         }
     } catch (e) {
-        selectElement.innerHTML = '<option>خطأ في الاتصال</option>';
         console.error(e);
     }
 }
