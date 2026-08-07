@@ -724,11 +724,11 @@ async function loadNewVipList() {
 
                 const option = document.createElement("option");
                 option.value = deviceId;
-
-                const shortId = deviceId.substring(0, 8);
+                
+                // إظهار المعرف كاملاً مع النجمة فقط للـ VIP
                 const status = user.vip ? "⭐" : "";
-
-                option.textContent = `${shortId} ${status}`;
+                
+                option.textContent = `${deviceId} ${status}`;
                 selectElement.appendChild(option);
             });
         }
