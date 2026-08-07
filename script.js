@@ -706,7 +706,7 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
 loadSettings();
 checkSession();
 
-// 👑 دالة جلب وعرض الأجهزة في قائمة الـ VIP (مع الفحص الشامل لأسماء المعرفات)
+// 👑 دالة جلب وعرض الأجهزة في قائمة الـ VIP بالشكل المختصر والنجمة فقط
 async function loadVipDevicesDropdown() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
@@ -725,7 +725,6 @@ async function loadVipDevicesDropdown() {
                 const option = document.createElement("option");
                 option.value = deviceId;
                 
-                // إزالة كل الكلمات الزائدة وترك المعرف المختصر والنجمة فقط
                 const shortId = deviceId.substring(0, 8);
                 const status = user.vip ? "⭐" : "";
                 
