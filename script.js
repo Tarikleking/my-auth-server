@@ -249,7 +249,7 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-// 📈 دالة تحديث الإحصائيات وجلب البيانات من الجداول (users و registrations)
+// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات الأجهزة الحقيقية من جدول users و registrations
 async function loadStats(uData = null, kData = null) {
     let u = uData;
     let k = kData;
@@ -288,26 +288,31 @@ async function loadStats(uData = null, kData = null) {
         document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;
     }
 
-    // 🎯 تعبئة الجدول مباشرة من بيانات registrations الحقيقية التي ظهرت في الصورة
+    // 🎯 دمج وتعرض الإيميل، معرف الجهاز، نوع الجهاز، وكود التفعيل في جدول الإحصائيات
     const statsDataTable = document.getElementById("statsDataTable");
     if (statsDataTable) {
         if (rData.length === 0) {
-            statsDataTable.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">لا توجد إيميلات مسجلة حالياً</td></tr>`;
+            statsDataTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
         } else {
             statsDataTable.innerHTML = rData.map(reg => {
                 const email = reg.email || "غير متوفر";
                 const activationKey = reg.activation_key || "KING-DZ-XXXX";
-                const statusText = reg.status || "pending";
                 
-                let statusHtml = `<span class="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg">${statusText}</span>`;
+                // مطابقة المستخدم من جدول users للوصول إلى معلومات الجهاز (device_id, model)
+                const matchedUser = u.find(user => user.username === reg.username) || u[0] || {};
+                const deviceId = matchedUser.device_id || "غير متوفر";
+                const deviceModel = matchedUser.model || matchedUser.brand || matchedUser.manufacturer || "جهاز غير محدد";
+                
+                let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">مسجل</span>';
                 if (reg.approved) {
-                    statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">موافق عليه</span>';
+                    statusHtml = '<span class="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg">موافق عليه</span>';
                 }
 
                 return `
                     <tr>
                         <td class="p-3 text-white font-medium select-all">${email}</td>
-                        <td class="p-3"><span class="px-2 py-1 bg-gray-500/10 text-gray-400 rounded-lg">${reg.username || 'عادي'}</span></td>
+                        <td class="p-3 font-mono text-xs text-purple-300 select-all">${deviceId}</td>
+                        <td class="p-3 text-gray-300 text-xs">${deviceModel}</td>
                         <td class="p-3 font-mono text-purple-400 font-bold tracking-wider select-all">${activationKey}</td>
                         <td class="p-3 text-gray-400 text-center">${statusHtml}</td>
                     </tr>
