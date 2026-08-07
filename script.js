@@ -254,7 +254,6 @@ async function loadStats(uData = null, kData = null) {
     let u = uData;
     let k = kData;
 
-    // جلب البيانات تلقائياً في حال لم يتم تمريرها
     if (!u || !k) {
         const usersRes = await api("get_all_users");
         const keysRes = await api("get_keys");
@@ -262,13 +261,11 @@ async function loadStats(uData = null, kData = null) {
         k = (keysRes && (keysRes.data || keysRes)) || [];
     }
 
-    // جلب الإيميلات وأكواد التفعيل من جدول registrations (يتطلب دالة backend "get_registrations" في Edge Function)
     const regRes = await api("get_registrations");
     const rData = (regRes && (regRes.data || regRes)) || [];
 
     const now = Date.now();
     
-    // 1. تحديث البطاقات الرئيسية (Home)
     if(document.getElementById("statsUsers")) document.getElementById("statsUsers").textContent = u.length;
     if(document.getElementById("statsOnline")) document.getElementById("statsOnline").textContent = u.filter(user => user.last_online && (now - new Date(user.last_online).getTime()) < 60000).length;
     if(document.getElementById("statsVip")) document.getElementById("statsVip").textContent = u.filter(user => user.vip).length;
@@ -285,31 +282,24 @@ async function loadStats(uData = null, kData = null) {
     const newEmailsCount = rData.filter(r => r.email && r.email.trim() !== "").length;
     if(document.getElementById("statsNewEmails")) document.getElementById("statsNewEmails").textContent = newEmailsCount;
 
-    const passwordChangesCount = u.filter(user => user.password_changed || user.password_attempts > 0 || user.reset_password_count > 0).length;
-    if(document.getElementById("statsPasswordChanges")) document.getElementById("statsPasswordChanges").textContent = passwordChangesCount;
-
     const usedKeysCount = k.filter(key => key.status === "used").length;
     const totalKeysCount = k.length;
     if(document.getElementById("statsActivationKeysInfo")) {
-        document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} /${totalKeysCount}`;
+        document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;
     }
 
-    // 2. 🎯 تعبئة الجدول الجديد الخاص بالإيميلات وأكواد التفعيل ديناميكياً (الربط بين users و registrations)
+    // 🎯 تعبئة الجدول الجديد الخاص بالإيميلات وأكواد التفعيل ديناميكياً
     const statsDataTable = document.getElementById("statsDataTable");
     if (statsDataTable) {
         if (u.length === 0) {
             statsDataTable.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
         } else {
             statsDataTable.innerHTML = u.map(user => {
-                // البحث عن التسجيل المطابق في جدول registrations عبر device_id
                 const registration = rData.find(r => r.device_id === user.device_id);
-                const email = (registration && registration.email) || "غير متوفر";
-                const activationKey = (registration && registration.activation_key) || "غير مستخدم";
+                const email = (registration && registration.email) || "غير متوفر خارج التسجيل";
+                const activationKey = (registration && registration.activation_key) || "KING-DZ-XXXX";
                 
-                // جلب حالة الحظر وحالة الـ VIP من جدول users
-                const passwordStatus = user.password_attempts > 0 
-                    ? '<span class="px-2 py-1 bg-yellow-500/10 text-yellow-400 rounded-lg">محاولة (' + user.password_attempts + ')</span>' 
-                    : '<span class="px-2 py-1 bg-gray-500/10 text-gray-400 rounded-lg">عادي</span>';
+                const passwordStatus = '<span class="px-2 py-1 bg-gray-500/10 text-gray-400 rounded-lg">عادي</span>';
                 
                 let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">نشط</span>';
                 if (user.banned) {
@@ -345,4 +335,482 @@ function renderMainUsersTable(users) {
     const now = Date.now();
     tbody.innerHTML = latest.map(u => `
         <tr class="hover:bg-white/[0.005]">
-            <td class="p-2.5
+            <td class="p-2.5 pr-4">
+                <div class="flex items-center gap-2">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.device_id}" class="w-6 h-6 rounded-full bg-[#111622]">
+                    <span class="font-bold text-purple-300 text-[11px] select-all">${u.device_id || 'غير متوفر'}</span>
+                </div>
+            </td>
+            <td class="p-2.5 text-gray-400">${u.country || 'الجزائر 🇩🇿'}</td>
+            <td class="p-2.5 text-gray-500 font-medium">${u.model || u.manufacturer || 'Smartphone'}</td>
+            <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[9px] font-extrabold ${u.vip ? 'badge-vip-gold' : 'badge-monthly'}">${u.vip ? 'VIP👑' : 'FREE'}</span></td>
+            <td class="p-2.5">
+                <span class="inline-flex items-center gap-1 font-bold ${u.banned ? 'text-red-400' : (u.last_online && (now - new Date(u.last_online).getTime()) < 60000) ? 'text-green-400' : 'text-gray-500'} text-[10px]">
+                    <span class="w-1 h-1 rounded-full bg-current"></span>
+                    ${u.banned ? 'محظور' : (u.last_online && (now - new Date(u.last_online).getTime()) < 60000) ? '🟢 متصل الآن' : '⚫ غير متصل'}
+                </span>
+            </td>
+            <td class="p-2.5 text-center pl-4">
+                <button onclick="openDrawer('${u.device_id}')" class="p-1 text-purple-400 hover:bg-purple-500/10 rounded-md"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+            </td>
+        </tr>
+    `).join('');
+    lucide.createIcons();
+}
+
+function renderAllUsersTable(users) {
+    const tbody = document.getElementById("allUsersTable");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    const now = Date.now();
+    users.forEach(u => {
+        const online = u.last_online && (now - new Date(u.last_online).getTime()) < 60000;
+        const statusText = u.banned ? "🚫 محظور" : (online ? "🟢 متصل الآن" : "⚫ غير متصل");
+        const device = u.model || u.device_type || u.manufacturer || "--";
+        const vip = u.vip ? '<span class="text-yellow-400 font-bold">👑 VIP</span>' : '<span class="text-gray-400">FREE</span>';
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${u.country || '--'}</td><td>${device}</td><td>${statusText}</td><td>${vip}</td><td class="text-yellow-400 font-bold">${u.duration_type || '--'}</td><td>${u.vip_until ? getRemainingTime(u.vip_until) : '--'}</td><td>${formatDate(u.vip_until)}</td><td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}</td><td><button onclick="openDrawer('${u.device_id}')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white">إدارة</button></td>`;
+        tbody.appendChild(row);
+    });
+}
+
+function getRemainingTime(vipUntil) {
+    const now = new Date();
+    const end = new Date(vipUntil);
+    const diff = end - now;
+    if (diff <= 0) return "منتهي";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days > 0) return days + " يوم";
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours > 0) return hours + " ساعة";
+    const minutes = Math.floor(diff / (1000 * 60));
+    return minutes + " دقيقة";
+}
+
+if (document.getElementById("btnGenerateKey")) {
+    document.getElementById("btnGenerateKey").onclick = async () => {
+        const durationType = document.getElementById("keyType").value; 
+        const amount = parseInt(document.getElementById("keyAmount").value) || 1;
+        let successCount = 0;
+        for (let i = 0; i < amount; i++) {
+            const part = () => Math.random().toString(36).substring(2, 6).toUpperCase().padEnd(4, 'X');
+            const randomCode = part() + "-" + part() + "-" + part();
+            let expireDate = new Date();
+            switch (durationType) {
+                case "1 دقيقة": expireDate.setMinutes(expireDate.getMinutes() + 1); break;
+                case "1 ساعة": expireDate.setHours(expireDate.getHours() + 1); break;
+                case "1 يوم": expireDate.setDate(expireDate.getDate() + 1); break;
+                case "1 أسبوع": expireDate.setDate(expireDate.getDate() + 7); break;
+                case "1 شهر": expireDate.setMonth(expireDate.getMonth() + 1); break;
+                case "1 سنة": expireDate.setFullYear(expireDate.getFullYear() + 1); break;
+            }
+            const res = await api("create_key", { key: randomCode, duration: durationType, duration_type: durationType, status: "new", created_at: new Date().toISOString(), expires_at: expireDate.toISOString() });
+            if (res && !res.error) successCount++;
+        }
+       if (successCount > 0) {
+            await addActivity("KEY", "KEY_CREATED", "", "تم إنشاء " + successCount + " مفتاح");
+            showToast("تم توليد " + successCount + " مفتاح");
+            refreshDashboard();
+        }
+    };
+}
+
+function renderKeysTable(keys) {
+    const tbody = document.getElementById("keysListTable");
+    if (!tbody) return;
+    tbody.innerHTML = keys.slice().reverse().map(k => `
+        <tr class="hover:bg-white/[0.005]">
+            <td class="p-2 text-center"><input type="checkbox" class="key-checkbox" data-id="${k.id}" data-key="${k.key}"></td>
+            <td class="p-2 pr-4 font-mono font-bold text-purple-400 text-[10px] select-all cursor-pointer">${k.key}</td>
+            <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/10 border border-purple-500/20 text-purple-400">${k.duration_type || 'STANDARD'}</span></td>
+            <td class="p-2 text-gray-400">${k.duration || 'غير محدد'}</td>
+            <td class="p-2 text-[10px] font-bold ${k.status === 'new' ? 'text-green-400' : 'text-gray-500'}">${k.status === 'new' ? 'جاهز' : 'مستعمل'}</td>
+            <td class="p-2 text-center pl-4"><button onclick="deleteKeyRow(${k.id})" class="p-1 text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></td>
+        </tr>
+    `).join('');
+    lucide.createIcons();
+    initSelectAllButton();
+    const selectAll = document.getElementById("selectAllKeys");
+    if (selectAll) {
+        selectAll.onchange = function () {
+            document.querySelectorAll(".key-checkbox").forEach(cb => { cb.checked = this.checked; });
+        };
+    }
+}
+
+if (document.getElementById("btnApplyBan")) {
+    document.getElementById("btnApplyBan").onclick = async () => {
+        const targetDeviceId = document.getElementById("banDeviceId").value.trim();
+        if (!targetDeviceId) return;
+        const res = await api("ban_user", { device_id: targetDeviceId, banned: true });
+        if (res && !res.error) { showToast("تم الحظر 🚫"); refreshDashboard(); }
+    };
+}
+
+function renderBannedTable(users) {
+    const tbody = document.getElementById("bannedDevicesTable");
+    if (!tbody) return;
+    const bannedList = users.filter(u => u.banned === true);
+    tbody.innerHTML = bannedList.reverse().map(b => `
+        <tr class="hover:bg-white/[0.005]">
+            <td class="p-2 pr-4 text-red-400 font-bold font-mono text-[10px]">${b.device_id}</td>
+            <td class="p-2 text-gray-400">${b.model || '---'}</td>
+            <td class="p-2 text-center pl-4"><button onclick="liftUserBan('${b.device_id}')" class="text-green-400 font-bold text-[9px]">فك الحظر</button></td>
+        </tr>
+    `).join('');
+}
+
+async function liftUserBan(deviceId) {
+    const res = await api("ban_user", { device_id: deviceId, banned: false });
+    if (res && !res.error) {
+        await addActivity("USER", "USER_UNBANNED", deviceId, "تم فك الحظر");
+        showToast("تم فك الحظر");
+        refreshDashboard();
+    }
+}
+
+async function deleteUserRow(deviceId) {
+    if (confirm("حذف الجهاز نهائياً؟")) {
+        const res = await api("delete_user", { device_id: deviceId });
+        if (res && !res.error) {
+            await addActivity("USER", "USER_DELETED", deviceId, "تم حذف المستخدم نهائياً");
+            showToast("تم الحذف");
+            refreshDashboard();
+        }
+    }
+}
+
+async function deleteKeyRow(id) {
+    if (confirm("حذف المفتاح نهائياً؟")) {
+        const res = await api("delete_key", { id });
+        if (res && !res.error) {
+            await addActivity("KEY", "KEY_DELETED", "", "تم حذف مفتاح");
+            showToast("تم الحذف");
+            refreshDashboard();
+        }
+    }
+}
+
+if (document.getElementById("btnGrantVip")) {
+    document.getElementById("btnGrantVip").onclick = async () => {
+        const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
+        if (!targetDeviceId) return;
+        const res = await api("update_vip", { device_id: targetDeviceId, vip: true });
+        if (res && !res.error) {
+            await addActivity("VIP", "VIP_GRANTED", targetDeviceId, "تم منح اشتراك VIP");
+            showToast("تم الترقية لـ VIP ✨");
+            refreshDashboard();
+        }
+    };
+}
+
+if (document.getElementById("btnRevokeVip")) {
+    document.getElementById("btnRevokeVip").onclick = async () => {
+        const targetDeviceId = document.getElementById("vipDeviceId").value.trim();
+        if (!targetDeviceId) return;
+        const res = await api("update_vip", { device_id: targetDeviceId, vip: false });
+        if (res && !res.error) {
+            await addActivity("VIP", "VIP_REVOKED", targetDeviceId, "تم سحب اشتراك VIP");
+            showToast("تم سحب VIP");
+            refreshDashboard();
+        }
+    };
+}
+
+function openDrawer(deviceId) { 
+    document.getElementById('userDrawer').style.right = '0'; 
+    loadUserDetails(deviceId); 
+}
+
+function closeDrawer() { 
+    document.getElementById('userDrawer').style.right = '-450px'; 
+}
+
+async function loadUserDetails(deviceId) {
+    const content = document.getElementById("drawerContent");
+    const res = await api("get_user_details", { device_id: deviceId });
+    const data = (res && (res.data || res)) || null;
+    if (!res || res.error || !data) { content.innerHTML = "حدث خطأ"; return; }
+    const online = data.last_online && (Date.now() - new Date(data.last_online).getTime()) < 60000;
+    content.innerHTML = `
+        <div class="space-y-4">
+            <div class="glass-card p-4 rounded-xl">
+                <div class="flex items-center gap-3 mb-4">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${data.device_id}" class="w-14 h-14 rounded-full bg-[#161b26]">
+                    <div><h3 class="text-white font-bold text-lg">${data.username || "Player"}</h3><p class="text-gray-500 text-xs">${data.device_id}</p></div>
+                </div>
+            </div>
+            <div class="glass-card p-4 rounded-xl">
+                <h4 class="text-purple-400 font-bold mb-3">📱 معلومات الجهاز</h4>
+                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>الموديل</div><div class="text-white">${data.model || "--"}</div>
+                    <div>الشركة</div><div class="text-white">${data.manufacturer || "--"}</div>
+                    <div>العلامة</div><div class="text-white">${data.brand || "--"}</div>
+                    <div>Android</div><div class="text-white">${data.android_version || "--"}</div>
+                    <div>SDK</div><div class="text-white">${data.sdk || "--"}</div>
+                    <div>الدولة</div><div class="text-white">${data.country || "--"}</div>
+                    <div>اللغة</div><div class="text-white">${data.language || "--"}</div>
+                    <div>البطارية</div><div class="text-white">${data.battery ?? '--'}%</div>
+                    <div>الشحن</div><div class="${data.charging ? 'text-green-400' : 'text-gray-400'}">${data.charging ? '🔌 يشحن الآن' : '🔋 غير موصول'}</div>
+                </div>
+            </div>
+            <div class="glass-card p-4 rounded-xl">
+                <h4 class="text-green-400 font-bold mb-3">📊 حالة المستخدم</h4>
+                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>الحالة</div><div class="${online ? 'text-green-400' : 'text-gray-400'}">${online ? "🟢 متصل الآن" : "⚫ غير متصل"}</div>
+                    <div>VIP</div><div class="${data.vip ? 'text-yellow-400' : 'text-gray-400'}">${data.vip ? "👑 مفعل" : "FREE"}</div>
+                    <div>الحظر</div><div class="${data.banned ? 'text-red-400' : 'text-green-400'}">${data.banned ? "🚫 نعم" : "✅ لا"}</div>
+                    <div>عدد مرات الدخول</div><div class="text-white">${data.login_count || 0}</div>
+                    <div>أول دخول</div><div class="text-white">${formatDate(data.first_login)}</div>
+                    <div>آخر اتصال</div><div class="text-white">${formatDate(data.last_online)}</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="handleAction('vip','${data.device_id}')" class="bg-yellow-500/10 text-yellow-400 py-2 rounded-lg font-bold">👑 VIP</button>
+                <button onclick="handleAction('ban','${data.device_id}')" class="bg-red-500/10 text-red-400 py-2 rounded-lg font-bold">🚫 حظر</button>
+                <button onclick="handleAction('delete','${data.device_id}')" class="col-span-2 bg-white/5 text-gray-300 py-2 rounded-lg font-bold">🗑 حذف نهائي</button>
+            </div>
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+async function handleAction(action, deviceId) {
+    if (action === "ban") { await api("ban_user", { device_id: deviceId, banned: true }); await addActivity("USER", "USER_BANNED", deviceId, "تم حظر المستخدم"); }
+    if (action === "vip") { await api("update_vip", { device_id: deviceId, vip: true }); await addActivity("VIP", "VIP_GRANTED", deviceId, "تم منح اشتراك VIP"); }
+    if (action === "delete") { await api("delete_user", { device_id: deviceId }); await addActivity("USER", "USER_DELETED", deviceId, "تم حذف المستخدم نهائياً"); }
+    closeDrawer();
+    refreshDashboard();
+}
+
+function updateMainCharts(users) {
+    const lineCtx = document.getElementById("statsChart")?.getContext("2d");
+    if (!lineCtx) return;
+    if (statsChart) statsChart.destroy();
+    statsChart = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+            datasets: [{ data: [users.length*0.4, users.length*0.6, users.length*0.5, users.length*0.8, users.length*0.7, users.length*0.9, users.length], borderColor: '#a855f7', borderWidth: 2, fill: false, tension: 0.4 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+}
+
+function showToast(text) {
+    const toast = document.getElementById("toast");
+    const toastText = document.getElementById("toastText");
+    if (!toast || !toastText) return;
+    toastText.textContent = text;
+    toast.classList.remove("translate-y-12", "opacity-0");
+    toast.classList.add("translate-y-0", "opacity-100");
+    setTimeout(() => { toast.classList.remove("translate-y-0", "opacity-100"); toast.classList.add("translate-y-12", "opacity-0"); }, 2500);
+}
+
+function afterLogin() {
+    if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "none";
+    if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "flex";
+    refreshDashboard();
+    
+    if (!liveClock) {
+        liveClock = setInterval(() => {
+            const liveTimeEl = document.getElementById("liveTime");
+            if (liveTimeEl) {
+                liveTimeEl.textContent = new Date().toLocaleTimeString("en-GB", { hour12: false });
+            }
+        }, 1000);
+    }
+}
+
+function formatDate(date) {
+    if (!date) return "--";
+    return new Date(date).toLocaleString("ar-DZ", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+}
+
+client.channel('kingdz-realtime-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { refreshDashboard(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { refreshDashboard(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => { loadActivityLogs(); })
+    .subscribe();
+
+document.getElementById("btnCopyAllKeys")?.addEventListener("click", async () => {
+    const checked = document.querySelectorAll(".key-checkbox:checked");
+    if (checked.length === 0) { showToast("حدد مفتاحًا واحدًا على الأقل"); return; }
+    const keys = [...checked].map(cb => cb.dataset.key);
+    await navigator.clipboard.writeText(keys.join("\n"));
+    showToast("تم نسخ " + keys.length + " مفتاح");
+});
+
+function initSelectAllButton() {
+    const btn = document.getElementById("btnSelectAll");
+    if (!btn) return;
+    btn.onclick = function () {
+        const checkboxes = document.querySelectorAll(".key-checkbox");
+        if (checkboxes.length === 0) return;
+        const checkedCount = [...checkboxes].filter(cb => cb.checked).length;
+        const selectAll = checkedCount !== checkboxes.length;
+        checkboxes.forEach(cb => cb.checked = selectAll);
+        btn.innerHTML = selectAll ? "❌ إلغاء التحديد" : "☑ تحديد الكل";
+    };
+}
+
+document.getElementById("btnDeleteSelected")?.addEventListener("click", async () => {
+    const checked = [...document.querySelectorAll(".key-checkbox:checked")];
+    if (checked.length === 0) { showToast("حدد مفتاحًا واحدًا على الأقل"); return; }
+    if (!confirm(`سيتم حذف ${checked.length} مفتاح، هل أنت متأكد؟`)) return;
+    const ids = checked.map(cb => Number(cb.dataset.id));
+    const res = await api("delete_keys_batch", { ids });
+    if (!res || res.error) { showToast("فشل الحذف"); return; }
+    await addActivity("KEY", "KEYS_DELETED", "", "تم حذف " + ids.length + " مفتاح");
+    showToast(`تم حذف ${ids.length} مفتاح`);
+    refreshDashboard();
+});
+
+async function loadActivityLogs() {
+    const container = document.getElementById("activityLogs");
+    if (!container) return;
+    const res = await api("get_logs");
+    const data = (res && (res.data || res)) || null;
+    if (!res || res.error) { container.innerHTML = `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`; return; }
+    if (!data || data.length === 0) { container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات نشاط</div>`; return; }
+    container.innerHTML = "";
+    data.forEach(log => {
+        let color = "text-purple-400"; let icon = "📋";
+        if (log.type === "USER") { color = "text-red-400"; icon = "👤"; }
+        if (log.type === "VIP") { color = "text-yellow-400"; icon = "👑"; }
+        if (log.type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }
+        let actionName = log.action;
+        switch (log.action) {
+            case "VIP_GRANTED": actionName = "منح اشتراك VIP"; break;
+            case "VIP_REVOKED": actionName = "سحب اشتراك VIP"; break;
+            case "USER_DELETED": actionName = "حذف مستخدم"; break;
+            case "USER_BANNED": actionName = "حظر مستخدم"; break;
+            case "USER_UNBANNED": actionName = "فك حظر مستخدم"; break;
+            case "KEY_CREATED": actionName = "إنشاء مفتاح"; break;
+            case "KEY_DELETED": actionName = "حذف مفتاح"; break;
+            case "KEYS_DELETED": actionName = "حذف عدة مفاتيح"; break;
+        }
+        container.innerHTML += `
+            <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">
+                <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${log.id}">
+                <div class="flex-1 flex justify-between items-start">
+                    <div class="text-left">
+                        <div class="${color} font-bold text-sm flex items-center gap-2"><span>${icon}</span><span>${actionName}</span></div>
+                        <div class="text-white text-sm mt-1">${log.details || "--"}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-400">🕒 ${formatDate(log.created_at)}</span>
+                        <button onclick="deleteActivityLog('${log.id}')" class="text-red-500 hover:text-red-400 transition text-lg" title="حذف السجل">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+async function deleteActivityLog(id) {
+    if (!confirm("حذف هذا السجل؟")) return;
+    const res = await api("delete_log", { id });
+    if (res && !res.error) { showToast("تم حذف السجل"); loadActivityLogs(); }
+}
+
+document.getElementById("btnRefreshActivity")?.addEventListener("click", () => { loadActivityLogs(); showToast("تم تحديث سجل النشاط"); });
+document.getElementById("btnSelectAllLogs")?.addEventListener("click", () => {
+    const checkboxes = document.querySelectorAll(".log-checkbox");
+    const allChecked = [...checkboxes].every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+});
+
+document.getElementById("btnDeleteSelectedLogs")?.addEventListener("click", async () => {
+    const checked = [...document.querySelectorAll(".log-checkbox:checked")];
+    if (checked.length === 0) { showToast("حدد سجلاً واحداً على الأقل"); return; }
+    if (!confirm(`سيتم حذف ${checked.length} سجل، هل أنت متأكد؟`)) return;
+    for (const cb of checked) await api("delete_log", { id: cb.dataset.id });
+    showToast("تم الحذف بنجاح");
+    loadActivityLogs();
+});
+
+loadActivityLogs();
+async function loadSettings() {
+    const res = await api("get_settings");
+    const data = (res && (res.data || res)) || null;
+    if (!res || res.error || !data) return;
+    document.getElementById("mod_enabled").checked = data.mod_enabled;
+    document.getElementById("vip_enabled").checked = data.vip_enabled;
+    document.getElementById("force_update").checked = data.force_update;
+    document.getElementById("latest_version").value = data.latest_version || "";
+    document.getElementById("message").value = data.message || "";
+    document.getElementById("maintenance_message").value = data.maintenance_message || "";
+    document.getElementById("update_url").value = data.update_url || "";
+}
+
+document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
+    const res = await api("update_settings", {
+        mod_enabled: document.getElementById("mod_enabled").checked,
+        vip_enabled: document.getElementById("vip_enabled").checked,
+        force_update: document.getElementById("force_update").checked,
+        latest_version: document.getElementById("latest_version").value,
+        message: document.getElementById("message").value,
+        maintenance_message: document.getElementById("maintenance_message").value,
+        update_url: document.getElementById("update_url").value
+    });
+    if(!res || res.error) showToast("فشل حفظ الإعدادات");
+    else showToast("تم حفظ الإعدادات بنجاح");
+});
+
+loadSettings();
+checkSession();
+
+async function loadNewVipList() {
+    const selectElement = document.getElementById("vipDeviceId");
+    if (!selectElement) return;
+
+    selectElement.innerHTML = '<option value="" disabled selected>اختر...</option>';
+
+    try {
+        const usersRes = await api("get_all_users");
+        const users = (usersRes && (usersRes.data || usersRes)) || [];
+
+        if (Array.isArray(users) && users.length > 0) {
+            users.forEach(user => {
+                const deviceId = user.device_id || user.id || user.device || user.uuid;
+                if (!deviceId) return;
+
+                const option = document.createElement("option");
+                option.value = deviceId;
+                const badge = user.vip ? "⭐" : "☆";
+                option.textContent = `${badge} ${deviceId}`;
+                selectElement.appendChild(option);
+            });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function loadNewBanList() {
+    const selectElement = document.getElementById("banDeviceId");
+    if (!selectElement) return;
+
+    selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز للحظر...</option>';
+
+    try {
+        const usersRes = await api("get_all_users");
+        const users = (usersRes && (usersRes.data || usersRes)) || [];
+
+        if (Array.isArray(users) && users.length > 0) {
+            users.forEach(user => {
+                const deviceId = user.device_id || user.id || user.device || user.uuid;
+                if (!deviceId) return;
+
+                const option = document.createElement("option");
+                option.value = deviceId;
+                const badge = user.vip ? "⭐" : "☆";
+                option.textContent = `${badge} ${deviceId}`;
+                selectElement.appendChild(option);
+            });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
