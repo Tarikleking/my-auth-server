@@ -249,7 +249,7 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات والأجهزة مع دعم التحديد والنسخ والحذف
+// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات والأجهزة
 async function loadStats(uData = null, kData = null) {
     let u = uData;
     let k = kData;
@@ -321,36 +321,51 @@ async function loadStats(uData = null, kData = null) {
     }
 }
 
-// 📌 دوال التحكم بالإيميلات المحددة (تحديد، نسخ، حذف)
-document.getElementById("btnSelectAllEmails")?.addEventListener("click", () => {
-    const checkboxes = document.querySelectorAll(".email-checkbox");
-    const allChecked = [...checkboxes].every(cb => cb.checked);
-    checkboxes.forEach(cb => cb.checked = !allChecked);
-});
-
-document.getElementById("btnCopySelectedEmails")?.addEventListener("click", async () => {
-    const checked = document.querySelectorAll(".email-checkbox:checked");
-    if (checked.length === 0) { showToast("حدد إيميل واحد على الأقل"); return; }
-    const emails = [...checked].map(cb => cb.dataset.email);
-    await navigator.clipboard.writeText(emails.join("\n"));
-    showToast("تم نسخ " + emails.length + " إيميل بنجاح");
-});
-
-document.getElementById("btnDeleteSelectedEmails")?.addEventListener("click", async () => {
-    const checked = [...document.querySelectorAll(".email-checkbox:checked")];
-    if (checked.length === 0) { showToast("حدد إيميل واحد على الأقل للحذف"); return; }
-    
-    if (!confirm(`هل أنت متأكد من حذف ${checked.length} إيميل مسجل؟`)) return;
-
-    for (const cb of checked) {
-        const id = cb.dataset.id;
-        if (id) {
-            await api("delete_registration", { id: Number(id) });
-        }
+// 📌 الحل الجذري والنهائي لتشغيل أزرار الإحصائيات (تحديد، نسخ، حذف) عن طريق Event Delegation
+document.addEventListener('click', async function(event) {
+    // 1. زر تحديد الكل
+    if (event.target && event.target.id === 'btnSelectAllEmails') {
+        const checkboxes = document.querySelectorAll(".email-checkbox");
+        if (checkboxes.length === 0) return;
+        const allChecked = [...checkboxes].every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
     }
-    
-    showToast("تم حذف الإيميلات المحددة بنجاح");
-    refreshDashboard();
+
+    // 2. زر نسخ المحدد
+    if (event.target && event.target.id === 'btnCopySelectedEmails') {
+        const checked = [...document.querySelectorAll(".email-checkbox:checked")];
+        if (checked.length === 0) { 
+            if(typeof showToast === 'function') showToast("حدد إيميل واحد على الأقل"); 
+            else alert("حدد إيميل واحد على الأقل"); 
+            return; 
+        }
+        const emails = checked.map(c => c.dataset.email).join("\n");
+        await navigator.clipboard.writeText(emails);
+        if(typeof showToast === 'function') showToast("تم نسخ " + checked.length + " إيميل بنجاح");
+        else alert("تم النسخ!");
+    }
+
+    // 3. زر حذف المحدد
+    if (event.target && event.target.id === 'btnDeleteSelectedEmails') {
+        const checked = [...document.querySelectorAll(".email-checkbox:checked")];
+        if (checked.length === 0) { 
+            if(typeof showToast === 'function') showToast("حدد إيميل واحد على الأقل للحذف"); 
+            else alert("حدد إيميل واحد على الأقل للحذف"); 
+            return; 
+        }
+        
+        if (!confirm("هل أنت متأكد من حذف " + checked.length + " إيميل مسجل؟")) return;
+
+        for (const cb of checked) {
+            const id = cb.dataset.id;
+            if (id) {
+                await api("delete_registration", { id: Number(id) });
+            }
+        }
+        
+        if(typeof showToast === 'function') showToast("تم حذف الإيميلات المحددة بنجاح");
+        refreshDashboard();
+    }
 });
 
 // 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي
