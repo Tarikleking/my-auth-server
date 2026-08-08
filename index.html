@@ -372,7 +372,7 @@
                 </div>
             </section>
 
-            <!-- 🎯 قسم الإحصائيات (أزرار النسخ والحذف والتحديد تعمل الآن) -->
+            <!-- 🎯 قسم الإحصائيات (الأزرار مفعلة بالكامل) -->
             <section id="stats-section" class="tab-content hidden">
                 <div class="mb-4">
                     <h2 class="text-sm font-black text-white">قائمة الإيميلات ومفاتيح التفعيل</h2>
@@ -380,10 +380,10 @@
                 </div>
 
                 <div class="glass-card rounded-xl overflow-hidden border border-white/10 p-4">
-                    <div class="p-3 border-b border-white/[0.015] mb-3 flex gap-2">
-                        <button id="btnSelectAllStats" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition font-bold">☑ تحديد الكل</button>
-                        <button id="btnCopySelectedStats" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] transition font-bold">📋 نسخ المحدد</button>
-                        <button id="btnDeleteSelectedStats" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] transition font-bold">🗑 حذف المحدد</button>
+                    <div class="p-3 border-b border-white/[0.015] mb-3 flex gap-2 flex-wrap">
+                        <button id="btnSelectAllStats" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition font-bold shadow-md shadow-purple-600/30 cursor-pointer">☑ تحديد الكل</button>
+                        <button id="btnCopySelectedStats" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] transition font-bold shadow-md shadow-blue-600/30 cursor-pointer">📋 نسخ المحدد</button>
+                        <button id="btnDeleteSelectedStats" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] transition font-bold shadow-md shadow-red-600/30 cursor-pointer">🗑 حذف المحدد</button>
                     </div>
                     <div class="overflow-x-auto custom-scroll">
                         <table class="w-full text-right border-collapse text-[11px]">
@@ -527,7 +527,7 @@
     <script>
         lucide.createIcons();
 
-        // تفعيل تفاعل أزرار قسم الإحصائيات (تحديد الكل، نسخ المحدد، حذف المحدد)
+        // تفعيل أزرار قسم الإحصائيات (تحديد الكل، نسخ المحدد، وحذف المحدد) بشكل مباشر ومضمون
         document.addEventListener("DOMContentLoaded", () => {
             const selectAllBtn = document.getElementById("btnSelectAllStats");
             const copyBtn = document.getElementById("btnCopySelectedStats");
@@ -555,7 +555,9 @@
                         if (emailCell) emails.push(emailCell.textContent.trim());
                     });
                     navigator.clipboard.writeText(emails.join("\n")).then(() => {
-                        alert("تم نسخ الإيميلات المحددة بنجاح!");
+                        alert("تم نسخ " + emails.length + " إيميل بنجاح إلى الحافظة!");
+                    }).catch(err => {
+                        console.error("خطأ أثناء النسخ:", err);
                     });
                 });
             }
@@ -564,7 +566,7 @@
                 deleteBtn.addEventListener("click", () => {
                     const checkedRows = document.querySelectorAll("#statsDataTable .stat-checkbox:checked");
                     if (checkedRows.length === 0) {
-                        alert("الرجاء تحديد إيميل واحد على الأقل للحذف!");
+                        alert("الرجاء تحديد عنصر واحد على الأقل للحذف!");
                         return;
                     }
                     if (confirm("هل أنت متأكد من حذف السطور المحددة؟")) {
