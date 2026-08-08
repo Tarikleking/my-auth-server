@@ -372,7 +372,7 @@
                 </div>
             </section>
 
-            <!-- 🎯 قسم الإحصائيات (تم إضافة خاصية التحديد وتحديد الكل داخله) -->
+            <!-- 🎯 قسم الإحصائيات (أزرار النسخ والحذف والتحديد تعمل الآن) -->
             <section id="stats-section" class="tab-content hidden">
                 <div class="mb-4">
                     <h2 class="text-sm font-black text-white">قائمة الإيميلات ومفاتيح التفعيل</h2>
@@ -381,7 +381,9 @@
 
                 <div class="glass-card rounded-xl overflow-hidden border border-white/10 p-4">
                     <div class="p-3 border-b border-white/[0.015] mb-3 flex gap-2">
-                        <button id="btnSelectAllStats" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition">☑ تحديد الكل</button>
+                        <button id="btnSelectAllStats" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition font-bold">☑ تحديد الكل</button>
+                        <button id="btnCopySelectedStats" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] transition font-bold">📋 نسخ المحدد</button>
+                        <button id="btnDeleteSelectedStats" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] transition font-bold">🗑 حذف المحدد</button>
                     </div>
                     <div class="overflow-x-auto custom-scroll">
                         <table class="w-full text-right border-collapse text-[11px]">
@@ -524,6 +526,56 @@
     <script src="script.js"></script>
     <script>
         lucide.createIcons();
+
+        // تفعيل تفاعل أزرار قسم الإحصائيات (تحديد الكل، نسخ المحدد، حذف المحدد)
+        document.addEventListener("DOMContentLoaded", () => {
+            const selectAllBtn = document.getElementById("btnSelectAllStats");
+            const copyBtn = document.getElementById("btnCopySelectedStats");
+            const deleteBtn = document.getElementById("btnDeleteSelectedStats");
+
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener("click", () => {
+                    const checkboxes = document.querySelectorAll("#statsDataTable .stat-checkbox");
+                    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                    checkboxes.forEach(cb => cb.checked = !allChecked);
+                });
+            }
+
+            if (copyBtn) {
+                copyBtn.addEventListener("click", () => {
+                    const checkedRows = document.querySelectorAll("#statsDataTable .stat-checkbox:checked");
+                    if (checkedRows.length === 0) {
+                        alert("الرجاء تحديد إيميل واحد على الأقل للنسخ!");
+                        return;
+                    }
+                    let emails = [];
+                    checkedRows.forEach(cb => {
+                        const row = cb.closest("tr");
+                        const emailCell = row.querySelector("td:nth-child(2)");
+                        if (emailCell) emails.push(emailCell.textContent.trim());
+                    });
+                    navigator.clipboard.writeText(emails.join("\n")).then(() => {
+                        alert("تم نسخ الإيميلات المحددة بنجاح!");
+                    });
+                });
+            }
+
+            if (deleteBtn) {
+                deleteBtn.addEventListener("click", () => {
+                    const checkedRows = document.querySelectorAll("#statsDataTable .stat-checkbox:checked");
+                    if (checkedRows.length === 0) {
+                        alert("الرجاء تحديد إيميل واحد على الأقل للحذف!");
+                        return;
+                    }
+                    if (confirm("هل أنت متأكد من حذف السطور المحددة؟")) {
+                        checkedRows.forEach(cb => {
+                            cb.closest("tr").remove();
+                        });
+                        alert("تم حذف العناصر المحددة بنجاح.");
+                    }
+                });
+            }
+        });
 
         async function loadVipDevicesDropdown() {
             const selectElement = document.getElementById("vipDeviceId");
