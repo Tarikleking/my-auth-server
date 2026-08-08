@@ -3,627 +3,468 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KingDZ Admin Panel | لوحة التحكم الملكية المدمجة</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>KING-DZ Admin Panel</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap');
+        body { font-family: 'Tajawal', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
+        .glass-card { background: rgba(17, 24, 38, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .badge-vip-gold { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
+        .badge-monthly { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; }
+    </style>
 </head>
-<body class="bg-[#0b0e14] text-gray-200 overflow-x-hidden antialiased text-xs selection:bg-purple-500/30">
+<body class="min-h-screen flex flex-col">
 
-    <div id="loading" class="fixed inset-0 z-[100] bg-[#0b0e14] flex flex-col items-center justify-center">
-        <div class="relative w-16 h-16">
-            <div class="absolute inset-0 border-2 border-purple-500/10 border-t-purple-500 rounded-full animate-spin"></div>
-            <i data-lucide="crown" class="absolute inset-0 m-auto text-yellow-500 w-6 h-6 drop-shadow-[0_0_10px_rgba(234,179,8,0.4)]"></i>
-        </div>
-        <h2 class="mt-4 text-xs font-black tracking-[0.2em] text-purple-500 animate-pulse">KINGDZ SYSTEM</h2>
-    </div>
-
-    <div id="loginPage" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0e14]" style="display: none;">
-        <div class="glass-card w-full max-w-sm p-8 rounded-[1.5rem] border border-white/[0.02] text-center shadow-2xl">
-            <div class="mb-5 inline-flex p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-                <i data-lucide="crown" class="w-8 h-8 text-yellow-500 drop-shadow-[0_0_5px_rgba(234,179,8,0.3)]"></i>
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginPage" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0f19]" style="display: none;">
+        <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-black text-white tracking-wider">KING-DZ <span class="text-purple-500">ADMIN</span></h1>
+                <p class="text-gray-400 text-xs mt-2">تسجيل الدخول إلى لوحة التحكم الآمنة</p>
             </div>
-            <h1 class="text-xl font-black mb-1 tracking-tight">تسجيل الدخول</h1>
-            <p class="text-gray-500 mb-6 text-[11px]">نظام إدارة KingDZ الإحترافي</p>
-            
-            <div class="space-y-3 text-right">
-                <div class="relative group">
-                    <i data-lucide="mail" class="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-purple-500 transition-colors"></i>
-                    <input type="email" id="email" class="w-full bg-white/[0.01] border border-white/5 rounded-xl py-2.5 pr-10 pl-3 text-xs focus:border-purple-500/40 outline-none transition-all placeholder:text-gray-600" placeholder="البريد الإلكتروني">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">البريد الإلكتروني</label>
+                    <input type="email" id="email" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="admin@kingdz.com">
                 </div>
-                <div class="relative group">
-                    <i data-lucide="lock" class="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-purple-500 transition-colors"></i>
-                    <input type="password" id="password" class="w-full bg-white/[0.01] border border-white/5 rounded-xl py-2.5 pr-10 pl-3 text-xs focus:border-purple-500/40 outline-none transition-all placeholder:text-gray-600" placeholder="كلمة المرور">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">كلمة المرور</label>
+                    <input type="password" id="password" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="••••••••">
                 </div>
-                <button id="loginBtn" class="w-full bg-purple-600 hover:bg-purple-500 py-2.5 rounded-xl font-bold text-white text-xs transition-all shadow-md shadow-purple-500/10 active:scale-[0.99] mt-1">دخول النظام</button>
-                <p id="loginError" class="text-red-400 text-[10px] h-4 font-semibold text-center mt-1"></p>
+                <div id="loginError" class="text-red-400 text-xs text-center font-medium"></div>
+                <button id="loginBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">دخول</button>
             </div>
         </div>
     </div>
 
-    <div id="dashboard" class="flex min-h-screen relative" style="display:none;">
+    <!-- شاشة التحميل -->
+    <div id="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0f19]">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+    </div>
+
+    <!-- لوحة التحكم الرئيسية -->
+    <div id="dashboard" class="flex h-screen overflow-hidden" style="display: none;">
         
-        <aside class="sidebar fixed right-0 top-0 h-screen w-60 bg-[#0b0e14] border-l border-white/[0.02] flex flex-col z-40">
-            <div class="p-5 flex items-center gap-2.5">
-                <div class="p-1.5 bg-purple-600 rounded-lg shadow-md shadow-purple-600/10">
-                    <i data-lucide="crown" class="w-4 h-4 text-white"></i>
+        <!-- القائمة الجانبية -->
+        <aside class="w-64 glass-card border-l border-white/5 flex flex-col justify-between hidden md:flex">
+            <div>
+                <div class="p-6 border-b border-white/5 flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-purple-600/20 flex items-center justify-center text-purple-400 font-black">👑</div>
+                    <div>
+                        <h2 class="text-white font-bold text-sm">KING-DZ</h2>
+                        <span class="text-[10px] text-green-400 font-medium">● متصل بالسيرفر</span>
+                    </div>
                 </div>
-                <div class="text-right">
-                    <h1 class="text-lg font-black tracking-tight leading-none text-white">KINGDZ</h1>
-                    <p class="text-[9px] text-purple-400 font-bold uppercase tracking-wider mt-0.5">لوحة التحكم</p>
-                </div>
+                <nav class="p-4 space-y-1">
+                    <button data-target="home-section" class="nav-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> الرئيسية
+                    </button>
+                    <button data-target="users-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="users" class="w-4 h-4"></i> المستخدمين
+                    </button>
+                    <button data-target="keys-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="key" class="w-4 h-4"></i> مفاتيح التفعيل
+                    </button>
+                    <button data-target="stats-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> الإحصائيات
+                    </button>
+                    <button data-target="ban-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="shield-alert" class="w-4 h-4"></i> الحظر والحماية
+                    </button>
+                    <button data-target="logs-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> سجل النشاط
+                    </button>
+                    <button data-target="settings-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="settings" class="w-4 h-4"></i> الإعدادات
+                    </button>
+                </nav>
             </div>
-
-            <nav class="flex-1 px-2.5 space-y-0.5 overflow-y-auto custom-scroll">
-                <div class="text-[9px] font-bold text-gray-600 px-3 py-2 uppercase tracking-wider">القائمة الرئيسية</div>
-                <div data-target="home-section" class="nav-item active">
-                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-                    <span>لوحة التحكم</span>
-                </div>
-                <div data-target="users-section" class="nav-item">
-                    <i data-lucide="users" class="w-4 h-4"></i>
-                    <span>المستخدمين</span>
-                </div>
-                <div data-target="keys-section" class="nav-item">
-                    <i data-lucide="key-round" class="w-4 h-4"></i>
-                    <span>مفاتيح التفعيل</span>
-                </div>
-                <div data-target="stats-section" class="nav-item">
-                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-                    <span>الإحصائيات</span>
-                </div>
-                <div data-target="activity-section" class="nav-item">
-                    <i data-lucide="history" class="w-4 h-4"></i>
-                    <span>سجلات النشاط</span>
-                </div>
-
-                <div class="text-[9px] font-bold text-gray-600 px-3 py-3 uppercase tracking-wider">النظام والإعدادات</div>
-                <div data-target="settings-section" class="nav-item">
-                    <i data-lucide="settings-2" class="w-4 h-4"></i>
-                    <span>الإعدادات العامة</span>
-                </div>
-                <div data-target="vip-section" class="nav-item">
-                    <i data-lucide="gem" class="w-4 h-4"></i>
-                    <span>إدارة VIP</span>
-                </div>
-                <div data-target="ban-section" class="nav-item">
-                    <i data-lucide="ban" class="w-4 h-4"></i>
-                    <span>إدارة الحظر</span>
-                </div>
-            </nav>
-
-            <div class="p-3 border-t border-white/[0.01]">
-                <div id="logout" class="flex items-center gap-2.5 p-2.5 rounded-xl text-red-400 hover:bg-red-500/5 cursor-pointer transition-all font-bold text-[11px]">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
-                    <span>تسجيل الخروج</span>
-                </div>
+            <div class="p-4 border-t border-white/5">
+                <button id="logout" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition">
+                    <i data-lucide="log-out" class="w-4 h-4"></i> تسجيل الخروج
+                </button>
             </div>
         </aside>
 
-        <main class="flex-1 mr-60 p-5 pb-12">
+        <!-- المحتوى الرئيسي -->
+        <main class="flex-1 flex flex-col overflow-y-auto">
             
-            <header class="flex items-center justify-between mb-6">
+            <!-- الهيدر العلوي -->
+            <header class="glass-card border-b border-white/5 px-8 py-4 flex justify-between items-center sticky top-0 z-30">
                 <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2.5 glass-card px-3 py-1.5 rounded-xl border border-white/[0.02]">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" class="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                        <div class="text-right">
-                            <h4 class="text-[11px] font-bold text-gray-200 leading-tight" id="adminName">المدير العام</h4>
-                            <div class="flex items-center gap-1 mt-0.5">
-                                <span class="w-1 h-1 bg-green-500 rounded-full shadow-[0_0_6px_#22c55e]"></span>
-                                <span class="text-[9px] font-semibold text-gray-500">متصل الآن</span>
-                            </div>
-                        </div>
-                    </div>
+                    <h3 id="sectionTitle" class="text-white font-bold text-lg">لوحة التحكم</h3>
                 </div>
-
-                <div class="flex-1 max-w-md mx-6">
-                    <div class="relative group">
-                        <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-purple-500 transition-colors"></i>
-                        <input type="text" class="w-full bg-[#111622] border border-white/[0.01] rounded-xl py-2 pr-9 pl-3 outline-none focus:border-purple-500/20 transition-all text-[11px] text-gray-300 placeholder:text-gray-600" placeholder="ابحث عن مستخدم أو مفتاح...">
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-green-400 bg-green-500/5 border border-green-500/10 px-3 py-1.5 rounded-lg">
-                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_4px_#22c55e]"></span>
-                        <span>حالة النظام : مثالية</span>
-                    </div>
+                <div class="flex items-center gap-4">
+                    <div class="bg-[#161b26] border border-white/10 px-3 py-1.5 rounded-xl text-xs text-purple-400 font-mono font-bold" id="liveTime">00:00:00</div>
                 </div>
             </header>
 
-            <section id="home-section" class="tab-content space-y-6">
-                <div class="flex justify-between items-end mb-2">
-                    <div class="text-right">
-                        <h1 class="text-xl font-black tracking-tight mb-1 flex items-center gap-1.5 text-white">أهلاً بك، سيد طارق 👑</h1>
-                        <p class="text-gray-500 text-[11px] font-medium">مراقبة النظام والإحصائيات بشكل مباشر.</p>
-                    </div>
-                    <div class="glass-card px-3.5 py-1.5 rounded-xl border border-white/[0.02] flex items-center gap-3 shadow-sm">
-                        <div class="text-right">
-                            <p class="text-[8px] text-gray-500 font-bold mb-0.5">التوقيت الحالي للمنصة</p>
-                            <h3 id="liveTime" class="text-lg font-black tracking-widest text-yellow-400 font-mono"></h3>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-[#0b0e14] border border-white/5 rounded-2xl p-6 shadow-2xl">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                            <span class="w-1.5 h-6 bg-purple-500 rounded-full"></span> 
-                            إحصائيات النظام اللحظية
-                        </h2>
-                        <span class="text-[10px] text-gray-500 bg-white/5 px-3 py-1 rounded-full">تحديث تلقائي مفعل</span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="space-y-4">
-                            <h3 class="text-xs font-bold text-purple-400 uppercase tracking-widest">إدارة المستخدمين</h3>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all">
-                                    <span class="text-sm text-gray-300">إجمالي المستخدمين</span>
-                                    <span id="usersCount" class="font-mono text-white font-bold">0</span>
-                                </div>
-                                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all">
-                                    <span class="text-sm text-gray-300">المتصلون الآن</span>
-                                    <span id="onlineUsers" class="font-mono text-green-400 font-bold">0</span>
-                                </div>
+            <div class="p-8 space-y-6 max-w-7xl mx-auto w-full flex-1">
+                
+                <!-- قسم الرئيسية -->
+                <section id="home-section" class="tab-content space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <div class="flex justify-between items-start">
+                                <div><p class="text-gray-400 text-xs">إجمالي الأجهزة</p><h4 id="usersCount" class="text-2xl font-black text-white mt-1">0</h4></div>
+                                <div class="p-2.5 rounded-xl bg-purple-500/10 text-purple-400"><i data-lucide="users" class="w-5 h-5"></i></div>
                             </div>
                         </div>
-
-                        <div class="space-y-4">
-                            <h3 class="text-xs font-bold text-yellow-400 uppercase tracking-widest">الاشتراكات والأمان</h3>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all">
-                                    <span class="text-sm text-gray-300">مشتركون VIP</span>
-                                    <span id="vipCount" class="font-mono text-yellow-400 font-bold">0</span>
-                                </div>
-                                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all">
-                                    <span class="text-sm text-gray-300">اشتراكات نشطة</span>
-                                    <span id="activeVipCount" class="font-mono text-amber-400 font-bold">0</span>
-                                </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <div class="flex justify-between items-start">
+                                <div><p class="text-gray-400 text-xs">المتصلون الآن</p><h4 id="onlineUsers" class="text-2xl font-black text-green-400 mt-1">0</h4></div>
+                                <div class="p-2.5 rounded-xl bg-green-500/10 text-green-400"><i data-lucide="wifi" class="w-5 h-5"></i></div>
                             </div>
                         </div>
-
-                        <div class="space-y-4">
-                            <h3 class="text-xs font-bold text-cyan-400 uppercase tracking-widest">العمليات والبيانات</h3>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all">
-                                    <span class="text-sm text-gray-300">المفاتيح الفعالة</span>
-                                    <span id="keysCount" class="font-mono text-cyan-400 font-bold">0</span>
-                                </div>
-                                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all">
-                                    <span class="text-sm text-gray-300">الأجهزة المسجلة</span>
-                                    <span id="totalDeviceCount" class="font-mono text-purple-400 font-bold">0</span>
-                                </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <div class="flex justify-between items-start">
+                                <div><p class="text-gray-400 text-xs">مشتركو VIP</p><h4 id="vipCount" class="text-2xl font-black text-yellow-400 mt-1">0</h4></div>
+                                <div class="p-2.5 rounded-xl bg-yellow-500/10 text-yellow-400"><i data-lucide="crown" class="w-5 h-5"></i></div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <div class="flex justify-between items-start">
+                                <div><p class="text-gray-400 text-xs">المفاتيح المتاحة</p><h4 id="keysCount" class="text-2xl font-black text-cyan-400 mt-1">0</h4></div>
+                                <div class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400"><i data-lucide="key" class="w-5 h-5"></i></div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="my-6 border-t border-white/5"></div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="flex justify-between items-center px-4 py-3 bg-gradient-to-r from-emerald-900/20 to-transparent border border-emerald-500/10 rounded-lg">
-                            <span class="text-sm text-gray-300">حالة أكواد التفعيل (مستعملة / كلي)</span>
-                            <span id="statsActivationKeysInfo" class="font-mono text-emerald-400 font-bold tracking-widest">0 / 0</span>
+                    <!-- الرسم البياني والنشاطات -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="glass-card p-6 rounded-2xl lg:col-span-2 border border-white/5">
+                            <h4 class="text-white font-bold mb-4 text-sm">نشاط الاتصال الأسبوعي</h4>
+                            <div class="h-64"><canvas id="statsChart"></canvas></div>
                         </div>
-                        <div class="flex justify-between items-center px-4 py-3 bg-gradient-to-r from-indigo-900/20 to-transparent border border-indigo-500/10 rounded-lg">
-                            <span class="text-sm text-gray-300">إجمالي المفاتيح في السيرفر</span>
-                            <span id="statsKeys" class="font-mono text-indigo-400 font-bold tracking-widest">0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-12 gap-3.5 mb-6">
-                    <div class="col-span-3 glass-card p-4 rounded-[1.5rem] flex flex-col justify-between" style="display:none;"></div>
-                    <div class="col-span-12 glass-card p-4 rounded-[1.5rem] h-64">
-                        <canvas id="statsChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="glass-card rounded-[1.5rem] overflow-hidden">
-                    <div class="p-4 border-b border-white/[0.015] bg-white/[0.002]">
-                        <h3 class="text-[11px] font-bold text-gray-200">آخر المستخدمين النشطين</h3>
-                    </div>
-                    <div class="overflow-x-auto custom-scroll">
-                        <table class="w-full text-right border-collapse text-[11px]">
-                            <thead>
-                                <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
-                                    <th class="p-2.5 pr-4">المستخدم</th>
-                                    <th class="p-2.5">الدولة</th>
-                                    <th class="p-2.5">الجهاز</th>
-                                    <th class="p-2.5">نوع الاشتراك</th>
-                                    <th class="p-2.5">الحالة</th>
-                                    <th class="p-2.5 text-center pl-4">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTable" class="divide-y divide-white/[0.01]"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <section id="keys-section" class="tab-content hidden">
-                <div class="mb-4">
-                    <h2 class="text-sm font-black text-white">إدارة مفاتيح التفعيل</h2>
-                    <p class="text-gray-500 text-[10px]">توليد ومراقبة رموز التفعيل الحية بالسيرفر.</p>
-                </div>
-                <div class="glass-card p-4 rounded-xl mb-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[10px] text-purple-300 font-bold mb-2">🛡️ نوع الاشتراك</label>
-                            <select id="keyType" class="bg-[#111622] border border-white/10 text-gray-300 text-[11px] rounded-lg p-2.5 w-full focus:outline-none focus:border-purple-500">
-                                <option value="1 دقيقة">تجريبي (1 دقيقة)</option>
-                                <option value="1 ساعة">ساعة واحدة (1 ساعة)</option>
-                                <option value="1 يوم">يومي (1 يوم)</option>
-                                <option value="1 أسبوع">أسبوعي (1 أسبوع)</option>
-                                <option value="1 شهر">شهري (1 شهر)</option>
-                                <option value="1 سنة">سنوي (1 سنة)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] text-purple-300 font-bold mb-2">⏳ مدة الاشتراك</label>
-                            <input type="number" id="keyDuration" value="30" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] text-purple-300 font-bold mb-2">📦 عدد المفاتيح</label>
-                            <input type="number" id="keyAmount" value="1" min="1" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none">
-                        </div>
-                        <button id="btnGenerateKey" class="col-span-2 h-12 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-black text-sm hover:scale-[1.02] transition-all shadow-lg shadow-purple-600/30">🚀 توليد المفاتيح</button>
-                    </div>
-                </div>
-                <div class="glass-card rounded-xl overflow-hidden">
-                    <div class="p-3 border-b border-white/[0.015]">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="font-bold text-white">المفاتيح المنشأة</span>
-                            <span id="keysTotalBadge" class="text-purple-400">0 مفتاح</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <button id="btnSelectAll" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition">☑ تحديد الكل</button>
-                            <button id="btnCopyAllKeys" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition">📋 نسخ الكل</button>
-                            <button id="btnDeleteSelected" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] transition">🗑 حذف المحدد</button>
-                        </div>
-                    </div>
-                    <table class="w-full text-right text-[11px]">
-                        <thead>
-                            <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
-                                <th class="p-2 text-center">تحديد</th>
-                                <th class="p-2 pr-4">المفتاح</th>
-                                <th class="p-2">الرتبة</th>
-                                <th class="p-2">المدة</th>
-                                <th class="p-2">الحالة</th>
-                                <th class="p-2 text-center pl-4">إجراء</th>
-                            </tr>
-                        </thead>
-                        <tbody id="keysListTable" class="divide-y divide-white/[0.01]"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section id="ban-section" class="tab-content hidden">
-                <div class="mb-4"><h2 class="text-sm font-black text-white">جدار حظر الأجهزة والـ HWID</h2></div>
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-4 glass-card p-4 rounded-xl h-fit">
-                        <div class="space-y-3">
+                        <div class="glass-card p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
                             <div>
-                                <label class="block text-[9px] text-gray-500 font-bold mb-1">معرّف الجهاز (Device ID)</label>
-                                <select id="banDeviceId" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-2.5 px-2 text-[11px] text-gray-300 outline-none max-h-48 overflow-y-auto focus:border-purple-500">
-                                    <option value="" disabled selected>اختر الجهاز للحظر...</option>
+                                <h4 class="text-white font-bold mb-4 text-sm">إحصائيات الأجهزة</h4>
+                                <div class="flex justify-center items-center my-4 h-40"><canvas id="deviceChart"></canvas></div>
+                                <div id="deviceStatsList" class="space-y-2 mt-4 max-h-32 overflow-y-auto"></div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-white/5 text-center text-xs text-gray-400">إجمالي الأجهزة المحللة: <span id="totalDeviceCount" class="text-white font-bold">0</span></div>
+                        </div>
+                    </div>
+
+                    <!-- جدول آخر الأجهزة المتصلة -->
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+                            <h4 class="text-white font-bold text-sm">آخر الأجهزة المسجلة</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                                    <tr>
+                                        <th class="p-3 pr-4">معرف الجهاز</th>
+                                        <th class="p-3">الدولة</th>
+                                        <th class="p-3">الموديل</th>
+                                        <th class="p-3">النوع</th>
+                                        <th class="p-3">الحالة</th>
+                                        <th class="p-3 text-center pl-4">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTable" class="divide-y divide-white/5"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم المستخدمين -->
+                <section id="users-section" class="tab-content hidden space-y-6">
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-5 border-b border-white/5"><h4 class="text-white font-bold text-sm">إدارة كافة المستخدمين</h4></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                                    <tr>
+                                        <th class="p-3">الدولة</th>
+                                        <th class="p-3">الجهاز</th>
+                                        <th class="p-3">الحالة</th>
+                                        <th class="p-3">النوع</th>
+                                        <th class="p-3">المدة</th>
+                                        <th class="p-3">المتبقي</th>
+                                        <th class="p-3">انتهاء الاشتراك</th>
+                                        <th class="p-3">الحماية</th>
+                                        <th class="p-3">إدارة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allUsersTable" class="divide-y divide-white/5"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم مفاتيح التفعيل -->
+                <section id="keys-section" class="tab-content hidden space-y-6">
+                    <div class="glass-card p-6 rounded-2xl border border-white/5">
+                        <h4 class="text-white font-bold mb-4 text-sm">توليد مفاتيح جديدة</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">نوع الاشتراك</label>
+                                <select id="keyType" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs">
+                                    <option>1 دقيقة</option>
+                                    <option>1 ساعة</option>
+                                    <option>1 يوم</option>
+                                    <option>1 أسبوع</option>
+                                    <option selected>1 شهر</option>
+                                    <option>1 سنة</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[9px] text-gray-500 font-bold mb-1">سبب الحظر</label>
-                                <input type="text" id="banReason" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-1.5 px-2 text-[11px] text-gray-300 outline-none" placeholder="مخالفة السياسات...">
+                                <label class="block text-xs text-gray-400 mb-1">العدد</label>
+                                <input type="number" id="keyAmount" value="1" min="1" max="50" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2 text-white text-xs">
                             </div>
-                            <button id="btnApplyBan" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] py-1.5 rounded-lg transition-all">تطبيق الحظر</button>
+                            <div class="flex items-end">
+                                <button id="btnGenerateKey" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs transition">توليد المفاتيح</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-span-8 glass-card rounded-xl overflow-hidden">
-                        <table class="w-full text-right text-[11px]">
-                            <thead>
-                                <tr class="text-[9px] text-gray-500 border-b border-white/[0.015]">
-                                    <th class="p-2 pr-4">الجهاز المحظور</th>
-                                    <th class="p-2">السبب</th>
-                                    <th class="p-2 text-center pl-4">الإجراء</th>
-                                </tr>
-                            </thead>
-                            <tbody id="bannedDevicesTable" class="divide-y divide-white/[0.01]"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
 
-            <section id="vip-section" class="tab-content hidden">
-                <div class="mb-4"><h2 class="text-sm font-black text-white">إدارة اشتراكات ورتب VIP</h2></div>
-                <div class="glass-card p-4 rounded-xl max-w-md">
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-[9px] text-gray-500 font-bold mb-1">اختر الجهاز أو المستخدم المسجل</label>
-                            <select id="vipDeviceId" class="w-full bg-[#0b0e14] border border-white/5 rounded-lg py-2.5 px-2 text-[11px] text-gray-300 outline-none max-h-48 overflow-y-auto focus:border-purple-500">
-                                <option value="" disabled selected>اختر الجهاز من القائمة...</option>
-                            </select>
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+                            <h4 class="text-white font-bold text-sm">قائمة المفاتيح</h4>
+                            <div class="flex gap-2">
+                                <button id="btnSelectAll" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-lg text-xs">☑ تحديد الكل</button>
+                                <button id="btnCopyAllKeys" class="bg-purple-600/20 text-purple-400 px-3 py-1.5 rounded-lg text-xs">📋 نسخ المحدد</button>
+                                <button id="btnDeleteSelected" class="bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg text-xs">🗑 حذف المحدد</button>
+                            </div>
                         </div>
-                        <div class="flex gap-2">
-                            <button id="btnGrantVip" class="flex-1 bg-yellow-500 text-black font-bold text-[11px] py-1.5 rounded-lg transition-all">ترقية لحساب VIP ✨</button>
-                            <button id="btnRevokeVip" class="flex-1 bg-white/5 text-red-400 font-bold text-[11px] py-1.5 rounded-lg transition-all border border-white/5">سحب الرتبة</button>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                                    <tr>
+                                        <th class="p-2 text-center w-10">تحديد</th>
+                                        <th class="p-2 pr-4">المفتاح</th>
+                                        <th class="p-2">النوع</th>
+                                        <th class="p-2">المدة</th>
+                                        <th class="p-2">الحالة</th>
+                                        <th class="p-2 text-center pl-4">حذف</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="keysListTable" class="divide-y divide-white/5"></tbody>
+                            </table>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <section id="users-section" class="tab-content hidden">
-                <div class="custom-table-container">
-                    <table class="custom-table">
-                        <thead>
-                            <tr>
-                                <th>الدولة</th>
-                                <th>نوع الجهاز</th>
-                                <th>حالة العميل</th>
-                                <th>نوع الاشتراك</th>
-                                <th>مدة الاشتراك</th>
-                                <th>تاريخ الانتهاء</th>
-                                <th>فحص الغش</th>
-                                <th>إجراء</th>
-                            </tr>
-                        </thead>
-                        <tbody id="allUsersTable"></tbody>
-                    </table>
-                </div>
-            </section>
+                <!-- قسم الإحصائيات -->
+                <section id="stats-section" class="tab-content hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">إجمالي المستخدمين المسجلين</p>
+                            <h4 id="statsUsers" class="text-2xl font-black text-white mt-1">0</h4>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">الأجهزة المتصلة حالياً</p>
+                            <h4 id="statsOnline" class="text-2xl font-black text-green-400 mt-1">0</h4>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">إجمالي اشتراكات VIP</p>
+                            <h4 id="statsVip" class="text-2xl font-black text-yellow-400 mt-1">0</h4>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">الحسابات المحظورة</p>
+                            <h4 id="statsBanned" class="text-2xl font-black text-red-400 mt-1">0</h4>
+                        </div>
+                    </div>
 
-            <!-- 🎯 قسم الإحصائيات (الأزرار مفعلة بالكامل) -->
-            <section id="stats-section" class="tab-content hidden">
-                <div class="mb-4">
-                    <h2 class="text-sm font-black text-white">قائمة الإيميلات ومفاتيح التفعيل</h2>
-                    <p class="text-gray-500 text-[10px]">متابعة جميع الإيميلات (الجديدة والقديمة)، معرف الجهاز، وأكواد التفعيل الخاصة بكل مستخدم.</p>
-                </div>
+                    <!-- إحصائيات إضافية متقدمة -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">إجمالي المفاتيح في النظام</p>
+                            <h4 id="statsKeys" class="text-xl font-bold text-cyan-400 mt-1">0</h4>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">المفاتيح الجديدة (غير المستعملة)</p>
+                            <h4 id="statsKeysNew" class="text-xl font-bold text-green-400 mt-1">0</h4>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">المفاتيح المستعملة</p>
+                            <h4 id="statsKeysUsed" class="text-xl font-bold text-yellow-400 mt-1">0</h4>
+                        </div>
+                        <div class="glass-card p-5 rounded-2xl border border-white/5">
+                            <p class="text-gray-400 text-xs">اشتراكات VIP النشطة حالياً</p>
+                            <h4 id="statsVipActive" class="text-xl font-bold text-purple-400 mt-1">0</h4>
+                        </div>
+                    </div>
 
-                <div class="glass-card rounded-xl overflow-hidden border border-white/10 p-4">
-                    <div class="p-3 border-b border-white/[0.015] mb-3 flex gap-2 flex-wrap">
-                        <button id="btnSelectAllStats" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition font-bold shadow-md shadow-purple-600/30 cursor-pointer">☑ تحديد الكل</button>
-                        <button id="btnCopySelectedStats" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] transition font-bold shadow-md shadow-blue-600/30 cursor-pointer">📋 نسخ المحدد</button>
-                        <button id="btnDeleteSelectedStats" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] transition font-bold shadow-md shadow-red-600/30 cursor-pointer">🗑 حذف المحدد</button>
-                    </div>
-                    <div class="overflow-x-auto custom-scroll">
-                        <table class="w-full text-right border-collapse text-[11px]">
-                            <thead>
-                                <tr class="text-[10px] text-gray-400 border-b border-white/10 bg-white/5">
-                                    <th class="p-3 text-center w-12">تحديد</th>
-                                    <th class="p-3">البريد الإلكتروني (الإيميل)</th>
-                                    <th class="p-3">معرف الجهاز</th>
-                                    <th class="p-3">كود التفعيل الخاص</th>
-                                    <th class="p-3 text-center">التاريخ / الحالة</th>
-                                </tr>
-                            </thead>
-                            <tbody id="statsDataTable" class="divide-y divide-white/5">
-                                <tr>
-                                    <td class="p-3 text-center"><input type="checkbox" class="stat-checkbox accent-purple-600 rounded"></td>
-                                    <td class="p-3 text-white font-medium">user@example.com</td>
-                                    <td class="p-3 font-mono text-gray-300">M2103K19C</td>
-                                    <td class="p-3 font-mono text-purple-400 font-bold tracking-wider">KING-DZ-XXXX</td>
-                                    <td class="p-3 text-gray-500 text-center">نشط</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="activity-section" class="tab-content hidden">
-                <div class="glass-card rounded-2xl p-6">
-                    <div class="mb-6">
-                        <h2 class="text-3xl font-bold text-white flex items-center gap-3">📋 سجل نشاط النظام</h2>
-                        <p class="text-gray-400 mt-2">متابعة جميع عمليات لوحة التحكم لحظة بلحظة</p>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-3 mb-6">
-                        <button id="btnRefreshActivity" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 transition">🔄 تحديث</button>
-                        <button id="btnSelectAllLogs" class="px-4 py-2 rounded-xl bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition font-bold text-xs">☑ تحديد الكل</button>
-                        <button id="btnDeleteSelectedLogs" class="px-4 py-2 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition font-bold text-xs">🗑️ حذف المحدد</button>
-                        <input id="activitySearch" type="text" placeholder="🔍 ابحث داخل السجل..." class="flex-1 min-w-[200px] bg-[#161b26] border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-purple-500">
-                    </div>
-                    <div id="activityLogs" class="space-y-2">
-                        <div class="text-center text-gray-500 py-10">جاري تحميل السجلات...</div>
-                    </div>
-                </div>
-            </section> 
-
-            <section id="settings-section" class="tab-content hidden">
-                <div class="grid grid-cols-3 gap-5">
-                    <div class="glass-card rounded-2xl p-5 border border-white/5">
-                        <div class="flex justify-between items-center">
+                    <!-- معلومات مفصلة عن الحسابات والإيميلات -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="glass-card p-5 rounded-2xl border border-white/5 flex items-center justify-between">
                             <div>
-                                <h3 class="text-white font-bold">🚀 تفعيل المود</h3>
-                                <p class="text-gray-500 text-xs mt-1">تشغيل أو إيقاف النظام الداخلي</p>
+                                <p class="text-gray-400 text-xs">إجمالي الإيميلات الجديدة المسجلة</p>
+                                <h4 id="statsNewEmails" class="text-2xl font-black text-white mt-1">0</h4>
                             </div>
-                            <label class="relative inline-flex cursor-pointer">
-                                <input id="mod_enabled" type="checkbox" class="sr-only peer">
-                                <div class="w-12 h-6 bg-[#1b2333] rounded-full transition peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-0.5 after:right-0.5 after:w-5 after:h-5 after:bg-white after:rounded-full after:transition-all peer-checked:after:-translate-x-6"></div>
-                            </label>
+                            <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl"><i data-lucide="mail" class="w-6 h-6"></i></div>
                         </div>
-                    </div>
-                    <div class="glass-card rounded-2xl p-5 border border-white/5">
-                        <div class="flex justify-between items-center">
+                        <div class="glass-card p-5 rounded-2xl border border-white/5 flex items-center justify-between">
                             <div>
-                                <h3 class="text-yellow-300 font-bold">👑 تفعيل VIP</h3>
-                                <p class="text-gray-500 text-xs mt-1">السماح بالاشتراكات المميزة</p>
+                                <p class="text-gray-400 text-xs">نسبة استهلاك مفاتيح التفعيل</p>
+                                <h4 id="statsActivationKeysInfo" class="text-2xl font-black text-purple-400 mt-1">0 / 0</h4>
                             </div>
-                            <label class="relative inline-flex cursor-pointer">
-                                <input id="vip_enabled" type="checkbox" class="sr-only peer">
-                                <div class="w-12 h-6 bg-[#1b2333] rounded-full transition peer-checked:bg-yellow-500 after:content-[''] after:absolute after:top-0.5 after:right-0.5 after:w-5 after:h-5 after:bg-white after:rounded-full after:transition-all peer-checked:after:-translate-x-6"></div>
-                            </label>
+                            <div class="p-3 bg-purple-500/10 text-purple-400 rounded-xl"><i data-lucide="key-round" class="w-6 h-6"></i></div>
                         </div>
                     </div>
-                    <div class="glass-card rounded-2xl p-5 border border-white/5">
-                        <div class="flex justify-between items-center">
+
+                    <!-- جدول الإيميلات والبيانات التفصيلية -->
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+                            <h4 class="text-white font-bold text-sm">سجل الإيميلات والبيانات المسجلة</h4>
+                            <div class="flex gap-2">
+                                <button id="btnSelectAllStats" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-lg text-xs">☑ تحديد الكل</button>
+                                <button id="btnCopySelectedStats" class="bg-purple-600/20 text-purple-400 px-3 py-1.5 rounded-lg text-xs">📋 نسخ المحدد</button>
+                                <button id="btnDeleteSelectedStats" class="bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg text-xs">🗑 حذف المحدد</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                                    <tr>
+                                        <th class="p-3 text-center w-10">تحديد</th>
+                                        <th class="p-3">البريد الإلكتروني</th>
+                                        <th class="p-3">معرف الجهاز</th>
+                                        <th class="p-3">مفتاح التفعيل</th>
+                                        <th class="p-3 text-center">الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statsDataTable" class="divide-y divide-white/5">
+                                    <tr><td colspan="5" class="p-4 text-center text-gray-500">جاري تحميل البيانات...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم الحظر والحماية -->
+                <section id="ban-section" class="tab-content hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass-card p-6 rounded-2xl border border-white/5 space-y-4">
+                            <h4 class="text-white font-bold text-sm">حظر جهاز معين</h4>
                             <div>
-                                <h3 class="text-cyan-300 font-bold">🔄 إجبار التحديث</h3>
-                                <p class="text-gray-500 text-xs mt-1">منع تشغيل الإصدارات القديمة</p>
+                                <label class="block text-xs text-gray-400 mb-1">اختر معرف الجهاز</label>
+                                <select id="banDeviceId" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs">
+                                    <option value="" disabled selected>اختر الجهاز للحظر...</option>
+                                </select>
                             </div>
-                            <label class="relative inline-flex cursor-pointer">
-                                <input id="force_update" type="checkbox" class="sr-only peer">
-                                <div class="w-12 h-6 bg-[#1b2333] rounded-full transition peer-checked:bg-cyan-500 after:content-[''] after:absolute after:top-0.5 after:right-0.5 after:w-5 after:h-5 after:bg-white after:rounded-full after:transition-all peer-checked:after:-translate-x-6"></div>
-                            </label>
+                            <button id="btnApplyBan" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs transition">تطبيق الحظر 🚫</button>
+                        </div>
+                        <div class="glass-card p-6 rounded-2xl border border-white/5 space-y-4">
+                            <h4 class="text-white font-bold text-sm">منح صلاحية VIP لجهاز</h4>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">اختر معرف الجهاز</label>
+                                <select id="vipDeviceId" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs">
+                                    <option value="" disabled selected>اختر...</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="btnGrantVip" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 rounded-xl text-xs transition">منح VIP ⭐</button>
+                                <button id="btnRevokeVip" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2.5 rounded-xl text-xs transition">سحب VIP</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="glass-card rounded-2xl p-6 mt-5">
-                    <h3 class="text-xl font-black text-purple-300 mb-5">📦 معلومات الإصدار</h3>
-                    <div class="space-y-5">
-                        <div>
-                            <label class="text-gray-400 text-sm mb-2 block">آخر إصدار</label>
-                            <input id="latest_version" class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white">
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-5 border-b border-white/5"><h4 class="text-white font-bold text-sm">الأجهزة المحظورة حالياً</h4></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                                    <tr>
+                                        <th class="p-2 pr-4">معرف الجهاز</th>
+                                        <th class="p-2">الموديل</th>
+                                        <th class="p-2 text-center pl-4">إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bannedDevicesTable" class="divide-y divide-white/5"></tbody>
+                            </table>
                         </div>
-                        <div>
-                            <label class="text-gray-400 text-sm mb-2 block">رابط التحديث</label>
-                            <input id="update_url" class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white">
+                    </div>
+                </section>
+
+                <!-- قسم سجل النشاط -->
+                <section id="logs-section" class="tab-content hidden space-y-6">
+                    <div class="glass-card p-6 rounded-2xl border border-white/5">
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="text-white font-bold text-sm">سجل نشاطات المشرفين والأجهزة</h4>
+                            <div class="flex gap-2">
+                                <button id="btnRefreshActivity" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
+                                <button id="btnSelectAllLogs" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">☑ تحديد الكل</button>
+                                <button id="btnDeleteSelectedLogs" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 rounded-xl text-xs">🗑 حذف المحدد</button>
+                            </div>
+                        </div>
+                        <div id="activityLogs" class="space-y-3">
+                            <div class="text-center text-gray-500 py-8">جاري تحميل السجلات...</div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="grid grid-cols-2 gap-5 mt-5">
-                    <div class="glass-card rounded-2xl p-5">
-                        <h3 class="text-lg font-bold text-white mb-4">💬 رسالة التطبيق</h3>
-                        <textarea id="message" rows="8" class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white resize-none"></textarea>
+                <!-- قسم الإعدادات -->
+                <section id="settings-section" class="tab-content hidden space-y-6">
+                    <div class="glass-card p-6 rounded-2xl border border-white/5 space-y-6 max-w-2xl">
+                        <h4 class="text-white font-bold text-sm">إعدادات التطبيق العامة</h4>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-gray-300">تفعيل الـ Mod الأساسي</span>
+                                <input type="checkbox" id="mod_enabled" class="w-4 h-4 accent-purple-600 rounded">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-gray-300">تفعيل ميزة VIP</span>
+                                <input type="checkbox" id="vip_enabled" class="w-4 h-4 accent-purple-600 rounded">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-gray-300">فرض التحديث الإجباري</span>
+                                <input type="checkbox" id="force_update" class="w-4 h-4 accent-purple-600 rounded">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">رقم الإصدار الأخير</label>
+                                <input type="text" id="latest_version" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">رسالة التنبيه العامة</label>
+                                <textarea id="message" rows="2" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">رسالة الصيانة</label>
+                                <textarea id="maintenance_message" rows="2" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">رابط التحديث الجديد</label>
+                                <input type="text" id="update_url" class="w-full bg-[#161b26] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs">
+                            </div>
+                            <button id="btnSaveSettings" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-xs transition">حفظ الإعدادات</button>
+                        </div>
                     </div>
-                    <div class="glass-card rounded-2xl p-5">
-                        <h3 class="text-lg font-bold text-white mb-4">🛠 رسالة الصيانة</h3>
-                        <textarea id="maintenance_message" rows="8" class="w-full rounded-xl bg-[#111827] border border-white/10 p-3 text-white resize-none"></textarea>
-                    </div>
-                </div>
+                </section>
 
-                <div class="flex justify-center mt-5">
-                    <button id="btnSaveSettings" class="px-10 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:scale-105 transition-all shadow-xl shadow-purple-600/30 font-black text-white text-lg">💾 حفظ جميع التغييرات</button>
-                </div>
-            </section>
-
-            <footer class="mt-8 flex justify-between items-center text-[9px] text-gray-600 font-semibold border-t border-white/[0.01] pt-3 px-1">
-                <div>الإصدار 2.5.1</div>
-                <div>جميع الحقوق محفوظة &copy; لـ KingDZ</div>
-            </footer>
+            </div>
         </main>
     </div>
 
-    <div id="toast" class="fixed bottom-6 left-6 z-[100] translate-y-12 opacity-0 transition-all duration-300 ease-out">
-        <div class="glass-card border border-purple-500/30 px-4 py-2 rounded-xl backdrop-blur-md">
-            <span id="toastText" class="font-bold text-[11px] text-gray-200">تمت العملية بنجاح</span>
+    <!-- نافذة تفاصيل المستخدم الجانبية (Drawer) -->
+    <div id="userDrawer" class="fixed top-0 bottom-0 left-auto right-[-450px] w-[420px] glass-card border-l border-white/10 z-50 transition-all duration-300 shadow-2xl overflow-y-auto p-6 flex flex-col justify-between">
+        <div>
+            <div class="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                <h3 class="text-white font-bold text-base">تفاصيل الجهاز</h3>
+                <button onclick="closeDrawer()" class="text-gray-400 hover:text-white text-lg">✕</button>
+            </div>
+            <div id="drawerContent" class="space-y-4"></div>
         </div>
     </div>
 
-    <div id="userDrawer" class="fixed inset-y-0 right-[-450px] w-[450px] bg-[#0b0e14] border-l border-white/10 shadow-2xl z-50 transition-all duration-300 ease-in-out p-6 overflow-y-auto">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-sm font-black text-white">تفاصيل المستخدم</h3>
-            <button onclick="closeDrawer()" class="p-2 hover:bg-white/10 rounded-lg text-gray-400">
-                <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
-        </div>
-        <div id="drawerContent" class="space-y-6 text-[11px] text-gray-400">
-            <div class="flex items-center justify-center h-64 text-gray-600">جاري تحميل البيانات...</div>
-        </div>
+    <!-- Toast الإشعارات العائمة -->
+    <div id="toast" class="fixed bottom-6 left-6 z-50 glass-card bg-[#161b26]/90 border border-purple-500/30 px-5 py-3 rounded-2xl shadow-2xl transform translate-y-12 opacity-0 transition-all duration-300 flex items-center gap-3">
+        <span class="text-purple-400 font-bold">✨</span>
+        <span id="toastText" class="text-white text-xs font-medium">تمت العملية بنجاح</span>
     </div>
 
+    <!-- ربط ملف الـ JavaScript الخارجي -->
     <script src="script.js"></script>
-    <script>
-        lucide.createIcons();
-
-        // تفعيل أزرار قسم الإحصائيات (تحديد الكل، نسخ المحدد، وحذف المحدد) بشكل مباشر ومضمون
-        document.addEventListener("DOMContentLoaded", () => {
-            const selectAllBtn = document.getElementById("btnSelectAllStats");
-            const copyBtn = document.getElementById("btnCopySelectedStats");
-            const deleteBtn = document.getElementById("btnDeleteSelectedStats");
-
-            if (selectAllBtn) {
-                selectAllBtn.addEventListener("click", () => {
-                    const checkboxes = document.querySelectorAll("#statsDataTable .stat-checkbox");
-                    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-                    checkboxes.forEach(cb => cb.checked = !allChecked);
-                });
-            }
-
-            if (copyBtn) {
-                copyBtn.addEventListener("click", () => {
-                    const checkedRows = document.querySelectorAll("#statsDataTable .stat-checkbox:checked");
-                    if (checkedRows.length === 0) {
-                        alert("الرجاء تحديد إيميل واحد على الأقل للنسخ!");
-                        return;
-                    }
-                    let emails = [];
-                    checkedRows.forEach(cb => {
-                        const row = cb.closest("tr");
-                        const emailCell = row.querySelector("td:nth-child(2)");
-                        if (emailCell) emails.push(emailCell.textContent.trim());
-                    });
-                    navigator.clipboard.writeText(emails.join("\n")).then(() => {
-                        alert("تم نسخ " + emails.length + " إيميل بنجاح إلى الحافظة!");
-                    }).catch(err => {
-                        console.error("خطأ أثناء النسخ:", err);
-                    });
-                });
-            }
-
-            if (deleteBtn) {
-                deleteBtn.addEventListener("click", () => {
-                    const checkedRows = document.querySelectorAll("#statsDataTable .stat-checkbox:checked");
-                    if (checkedRows.length === 0) {
-                        alert("الرجاء تحديد عنصر واحد على الأقل للحذف!");
-                        return;
-                    }
-                    if (confirm("هل أنت متأكد من حذف السطور المحددة؟")) {
-                        checkedRows.forEach(cb => {
-                            cb.closest("tr").remove();
-                        });
-                        alert("تم حذف العناصر المحددة بنجاح.");
-                    }
-                });
-            }
-        });
-
-        async function loadVipDevicesDropdown() {
-            const selectElement = document.getElementById("vipDeviceId");
-            if (!selectElement) return;
-
-            try {
-                const response = await fetch("https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-users", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Bearer " + (localStorage.getItem("supabase_token") || "")
-                    },
-                    body: JSON.stringify({ action: "get_all_users" })
-                });
-
-                const users = await response.json();
-                selectElement.innerHTML = '<option value="" disabled selected>اختر الجهاز من القائمة...</option>';
-
-                if (Array.isArray(users) && users.length > 0) {
-                    users.forEach(user => {
-                        const option = document.createElement("option");
-                        option.value = user.device_id;
-                        const vipStatus = user.vip ? '⭐ [VIP نشط]' : '⚪ [عادي]';
-                        option.textContent = `جهاز: ${user.device_id} - ${vipStatus}`;
-                        selectElement.appendChild(option);
-                    });
-                } else {
-                    const option = document.createElement("option");
-                    option.value = "";
-                    option.textContent = "لا توجد أجهزة مسجلة حالياً";
-                    selectElement.appendChild(option);
-                }
-            } catch (err) {
-                console.error("خطأ أثناء جلب الأجهزة لقائمة VIP:", err);
-            }
-        }
-
-        document.querySelectorAll('[data-target="vip-section"]').forEach(tab => {
-            tab.addEventListener("click", () => {
-                loadVipDevicesDropdown();
-            });
-        });
-
-        document.addEventListener("DOMContentLoaded", () => {
-            setTimeout(loadVipDevicesDropdown, 1000);
-        });
-    </script>
 </body>
 </html>
