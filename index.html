@@ -372,7 +372,7 @@
                 </div>
             </section>
 
-            <!-- 🎯 قسم الإحصائيات المعدل ليعرض البريد الإلكتروني، معرف الجهاز، كود التفعيل، والتاريخ/الحالة -->
+            <!-- 🎯 قسم الإحصائيات (تم إضافة خاصية التحديد وتحديد الكل داخله) -->
             <section id="stats-section" class="tab-content hidden">
                 <div class="mb-4">
                     <h2 class="text-sm font-black text-white">قائمة الإيميلات ومفاتيح التفعيل</h2>
@@ -380,10 +380,14 @@
                 </div>
 
                 <div class="glass-card rounded-xl overflow-hidden border border-white/10 p-4">
+                    <div class="p-3 border-b border-white/[0.015] mb-3 flex gap-2">
+                        <button id="btnSelectAllStats" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] transition">☑ تحديد الكل</button>
+                    </div>
                     <div class="overflow-x-auto custom-scroll">
                         <table class="w-full text-right border-collapse text-[11px]">
                             <thead>
                                 <tr class="text-[10px] text-gray-400 border-b border-white/10 bg-white/5">
+                                    <th class="p-3 text-center w-12">تحديد</th>
                                     <th class="p-3">البريد الإلكتروني (الإيميل)</th>
                                     <th class="p-3">معرف الجهاز</th>
                                     <th class="p-3">كود التفعيل الخاص</th>
@@ -391,8 +395,8 @@
                                 </tr>
                             </thead>
                             <tbody id="statsDataTable" class="divide-y divide-white/5">
-                                <!-- سيتم جلب وعرض البيانات هنا تلقائياً عبر السكريبت الخاص بك -->
                                 <tr>
+                                    <td class="p-3 text-center"><input type="checkbox" class="stat-checkbox accent-purple-600 rounded"></td>
                                     <td class="p-3 text-white font-medium">user@example.com</td>
                                     <td class="p-3 font-mono text-gray-300">M2103K19C</td>
                                     <td class="p-3 font-mono text-purple-400 font-bold tracking-wider">KING-DZ-XXXX</td>
