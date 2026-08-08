@@ -229,7 +229,8 @@ function updateDeviceChart(users) {
     });
 
     const total = users.length;
-    document.getElementById("totalDeviceCount").textContent = total;
+    const totalDevEl = document.getElementById("totalDeviceCount");
+    if(totalDevEl) totalDevEl.textContent = total;
     const list = document.getElementById("deviceStatsList");
     if (!list) return;
 
@@ -291,7 +292,7 @@ async function loadStats(uData = null, kData = null) {
     const statsDataTable = document.getElementById("statsDataTable");
     if (statsDataTable) {
         if (rData.length === 0) {
-            statsDataTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
+            statsDataTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
         } else {
             statsDataTable.innerHTML = rData.map(reg => {
                 const email = reg.email || "غير متوفر";
@@ -299,7 +300,6 @@ async function loadStats(uData = null, kData = null) {
                 
                 const matchedUser = u.find(user => user.username === reg.username) || u[0] || {};
                 const deviceId = matchedUser.device_id || "غير متوفر";
-                const deviceModel = matchedUser.model || matchedUser.brand || matchedUser.manufacturer || "جهاز غير محدد";
                 
                 let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">مسجل</span>';
                 if (reg.approved) {
@@ -308,10 +308,9 @@ async function loadStats(uData = null, kData = null) {
 
                 return `
                     <tr class="hover:bg-white/[0.02] border-b border-white/5">
-                        <td class="p-3 text-center"><input type="checkbox" class="email-checkbox accent-purple-600 w-4 h-4" data-id="${reg.id || ''}" data-email="${email}"></td>
+                        <td class="p-3 text-center"><input type="checkbox" class="stat-checkbox accent-purple-600 rounded w-4 h-4" data-id="${reg.id || ''}" data-email="${email}"></td>
                         <td class="p-3 text-white font-medium select-all">${email}</td>
                         <td class="p-3 font-mono text-xs text-purple-300 select-all">${deviceId}</td>
-                        <td class="p-3 text-gray-300 text-xs">${deviceModel}</td>
                         <td class="p-3 font-mono text-purple-400 font-bold tracking-wider select-all">${activationKey}</td>
                         <td class="p-3 text-gray-400 text-center">${statusHtml}</td>
                     </tr>
@@ -321,19 +320,22 @@ async function loadStats(uData = null, kData = null) {
     }
 }
 
-// 📌 الحل الجذري والنهائي لتشغيل أزرار الإحصائيات (تحديد، نسخ، حذف) عن طريق Event Delegation
+// 📌 الحل الجذري والنهائي لتشغيل أزرار الإحصائيات (تحديد، نسخ، حذف) عبر Event Delegation
 document.addEventListener('click', async function(event) {
-    // 1. زر تحديد الكل
-    if (event.target && event.target.id === 'btnSelectAllEmails') {
-        const checkboxes = document.querySelectorAll(".email-checkbox");
+    const target = event.target.closest('#btnSelectAllStats, #btnCopySelectedStats, #btnDeleteSelectedStats');
+    if (!target) return;
+
+    // 1. زر تحديد الكل في قسم الإحصائيات
+    if (target.id === 'btnSelectAllStats') {
+        const checkboxes = document.querySelectorAll("#statsDataTable .stat-checkbox");
         if (checkboxes.length === 0) return;
         const allChecked = [...checkboxes].every(cb => cb.checked);
         checkboxes.forEach(cb => cb.checked = !allChecked);
     }
 
-    // 2. زر نسخ المحدد
-    if (event.target && event.target.id === 'btnCopySelectedEmails') {
-        const checked = [...document.querySelectorAll(".email-checkbox:checked")];
+    // 2. زر نسخ المحدد في قسم الإحصائيات
+    if (target.id === 'btnCopySelectedStats') {
+        const checked = [...document.querySelectorAll("#statsDataTable .stat-checkbox:checked")];
         if (checked.length === 0) { 
             if(typeof showToast === 'function') showToast("حدد إيميل واحد على الأقل"); 
             else alert("حدد إيميل واحد على الأقل"); 
@@ -345,9 +347,9 @@ document.addEventListener('click', async function(event) {
         else alert("تم النسخ!");
     }
 
-    // 3. زر حذف المحدد
-    if (event.target && event.target.id === 'btnDeleteSelectedEmails') {
-        const checked = [...document.querySelectorAll(".email-checkbox:checked")];
+    // 3. زر حذف المحدد في قسم الإحصائيات
+    if (target.id === 'btnDeleteSelectedStats') {
+        const checked = [...document.querySelectorAll("#statsDataTable .stat-checkbox:checked")];
         if (checked.length === 0) { 
             if(typeof showToast === 'function') showToast("حدد إيميل واحد على الأقل للحذف"); 
             else alert("حدد إيميل واحد على الأقل للحذف"); 
@@ -360,6 +362,8 @@ document.addEventListener('click', async function(event) {
             const id = cb.dataset.id;
             if (id) {
                 await api("delete_registration", { id: Number(id) });
+            } else {
+                cb.closest("tr")?.remove();
             }
         }
         
@@ -467,7 +471,7 @@ function renderKeysTable(keys) {
     if (!tbody) return;
     tbody.innerHTML = keys.slice().reverse().map(k => `
         <tr class="hover:bg-white/[0.005]">
-            <td class="p-2 text-center"><input type="checkbox" class="key-checkbox" data-id="${k.id}" data-key="${k.key}"></td>
+            <td class="p-2 text-center"><input type="checkbox" class="key-checkbox accent-purple-600 rounded" data-id="${k.id}" data-key="${k.key}"></td>
             <td class="p-2 pr-4 font-mono font-bold text-purple-400 text-[10px] select-all cursor-pointer">${k.key}</td>
             <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/10 border border-purple-500/20 text-purple-400">${k.duration_type || 'STANDARD'}</span></td>
             <td class="p-2 text-gray-400">${k.duration || 'غير محدد'}</td>
@@ -477,12 +481,6 @@ function renderKeysTable(keys) {
     `).join('');
     lucide.createIcons();
     initSelectAllButton();
-    const selectAll = document.getElementById("selectAllKeys");
-    if (selectAll) {
-        selectAll.onchange = function () {
-            document.querySelectorAll(".key-checkbox").forEach(cb => { cb.checked = this.checked; });
-        };
-    }
 }
 
 if (document.getElementById("btnApplyBan")) {
@@ -565,16 +563,19 @@ if (document.getElementById("btnRevokeVip")) {
 }
 
 function openDrawer(deviceId) { 
-    document.getElementById('userDrawer').style.right = '0'; 
+    const drawer = document.getElementById('userDrawer');
+    if(drawer) drawer.style.right = '0'; 
     loadUserDetails(deviceId); 
 }
 
 function closeDrawer() { 
-    document.getElementById('userDrawer').style.right = '-450px'; 
+    const drawer = document.getElementById('userDrawer');
+    if(drawer) drawer.style.right = '-450px'; 
 }
 
 async function loadUserDetails(deviceId) {
     const content = document.getElementById("drawerContent");
+    if(!content) return;
     const res = await api("get_user_details", { device_id: deviceId });
     const data = (res && (res.data || res)) || null;
     if (!res || res.error || !data) { content.innerHTML = "حدث خطأ"; return; }
@@ -777,7 +778,6 @@ document.getElementById("btnDeleteSelectedLogs")?.addEventListener("click", asyn
     loadActivityLogs();
 });
 
-loadActivityLogs();
 async function loadSettings() {
     const res = await api("get_settings");
     const data = (res && (res.data || res)) || null;
