@@ -249,7 +249,7 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات الأجهزة الحقيقية وتصحيح ترتيب الأعمدة
+// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات والأجهزة مع دعم التحديد والنسخ والحذف
 async function loadStats(uData = null, kData = null) {
     let u = uData;
     let k = kData;
@@ -288,17 +288,15 @@ async function loadStats(uData = null, kData = null) {
         document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;
     }
 
-    // 🎯 الترتيب الصحيح والمصحح تماماً لعرض الأعمدة: [الإيميل] -> [معرف الجهاز] -> [طراز الجهاز] -> [كود التفعيل] -> [الحالة]
     const statsDataTable = document.getElementById("statsDataTable");
     if (statsDataTable) {
         if (rData.length === 0) {
-            statsDataTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
+            statsDataTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;
         } else {
             statsDataTable.innerHTML = rData.map(reg => {
                 const email = reg.email || "غير متوفر";
                 const activationKey = reg.activation_key || "KING-DZ-XXXX";
                 
-                // مطابقة المستخدم من جدول users للوصول إلى معلومات الجهاز (device_id, model)
                 const matchedUser = u.find(user => user.username === reg.username) || u[0] || {};
                 const deviceId = matchedUser.device_id || "غير متوفر";
                 const deviceModel = matchedUser.model || matchedUser.brand || matchedUser.manufacturer || "جهاز غير محدد";
@@ -309,7 +307,8 @@ async function loadStats(uData = null, kData = null) {
                 }
 
                 return `
-                    <tr>
+                    <tr class="hover:bg-white/[0.02] border-b border-white/5">
+                        <td class="p-3 text-center"><input type="checkbox" class="email-checkbox accent-purple-600 w-4 h-4" data-id="${reg.id || ''}" data-email="${email}"></td>
                         <td class="p-3 text-white font-medium select-all">${email}</td>
                         <td class="p-3 font-mono text-xs text-purple-300 select-all">${deviceId}</td>
                         <td class="p-3 text-gray-300 text-xs">${deviceModel}</td>
@@ -321,6 +320,38 @@ async function loadStats(uData = null, kData = null) {
         }
     }
 }
+
+// 📌 دوال التحكم بالإيميلات المحددة (تحديد، نسخ، حذف)
+document.getElementById("btnSelectAllEmails")?.addEventListener("click", () => {
+    const checkboxes = document.querySelectorAll(".email-checkbox");
+    const allChecked = [...checkboxes].every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+});
+
+document.getElementById("btnCopySelectedEmails")?.addEventListener("click", async () => {
+    const checked = document.querySelectorAll(".email-checkbox:checked");
+    if (checked.length === 0) { showToast("حدد إيميل واحد على الأقل"); return; }
+    const emails = [...checked].map(cb => cb.dataset.email);
+    await navigator.clipboard.writeText(emails.join("\n"));
+    showToast("تم نسخ " + emails.length + " إيميل بنجاح");
+});
+
+document.getElementById("btnDeleteSelectedEmails")?.addEventListener("click", async () => {
+    const checked = [...document.querySelectorAll(".email-checkbox:checked")];
+    if (checked.length === 0) { showToast("حدد إيميل واحد على الأقل للحذف"); return; }
+    
+    if (!confirm(`هل أنت متأكد من حذف ${checked.length} إيميل مسجل؟`)) return;
+
+    for (const cb of checked) {
+        const id = cb.dataset.id;
+        if (id) {
+            await api("delete_registration", { id: Number(id) });
+        }
+    }
+    
+    showToast("تم حذف الإيميلات المحددة بنجاح");
+    refreshDashboard();
+});
 
 // 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي
 function renderMainUsersTable(users) {
