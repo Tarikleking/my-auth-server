@@ -249,7 +249,7 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات الأجهزة الحقيقية من جدول users و registrations
+// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات الأجهزة الحقيقية وتصحيح ترتيب الأعمدة
 async function loadStats(uData = null, kData = null) {
     let u = uData;
     let k = kData;
@@ -288,7 +288,7 @@ async function loadStats(uData = null, kData = null) {
         document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;
     }
 
-    // 🎯 دمج وتعرض الإيميل، معرف الجهاز، نوع الجهاز، وكود التفعيل في جدول الإحصائيات
+    // 🎯 الترتيب الصحيح والمصحح تماماً لعرض الأعمدة: [الإيميل] -> [معرف الجهاز] -> [طراز الجهاز] -> [كود التفعيل] -> [الحالة]
     const statsDataTable = document.getElementById("statsDataTable");
     if (statsDataTable) {
         if (rData.length === 0) {
