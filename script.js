@@ -1012,13 +1012,21 @@ window.addEventListener('DOMContentLoaded', async () => {
             });
 
             // إذا كان الرابط نوعه ماجيك لينك أو تسجيل دخول، نقوم بتوجيهه للوحة مباشرة
-            if (type === 'magiclink' || !type || hash.includes('type=signup')) {
+                       if (type === 'magiclink' || !type || hash.includes('type=signup') || hash.includes('access_token')) {
                 showToast('تم تسجيل الدخول بنجاح!');
                 setTimeout(() => {
-                    window.location.href = window.location.pathname; // الانتقال للوحة التحكم
+                    // إخفاء شاشة تسجيل الدخول وإظهار لوحة التحكم فوراً
+                    const loginPage = document.getElementById('loginPage');
+                    if (loginPage) loginPage.style.display = 'none';
+                    if (typeof afterLogin === 'function') {
+                        afterLogin();
+                    } else {
+                        window.location.href = window.location.pathname;
+                    }
                 }, 1000);
                 return;
             }
+
         }
     }
 
