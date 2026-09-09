@@ -4,16 +4,21 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 let liveClock = null;
 
-// 🔐 دالة الـ api الذكية (مع مانع الأخطاء والتوكن الاحتياطي لتفادي 401)
+// 🔐 دالة الـ api الذكية
 async function api(action, data = {}) {
   const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
+
+  if (!currentToken) {
+    console.warn("No admin token found. Please login.");
+    return null;
+  }
 
   try {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + (currentToken || SUPABASE_KEY),
+        "Authorization": "Bearer " + currentToken,
         "x-client-check": btoa(action + "_secure")
       },
       body: JSON.stringify({
@@ -25,6 +30,8 @@ async function api(action, data = {}) {
 
     if (res.status === 401) {
       console.warn("Unauthorized request, check session.");
+      localStorage.removeItem("admin_token");
+      location.reload();
       return null;
     }
 
@@ -175,7 +182,7 @@ async function refreshDashboard() {
 
     const onlineCount = uData.filter(u => {
         return u.last_online &&
-               (Date.now() - new Date(u.last_online).getTime()) < 60000;
+               (Date.now() - new Date(u.last_online).getTime()) < 300000;
     }).length;
 
     updateCounter("onlineUsers", onlineCount);
@@ -268,7 +275,7 @@ async function loadStats(uData = null, kData = null) {
     const now = Date.now();
     
     if(document.getElementById("statsUsers")) document.getElementById("statsUsers").textContent = u.length;
-    if(document.getElementById("statsOnline")) document.getElementById("statsOnline").textContent = u.filter(user => user.last_online && (now - new Date(user.last_online).getTime()) < 60000).length;
+    if(document.getElementById("statsOnline")) document.getElementById("statsOnline").textContent = u.filter(user => user.last_online && (now - new Date(user.last_online).getTime()) < 300000).length;
     if(document.getElementById("statsVip")) document.getElementById("statsVip").textContent = u.filter(user => user.vip).length;
     if(document.getElementById("statsBanned")) document.getElementById("statsBanned").textContent = u.filter(user => user.banned).length;
     
@@ -298,8 +305,8 @@ async function loadStats(uData = null, kData = null) {
                 const email = reg.email || "غير متوفر";
                 const activationKey = reg.activation_key || "KING-DZ-XXXX";
                 
-                const matchedUser = u.find(user => user.username === reg.username) || u[0] || {};
-                const deviceId = matchedUser.device_id || "غير متوفر";
+                const matchedUser = u.find(user => user.username === reg.username) || {};
+                const deviceId = matchedUser.device_id || "غير مسجل/مرتبط بعد";
                 
                 let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">مسجل</span>';
                 if (reg.approved) {
@@ -320,12 +327,11 @@ async function loadStats(uData = null, kData = null) {
     }
 }
 
-// 📌 الحل الجذري والنهائي لتشغيل أزرار الإحصائيات (تحديد، نسخ، حذف) عبر Event Delegation
+// 📌 Event Delegation لأزرار قسم الإحصائيات
 document.addEventListener('click', async function(event) {
     const target = event.target.closest('#btnSelectAllStats, #btnCopySelectedStats, #btnDeleteSelectedStats');
     if (!target) return;
 
-    // 1. زر تحديد الكل في قسم الإحصائيات
     if (target.id === 'btnSelectAllStats') {
         const checkboxes = document.querySelectorAll("#statsDataTable .stat-checkbox");
         if (checkboxes.length === 0) return;
@@ -333,7 +339,6 @@ document.addEventListener('click', async function(event) {
         checkboxes.forEach(cb => cb.checked = !allChecked);
     }
 
-    // 2. زر نسخ المحدد في قسم الإحصائيات
     if (target.id === 'btnCopySelectedStats') {
         const checked = [...document.querySelectorAll("#statsDataTable .stat-checkbox:checked")];
         if (checked.length === 0) { 
@@ -347,7 +352,6 @@ document.addEventListener('click', async function(event) {
         else alert("تم النسخ!");
     }
 
-    // 3. زر حذف المحدد في قسم الإحصائيات
     if (target.id === 'btnDeleteSelectedStats') {
         const checked = [...document.querySelectorAll("#statsDataTable .stat-checkbox:checked")];
         if (checked.length === 0) { 
@@ -396,9 +400,9 @@ function renderMainUsersTable(users) {
             <td class="p-2.5 text-gray-500 font-medium">${u.model || u.manufacturer || 'Smartphone'}</td>
             <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[9px] font-extrabold ${u.vip ? 'badge-vip-gold' : 'badge-monthly'}">${u.vip ? 'VIP👑' : 'FREE'}</span></td>
             <td class="p-2.5">
-                <span class="inline-flex items-center gap-1 font-bold ${u.banned ? 'text-red-400' : (u.last_online && (now - new Date(u.last_online).getTime()) < 60000) ? 'text-green-400' : 'text-gray-500'} text-[10px]">
+                <span class="inline-flex items-center gap-1 font-bold ${u.banned ? 'text-red-400' : (u.last_online && (now - new Date(u.last_online).getTime()) < 300000) ? 'text-green-400' : 'text-gray-500'} text-[10px]">
                     <span class="w-1 h-1 rounded-full bg-current"></span>
-                    ${u.banned ? 'محظور' : (u.last_online && (now - new Date(u.last_online).getTime()) < 60000) ? '🟢 متصل الآن' : '⚫ غير متصل'}
+                    ${u.banned ? 'محظور' : (u.last_online && (now - new Date(u.last_online).getTime()) < 300000) ? '🟢 متصل الآن' : '⚫ غير متصل'}
                 </span>
             </td>
             <td class="p-2.5 text-center pl-4">
@@ -415,7 +419,7 @@ function renderAllUsersTable(users) {
     tbody.innerHTML = "";
     const now = Date.now();
     users.forEach(u => {
-        const online = u.last_online && (now - new Date(u.last_online).getTime()) < 60000;
+        const online = u.last_online && (now - new Date(u.last_online).getTime()) < 300000;
         const statusText = u.banned ? "🚫 محظور" : (online ? "🟢 متصل الآن" : "⚫ غير متصل");
         const device = u.model || u.device_type || u.manufacturer || "--";
         const vip = u.vip ? '<span class="text-yellow-400 font-bold">👑 VIP</span>' : '<span class="text-gray-400">FREE</span>';
@@ -459,7 +463,6 @@ if (document.getElementById("btnGenerateKey")) {
             if (res && !res.error) successCount++;
         }
        if (successCount > 0) {
-            await addActivity("KEY", "KEY_CREATED", "", "تم إنشاء " + successCount + " مفتاح");
             showToast("تم توليد " + successCount + " مفتاح");
             refreshDashboard();
         }
@@ -508,7 +511,6 @@ function renderBannedTable(users) {
 async function liftUserBan(deviceId) {
     const res = await api("ban_user", { device_id: deviceId, banned: false });
     if (res && !res.error) {
-        await addActivity("USER", "USER_UNBANNED", deviceId, "تم فك الحظر");
         showToast("تم فك الحظر");
         refreshDashboard();
     }
@@ -518,7 +520,6 @@ async function deleteUserRow(deviceId) {
     if (confirm("حذف الجهاز نهائياً؟")) {
         const res = await api("delete_user", { device_id: deviceId });
         if (res && !res.error) {
-            await addActivity("USER", "USER_DELETED", deviceId, "تم حذف المستخدم نهائياً");
             showToast("تم الحذف");
             refreshDashboard();
         }
@@ -529,7 +530,6 @@ async function deleteKeyRow(id) {
     if (confirm("حذف المفتاح نهائياً؟")) {
         const res = await api("delete_key", { id });
         if (res && !res.error) {
-            await addActivity("KEY", "KEY_DELETED", "", "تم حذف مفتاح");
             showToast("تم الحذف");
             refreshDashboard();
         }
@@ -542,7 +542,6 @@ if (document.getElementById("btnGrantVip")) {
         if (!targetDeviceId) return;
         const res = await api("update_vip", { device_id: targetDeviceId, vip: true });
         if (res && !res.error) {
-            await addActivity("VIP", "VIP_GRANTED", targetDeviceId, "تم منح اشتراك VIP");
             showToast("تم الترقية لـ VIP ✨");
             refreshDashboard();
         }
@@ -555,7 +554,6 @@ if (document.getElementById("btnRevokeVip")) {
         if (!targetDeviceId) return;
         const res = await api("update_vip", { device_id: targetDeviceId, vip: false });
         if (res && !res.error) {
-            await addActivity("VIP", "VIP_REVOKED", targetDeviceId, "تم سحب اشتراك VIP");
             showToast("تم سحب VIP");
             refreshDashboard();
         }
@@ -579,7 +577,7 @@ async function loadUserDetails(deviceId) {
     const res = await api("get_user_details", { device_id: deviceId });
     const data = (res && (res.data || res)) || null;
     if (!res || res.error || !data) { content.innerHTML = "حدث خطأ"; return; }
-    const online = data.last_online && (Date.now() - new Date(data.last_online).getTime()) < 60000;
+    const online = data.last_online && (Date.now() - new Date(data.last_online).getTime()) < 300000;
     content.innerHTML = `
         <div class="space-y-4">
             <div class="glass-card p-4 rounded-xl">
@@ -624,9 +622,9 @@ async function loadUserDetails(deviceId) {
 }
 
 async function handleAction(action, deviceId) {
-    if (action === "ban") { await api("ban_user", { device_id: deviceId, banned: true }); await addActivity("USER", "USER_BANNED", deviceId, "تم حظر المستخدم"); }
-    if (action === "vip") { await api("update_vip", { device_id: deviceId, vip: true }); await addActivity("VIP", "VIP_GRANTED", deviceId, "تم منح اشتراك VIP"); }
-    if (action === "delete") { await api("delete_user", { device_id: deviceId }); await addActivity("USER", "USER_DELETED", deviceId, "تم حذف المستخدم نهائياً"); }
+    if (action === "ban") { await api("ban_user", { device_id: deviceId, banned: true }); }
+    if (action === "vip") { await api("update_vip", { device_id: deviceId, vip: true }); }
+    if (action === "delete") { await api("delete_user", { device_id: deviceId }); }
     closeDrawer();
     refreshDashboard();
 }
@@ -709,11 +707,11 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
     const ids = checked.map(cb => Number(cb.dataset.id));
     const res = await api("delete_keys_batch", { ids });
     if (!res || res.error) { showToast("فشل الحذف"); return; }
-    await addActivity("KEY", "KEYS_DELETED", "", "تم حذف " + ids.length + " مفتاح");
     showToast(`تم حذف ${ids.length} مفتاح`);
     refreshDashboard();
 });
 
+// 5. تحميل وعرض سجل النشاط مع فك تشفير JSON
 async function loadActivityLogs() {
     const container = document.getElementById("activityLogs");
     if (!container) return;
@@ -721,30 +719,90 @@ async function loadActivityLogs() {
     const data = (res && (res.data || res)) || null;
     if (!res || res.error) { container.innerHTML = `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`; return; }
     if (!data || data.length === 0) { container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات نشاط</div>`; return; }
+    
     container.innerHTML = "";
     data.forEach(log => {
-        let color = "text-purple-400"; let icon = "📋";
-        if (log.type === "USER") { color = "text-red-400"; icon = "👤"; }
-        if (log.type === "VIP") { color = "text-yellow-400"; icon = "👑"; }
-        if (log.type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }
+        let color = "text-purple-400"; 
+        let icon = "📋";
+        
+        if (log.type === "USER" || log.type === "AUTH") { color = "text-blue-400"; icon = "👤"; }
+        else if (log.type === "VIP") { color = "text-yellow-400"; icon = "👑"; }
+        else if (log.type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }
+        else if (log.type === "ORDER") { color = "text-emerald-400"; icon = "📦"; }
+        else if (log.type === "TOPUP" || log.type === "GAME") { color = "text-indigo-400"; icon = "🎮"; }
+        else if (log.type === "PAYMENT") { color = "text-amber-400"; icon = "💳"; }
+        else if (log.type === "NAVIGATION") { color = "text-gray-400"; icon = "🧭"; }
+        else if (log.type === "AI") { color = "text-pink-400"; icon = "🤖"; }
+
         let actionName = log.action;
-        switch (log.action) {
-            case "VIP_GRANTED": actionName = "منح اشتراك VIP"; break;
-            case "VIP_REVOKED": actionName = "سحب اشتراك VIP"; break;
-            case "USER_DELETED": actionName = "حذف مستخدم"; break;
-            case "USER_BANNED": actionName = "حظر مستخدم"; break;
-            case "USER_UNBANNED": actionName = "فك حظر مستخدم"; break;
-            case "KEY_CREATED": actionName = "إنشاء مفتاح"; break;
-            case "KEY_DELETED": actionName = "حذف مفتاح"; break;
-            case "KEYS_DELETED": actionName = "حذف عدة مفاتيح"; break;
+        const actionTranslations = {
+            "APP_OPENED": "فتح التطبيق",
+            "USER_LOGOUT": "تسجيل خروج",
+            "SECTION_VIEWED": "تصفح قسم",
+            "SERVICE_SELECTED": "تحديد خدمة",
+            "GAME_VIEWED": "مشاهدة لعبة",
+            "GAME_TOPUP_COMPLETED": "نجاح شحن اللعبة",
+            "GAME_TOPUP_FAILED": "فشل شحن اللعبة",
+            "ORDER_COMPLETED": "اكتمال طلب",
+            "ORDER_FAILED": "فشل طلب",
+            "BALANCE_RECHARGE_INITIATED": "بدء شحن رصيد",
+            "KEY_ACTIVATED": "تفعيل مفتاح VIP",
+            "KEY_ACTIVATION_FAILED": "فشل تفعيل مفتاح",
+            "AI_CHAT_OPENED": "استخدام المساعد الذكي",
+            "VIP_GRANTED": "منح VIP",
+            "VIP_REVOKED": "سحب VIP",
+            "USER_DELETED": "حذف مستخدم",
+            "USER_BANNED": "حظر مستخدم",
+            "USER_UNBANNED": "فك حظر مستخدم",
+            "KEY_CREATED": "إنشاء مفتاح",
+            "KEY_DELETED": "حذف مفتاح",
+            "KEYS_DELETED": "حذف عدة مفاتيح"
+        };
+        if (actionTranslations[log.action]) {
+            actionName = actionTranslations[log.action];
         }
+
+        let displayHtml = "";
+        let isJsonParsed = false;
+
+        try {
+            if (log.details && (log.details.startsWith("{") || log.details.startsWith("["))) {
+                const parsed = JSON.parse(log.details);
+                isJsonParsed = true;
+
+                const username = parsed.username && parsed.username !== "Unknown" ? parsed.username : (log.device_id || "مستخدم");
+                const service = parsed.service && parsed.service !== "N/A" ? `<span class="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.service}</span>` : "";
+                const amount = parsed.amount > 0 ? `<span class="bg-green-500/20 text-green-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.amount} ${parsed.currency || ''}</span>` : "";
+                const msg = parsed.message ? parsed.message : "";
+
+                displayHtml = `
+                    <div class="flex flex-wrap items-center gap-1 text-xs text-gray-300 mt-1">
+                        <span class="text-white font-bold">${username}</span>: 
+                        <span>${msg}</span>
+                        ${service}
+                        ${amount}
+                    </div>
+                `;
+            }
+        } catch (e) {
+            isJsonParsed = false;
+        }
+
+        if (!isJsonParsed) {
+            displayHtml = `<div class="text-white text-xs mt-1">${log.details || "--"}</div>`;
+        }
+
         container.innerHTML += `
             <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">
                 <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${log.id}">
                 <div class="flex-1 flex justify-between items-start">
-                    <div class="text-left">
-                        <div class="${color} font-bold text-sm flex items-center gap-2"><span>${icon}</span><span>${actionName}</span></div>
-                        <div class="text-white text-sm mt-1">${log.details || "--"}</div>
+                    <div class="text-right">
+                        <div class="${color} font-bold text-sm flex items-center gap-2">
+                            <span>${icon}</span>
+                            <span>${actionName}</span>
+                            ${log.device_id ? `<span class="text-[10px] text-gray-500 font-mono">(${log.device_id})</span>` : ''}
+                        </div>
+                        ${displayHtml}
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-xs text-gray-400">🕒 ${formatDate(log.created_at)}</span>
