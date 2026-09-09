@@ -92,19 +92,6 @@ client.auth.onAuthStateChange((event, session) => {
 let statsChart = null;
 let deviceChart = null;
 
-async function addActivity(type, action, deviceId = "", details = "") {
-    const res = await api("add_activity", {
-        type,
-        action,
-        device_id: deviceId,
-        details
-    });
-
-    if (res && res.error) {
-        console.error("Activity Log Error:", res.error);
-    }
-}
-
 // 1. نظام التنقل السلس بين أقسام اللوحة الجانبية
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function() {
@@ -127,7 +114,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     });
 });
 
-// 2. فحص وتأمين الجلسة (النسخة الأصلية البسطة والنظيفة تماماً كما طلبت)
+// 2. فحص وتأمين الجلسة
 async function checkSession() {
     const { data } = await client.auth.getSession();
     if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
@@ -139,28 +126,115 @@ async function checkSession() {
     }
 }
 
+// 🔐 إدارة تسجيل الدخول مع التحقق الثنائي (2FA via OTP)
 if (document.getElementById("loginBtn")) {
     document.getElementById("loginBtn").onclick = async () => {
-        const email = document.getElementById("email").value;
+        const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
         const errorEl = document.getElementById("loginError");
         if(errorEl) errorEl.textContent = "";
         
-        const { data, error } = await client.auth.signInWithPassword({
-            email,
-            password
-        });
+        if (!email || !password) {
+            if(errorEl) errorEl.textContent = "الرجاء إدخال البريد وكلمة المرور!";
+            return;
+        }
+
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
         if (error) { 
             if(errorEl) errorEl.textContent = "بيانات الدخول خاطئة!"; 
             return; 
         }
-        if (data && data.session && data.session.access_token) {
-            localStorage.setItem("admin_token", data.session.access_token);
-            ADMIN_TOKEN = data.session.access_token;
+
+        if (data && data.session) {
+            // إرسال كود التحقق الثنائي 2FA إلى البريد الإلكتروني للمشرف
+            const { error: otpError } = await client.auth.signInWithOtp({ email });
+            if (otpError) {
+                if(errorEl) errorEl.textContent = "فشل إرسال رمز التحقق الثنائي (2FA)";
+                return;
+            }
+            // إظهار نافذة إدخال الكود (2FA Modal)
+            show2FAModal(email);
         }
-        checkSession();
     };
 }
+
+// نافذة إدخال كود التحقق الثنائي 2FA
+function show2FAModal(email) {
+    const loginPage = document.getElementById("loginPage");
+    if (!loginPage) return;
+
+    loginPage.innerHTML = `
+        <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
+            <h1 class="text-2xl font-black text-white tracking-wider mb-2">التحقق الثنائي <span class="text-purple-500">2FA</span></h1>
+            <p class="text-gray-400 text-xs mb-6">تم إرسال رمز التحقق المكون من 6 أرقام إلى بريدك الإلكتروني.</p>
+            
+            <div class="space-y-4">
+                <input type="text" id="otpCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="------">
+                <div id="otpError" class="text-red-400 text-xs font-medium"></div>
+                <button id="verifyOtpBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تأكيد الرمز والدخول</button>
+                <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline mt-2 block mx-auto">إلغاء والعودة</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById("verifyOtpBtn").onclick = async () => {
+        const token = document.getElementById("otpCode").value.trim();
+        const errDiv = document.getElementById("otpError");
+        if (!token || token.length < 6) {
+            errDiv.textContent = "الرجاء إدخال الرمز المكون من 6 أرقام كاملاً";
+            return;
+        }
+
+        errDiv.textContent = "جاري التحقق...";
+        const { data, error } = await client.auth.verifyOtp({ email, token, type: 'email' });
+
+        if (error || !data.session) {
+            errDiv.textContent = "رمز التحقق غير صحيح أو منتهي الصلاحية";
+        } else {
+            localStorage.setItem("admin_token", data.session.access_token);
+            ADMIN_TOKEN = data.session.access_token;
+            showToast("تم التحقق وتسجيل الدخول بنجاح!");
+            setTimeout(() => { location.reload(); }, 1000);
+        }
+    };
+}
+
+// 🔑 زر نسيان كلمة المرور
+document.addEventListener("click", async (e) => {
+    if (e.target && e.target.id === "forgotPasswordBtn") {
+        const email = document.getElementById("email").value.trim();
+        const errorEl = document.getElementById("loginError");
+        if (!email) {
+            if (errorEl) errorEl.textContent = "الرجاء كتابة بريدك الإلكتروني في خانة الإيميل أولاً!";
+            return;
+        }
+        
+        if (errorEl) errorEl.textContent = "جاري إرسال رابط الاستعادة...";
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin,
+        });
+
+        if (error) {
+            if (errorEl) errorEl.textContent = "خطأ: " + error.message;
+        } else {
+            if (errorEl) errorEl.textContent = "تم إرسال رابط استعادة كلمة المرور إلى بريدك!";
+            errorEl.className = "text-green-400 text-xs text-center font-medium";
+        }
+    }
+});
+
+// إضافة زر "نسيان كلمة المرور" تلقائياً تحت خانة تسجيل الدخول إذا لم يكن موجوداً
+window.addEventListener('DOMContentLoaded', () => {
+    const loginCard = document.querySelector("#loginPage .glass-card, #loginPage > div");
+    if (loginCard && !document.getElementById("forgotPasswordBtn")) {
+        const forgotBtn = document.createElement("button");
+        forgotBtn.type = "button";
+        forgotBtn.id = "forgotPasswordBtn";
+        forgotBtn.className = "text-xs text-purple-400 hover:underline mt-3 block mx-auto text-center";
+        forgotBtn.textContent = "نسيت كلمة المرور؟";
+        loginCard.appendChild(forgotBtn);
+    }
+});
 
 if (document.getElementById("logout")) {
     document.getElementById("logout").onclick = async () => {
@@ -984,5 +1058,5 @@ async function loadNewBanList() {
     }
 }
 
-// تشغيل نظام التحقق البسيط الأصلي تماماً بدون أي رموز سحرية إضافية
+// فحص الجلسة عند بداية التشغيل
 checkSession();
