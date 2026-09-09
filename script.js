@@ -127,25 +127,14 @@ document.querySelectorAll('.nav-item').forEach(item => {
     });
 });
 
-// 2. فحص وتأمين الجلسة (المصححة لكي لا تظهر شاشة الدخول بلا داعٍ عند التحديث)
+// 2. فحص وتأمين الجلسة (النسخة الأصلية البسطة والنظيفة تماماً كما طلبت)
 async function checkSession() {
-    const token = localStorage.getItem("admin_token");
-    
-    if (!token) {
-        if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
-        if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
-        return;
-    }
-
     const { data } = await client.auth.getSession();
     if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
     
-    if (data && data.session) {
-        ADMIN_TOKEN = data.session.access_token;
-        localStorage.setItem("admin_token", ADMIN_TOKEN);
+    if (data.session) {
         afterLogin();
     } else {
-        localStorage.removeItem("admin_token");
         if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
     }
 }
@@ -995,97 +984,5 @@ async function loadNewBanList() {
     }
 }
 
-// 🔑 معالجة روابط التوثيق والقادمين عبر الإيميل (Magic Link أو Recovery) وتحديث الجلسة التلقائي
-window.addEventListener('DOMContentLoaded', async () => {
-    const hash = window.location.hash;
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    if (hash && hash.includes('access_token')) {
-        const params = new URLSearchParams(hash.substring(1));
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        const type = params.get('type');
-        
-        if (accessToken) {
-            localStorage.setItem("admin_token", accessToken);
-            ADMIN_TOKEN = accessToken;
-
-            await client.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-            });
-
-            if (type === 'magiclink' || !type || hash.includes('access_token')) {
-                showToast('تم تسجيل دخول المشرف بنجاح!');
-                setTimeout(() => {
-                    const loginPage = document.getElementById('loginPage');
-                    const loading = document.getElementById('loading');
-                    if (loading) loading.style.display = 'none';
-                    if (loginPage) loginPage.style.display = 'none';
-                    
-                    if (typeof afterLogin === 'function') {
-                        afterLogin();
-                    } else {
-                        window.location.reload();
-                    }
-                }, 800);
-                return;
-            }
-        }
-    }
-
-    if ((hash && hash.includes('type=recovery')) || urlParams.get('type') === 'recovery') {
-        const loginPage = document.getElementById('loginPage');
-        const loading = document.getElementById('loading');
-        if (loading) loading.style.display = 'none';
-        
-        if (loginPage) {
-            loginPage.style.display = 'flex';
-            loginPage.innerHTML = `
-                <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20">
-                    <div class="text-center mb-8">
-                        <h1 class="text-2xl font-black text-white tracking-wider">تعيين <span class="text-purple-500">كلمة مرور جديدة</span></h1>
-                        <p class="text-gray-400 text-xs mt-2">الرجاء إدخال كلمة المرور الجديدة لحساب المشرف</p>
-                    </div>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs text-gray-400 mb-1">كلمة المرور الجديدة</label>
-                            <input type="password" id="resetNewPassword" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="••••••••">
-                        </div>
-                        <div id="resetError" class="text-red-400 text-xs text-center font-medium"></div>
-                        <button id="btnConfirmReset" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تحديث كلمة المرور والدخول</button>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('btnConfirmReset').addEventListener('click', async () => {
-                const newPassword = document.getElementById('resetNewPassword').value;
-                const errorDiv = document.getElementById('resetError');
-
-                if (!newPassword || newPassword.length < 6) {
-                    errorDiv.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                    return;
-                }
-
-                errorDiv.textContent = 'جاري التحديث...';
-
-                try {
-                    const { error } = await client.auth.updateUser({ password: newPassword });
-
-                    if (error) {
-                        errorDiv.textContent = error.message;
-                    } else {
-                        showToast('تم تحديث كلمة المرور بنجاح! جاري تحويلك...');
-                        setTimeout(() => {
-                            window.location.href = window.location.pathname;
-                        }, 2000);
-                    }
-                } catch (err) {
-                    errorDiv.textContent = 'حدث خطأ غير متوقع أثناء التحديث';
-                }
-            });
-        }
-    } else {
-        checkSession();
-    }
-});
+// تشغيل نظام التحقق البسيط الأصلي تماماً بدون أي رموز سحرية إضافية
+checkSession();
