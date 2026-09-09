@@ -644,7 +644,7 @@ function closeDrawer() {
     if(drawer) drawer.style.right = '-450px'; 
 }
 
-// دالة loadUserDetails المحدثة والشاملة
+// الدالة الذكية لجلب وعرض بيانات المستخدم بالتفصيل في النافذة الجانبية
 async function loadUserDetails(deviceId) {
     const content = document.getElementById("drawerContent");
 
@@ -660,27 +660,31 @@ async function loadUserDetails(deviceId) {
     `;
 
     try {
-        const data = await api("get_user_details", {
-            device_id: deviceId
-        });
+        let data = await api("get_user_details", { device_id: deviceId });
+        
+        let user = (data && data.user) || null;
+        
+        if (!user) {
+            const allUsersRes = await api("get_all_users");
+            const allUsers = (allUsersRes && (allUsersRes.data || allUsersRes)) || [];
+            user = allUsers.find(u => (u.device_id === deviceId || u.id === deviceId || u.uuid === deviceId || u.username === deviceId));
+        }
 
-        if (!data || !data.user) {
+        if (!user) {
             content.innerHTML = `
-                <div class="text-center py-10 text-red-400">
-                    لم يتم العثور على بيانات المستخدم
+                <div class="text-center py-10 text-red-400 font-bold">
+                    ❌ لم يتم العثور على بيانات المستخدم لهذا المعرف: ${deviceId}
                 </div>
             `;
             return;
         }
 
-        const user = data.user;
+        const realDevId = user.device_id || user.id || user.uuid || deviceId;
 
-        // حماية النصوص من HTML
         const esc = (value) => {
             if (value === null || value === undefined || value === "") {
                 return "—";
             }
-
             return String(value)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
@@ -697,7 +701,6 @@ async function loadUserDetails(deviceId) {
 
         const dateValue = (value) => {
             if (!value) return "—";
-
             try {
                 return formatDate(value);
             } catch (e) {
@@ -705,308 +708,88 @@ async function loadUserDetails(deviceId) {
             }
         };
 
-        const vipRemaining = user.vip_until
-            ? getRemainingTime(user.vip_until)
-            : "—";
+        const vipRemaining = user.vip_until ? getRemainingTime(user.vip_until) : "—";
 
         content.innerHTML = `
             <div class="space-y-4">
-
                 <!-- الحساب -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-purple-400 font-bold mb-3">
-                        👤 معلومات الحساب
-                    </h3>
-
+                    <h3 class="text-purple-400 font-bold mb-3">👤 معلومات الحساب</h3>
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between gap-3">
                             <span class="text-gray-400">اسم المستخدم</span>
-                            <span class="text-white font-medium break-all">
-                                ${esc(user.username)}
-                            </span>
+                            <span class="text-white font-medium break-all">${esc(user.username || "Player")}</span>
                         </div>
-
                         <div class="flex justify-between gap-3">
                             <span class="text-gray-400">Device ID</span>
-                            <span class="text-white font-mono text-xs break-all">
-                                ${esc(user.device_id)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">User ID</span>
-                            <span class="text-white font-mono text-xs break-all">
-                                ${esc(user.id)}
-                            </span>
+                            <span class="text-white font-mono text-xs break-all">${esc(realDevId)}</span>
                         </div>
                     </div>
                 </div>
-
 
                 <!-- الرصيد -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-yellow-400 font-bold mb-3">
-                        💰 الرصيد
-                    </h3>
-
+                    <h3 class="text-yellow-400 font-bold mb-3">💰 الرصيد</h3>
                     <div class="grid grid-cols-2 gap-3">
-
                         <div class="bg-black/20 rounded-lg p-3">
-                            <div class="text-gray-400 text-xs">
-                                USD
-                            </div>
-                            <div class="text-green-400 text-lg font-bold mt-1">
-                                $${esc(user.balance_usd)}
-                            </div>
+                            <div class="text-gray-400 text-xs">USD</div>
+                            <div class="text-green-400 text-lg font-bold mt-1">$${esc(user.balance_usd || 0)}</div>
                         </div>
-
                         <div class="bg-black/20 rounded-lg p-3">
-                            <div class="text-gray-400 text-xs">
-                                DZD
-                            </div>
-                            <div class="text-green-400 text-lg font-bold mt-1">
-                                ${esc(user.balance_dzd)} DA
-                            </div>
+                            <div class="text-gray-400 text-xs">DZD</div>
+                            <div class="text-green-400 text-lg font-bold mt-1">${esc(user.balance_dzd || 0)} DA</div>
                         </div>
-
                     </div>
                 </div>
-
 
                 <!-- VIP -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-purple-400 font-bold mb-3">
-                        ⭐ معلومات VIP
-                    </h3>
-
+                    <h3 class="text-purple-400 font-bold mb-3">⭐ معلومات VIP</h3>
                     <div class="space-y-2 text-sm">
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">VIP</span>
-                            <span>
-                                ${yesNo(user.vip)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">نوع المدة</span>
-                            <span class="text-white">
-                                ${esc(user.duration_type)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">ينتهي في</span>
-                            <span class="text-white text-xs">
-                                ${dateValue(user.vip_until)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">المدة المتبقية</span>
-                            <span class="text-yellow-400 font-medium">
-                                ${esc(vipRemaining)}
-                            </span>
-                        </div>
-
+                        <div class="flex justify-between"><span class="text-gray-400">VIP</span><span>${yesNo(user.vip)}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">نوع المدة</span><span class="text-white">${esc(user.duration_type)}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">ينتهي في</span><span class="text-white text-xs">${dateValue(user.vip_until)}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">المدة المتبقية</span><span class="text-yellow-400 font-medium">${esc(vipRemaining)}</span></div>
                     </div>
                 </div>
-
 
                 <!-- الجهاز -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-blue-400 font-bold mb-3">
-                        📱 معلومات الجهاز
-                    </h3>
-
+                    <h3 class="text-blue-400 font-bold mb-3">📱 معلومات الجهاز</h3>
                     <div class="space-y-2 text-sm">
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">الموديل</span>
-                            <span class="text-white">
-                                ${esc(user.model)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">الشركة المصنعة</span>
-                            <span class="text-white">
-                                ${esc(user.manufacturer)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">Brand</span>
-                            <span class="text-white">
-                                ${esc(user.brand)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">Android</span>
-                            <span class="text-white">
-                                ${esc(user.android_version)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">SDK</span>
-                            <span class="text-white">
-                                ${esc(user.sdk)}
-                            </span>
-                        </div>
-
+                        <div class="flex justify-between gap-3"><span class="text-gray-400">الموديل</span><span class="text-white">${esc(user.model)}</span></div>
+                        <div class="flex justify-between gap-3"><span class="text-gray-400">الشركة المصنعة</span><span class="text-white">${esc(user.manufacturer)}</span></div>
+                        <div class="flex justify-between gap-3"><span class="text-gray-400">Brand</span><span class="text-white">${esc(user.brand)}</span></div>
+                        <div class="flex justify-between gap-3"><span class="text-gray-400">Android</span><span class="text-white">${esc(user.android_version)}</span></div>
                     </div>
                 </div>
-
-
-                <!-- الاتصال والنشاط -->
-                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-cyan-400 font-bold mb-3">
-                        🌐 النشاط والاتصال
-                    </h3>
-
-                    <div class="space-y-2 text-sm">
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">الدولة</span>
-                            <span class="text-white">
-                                ${esc(user.country)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">اللغة</span>
-                            <span class="text-white">
-                                ${esc(user.language)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">آخر ظهور</span>
-                            <span class="text-white text-xs">
-                                ${dateValue(user.last_online)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">عدد تسجيلات الدخول</span>
-                            <span class="text-white font-bold">
-                                ${esc(user.login_count)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between gap-3">
-                            <span class="text-gray-400">أول تسجيل دخول</span>
-                            <span class="text-white text-xs">
-                                ${dateValue(user.first_login)}
-                            </span>
-                        </div>
-
-                    </div>
-                </div>
-
-
-                <!-- البطارية -->
-                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-green-400 font-bold mb-3">
-                        🔋 البطارية
-                    </h3>
-
-                    <div class="space-y-2 text-sm">
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">نسبة البطارية</span>
-                            <span class="text-white font-bold">
-                                ${esc(user.battery)}%
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">الشحن</span>
-                            <span>
-                                ${yesNo(user.charging)}
-                            </span>
-                        </div>
-
-                    </div>
-                </div>
-
-
-                <!-- الأمان -->
-                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-red-400 font-bold mb-3">
-                        🛡️ الأمان
-                    </h3>
-
-                    <div class="space-y-2 text-sm">
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">محظور</span>
-                            <span>
-                                ${yesNo(user.banned)}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Cheat Detected</span>
-                            <span>
-                                ${yesNo(user.cheat_detected)}
-                            </span>
-                        </div>
-
-                    </div>
-                </div>
-
 
                 <!-- التحكم -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h3 class="text-orange-400 font-bold mb-3">
-                        ⚙️ التحكم
-                    </h3>
-
+                    <h3 class="text-orange-400 font-bold mb-3">⚙️ التحكم</h3>
                     <div class="flex gap-2">
-
-                        <button
-                            onclick="handleAction('vip','${esc(user.device_id)}')"
-                            class="flex-1 px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold">
+                        <button onclick="handleAction('vip','${esc(realDevId)}')" class="flex-1 px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold">
                             ${user.vip === true ? "إلغاء VIP" : "منح VIP"}
                         </button>
-
-                        <button
-                            onclick="handleAction('ban','${esc(user.device_id)}')"
-                            class="flex-1 px-3 py-2 rounded-lg ${
-                                user.banned === true
-                                    ? "bg-green-600 hover:bg-green-700"
-                                    : "bg-red-600 hover:bg-red-700"
-                            } text-white text-sm font-bold">
+                        <button onclick="handleAction('ban','${esc(realDevId)}')" class="flex-1 px-3 py-2 rounded-lg ${user.banned === true ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white text-sm font-bold">
                             ${user.banned === true ? "إلغاء الحظر" : "حظر"}
                         </button>
-
                     </div>
                 </div>
-
             </div>
         `;
-
     } catch (error) {
         console.error("loadUserDetails error:", error);
-
         content.innerHTML = `
             <div class="text-center py-10">
-                <div class="text-red-400 font-bold mb-2">
-                    ❌ فشل تحميل بيانات المستخدم
-                </div>
-
-                <div class="text-gray-500 text-xs break-all">
-                    ${esc(error.message || error)}
-                </div>
+                <div class="text-red-400 font-bold mb-2">❌ فشل تحميل بيانات المستخدم</div>
+                <div class="text-gray-500 text-xs break-all">${esc(error.message || error)}</div>
             </div>
         `;
     }
 }
 
-// دالة handleAction المحدثة بالكامل
+// دالة التحكم في الحظر ومنح الـ VIP أو الحذف
 async function handleAction(action, deviceId) {
     if (!deviceId) {
         showToast("Device ID غير موجود");
@@ -1160,6 +943,16 @@ function afterLogin() {
                 liveTimeEl.textContent = new Date().toLocaleTimeString("en-GB", { hour12: false });
             }
         }, 1000);
+    }
+
+    // النبضة التلقائية لتحديث حالة الاتصال (Heartbeat Timer)
+    if (!window.heartbeatTimer) {
+        window.heartbeatTimer = setInterval(async () => {
+            // تحديث حالة الاتصال في قاعدة البيانات للجهاز الحالي
+            await api("update_online_status", { timestamp: Date.now() }).catch(() => {});
+            // تحديث اللوحة بسلاسة
+            refreshDashboard();
+        }, 20000); // كل 20 ثانية
     }
 }
 
