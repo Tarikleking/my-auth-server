@@ -992,32 +992,42 @@ async function loadNewBanList() {
     }
 }
 // 🔑 معالجة إعادة تعيين كلمة المرور عبر رابط الإيميل (Recovery Token)
-// 🔑 معالجة استعادة كلمة المرور وتعيين الجديدة بشكل صحيح
+// 🔑 معالجة روابط التوثيق القادمة عبر الإيميل (Magic Link أو Recovery)
 window.addEventListener('DOMContentLoaded', async () => {
     const hash = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
     
-    // التحقق مما إذا كان الرابط يحتوي على توكن استعادة أو نوع recovery
-    if ((hash && hash.includes('type=recovery')) || urlParams.get('type') === 'recovery') {
+    // التحقق مما إذا كان الرابط يحتوي على توكن (access_token)
+    if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
         
-        // الخطوة الأهم: إذا كان التوكن يأتي في الـ Hash، نقوم بإنشاء جلسة لـ Supabase تلقائياً
-        if (hash && hash.includes('access_token')) {
-            const params = new URLSearchParams(hash.substring(1));
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-            
-            if (accessToken) {
-                await client.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: refreshToken
-                });
+        if (accessToken) {
+            // تعيين الجلسة في Supabase مباشرة
+            await client.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            });
+
+            // إذا كان الرابط نوعه ماجيك لينك أو تسجيل دخول، نقوم بتوجيهه للوحة مباشرة
+            if (type === 'magiclink' || !type || hash.includes('type=signup')) {
+                showToast('تم تسجيل الدخول بنجاح!');
+                setTimeout(() => {
+                    window.location.href = window.location.pathname; // الانتقال للوحة التحكم
+                }, 1000);
+                return;
             }
         }
+    }
 
-        // إظهار نافذة تحديث كلمة المرور
+    // إذا كان الرابط مخصصاً لاستعادة كلمة المرور (Recovery)
+    if ((hash && hash.includes('type=recovery')) || urlParams.get('type') === 'recovery') {
         const loginPage = document.getElementById('loginPage');
         const loading = document.getElementById('loading');
         if (loading) loading.style.display = 'none';
+        
         if (loginPage) {
             loginPage.style.display = 'flex';
             loginPage.innerHTML = `
@@ -1037,7 +1047,6 @@ window.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
 
-            // تنفيذ التحديث بعد أن أصبحت الجلسة نشطة
             document.getElementById('btnConfirmReset').addEventListener('click', async () => {
                 const newPassword = document.getElementById('resetNewPassword').value;
                 const errorDiv = document.getElementById('resetError');
@@ -1057,7 +1066,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         showToast('تم تحديث كلمة المرور بنجاح! جاري تحويلك...');
                         setTimeout(() => {
-                            window.location.href = window.location.pathname; // العودة للوحة التحكم العادية
+                            window.location.href = window.location.pathname;
                         }, 2000);
                     }
                 } catch (err) {
