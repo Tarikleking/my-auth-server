@@ -992,13 +992,29 @@ async function loadNewBanList() {
     }
 }
 // 🔑 معالجة إعادة تعيين كلمة المرور عبر رابط الإيميل (Recovery Token)
+// 🔑 معالجة استعادة كلمة المرور وتعيين الجديدة بشكل صحيح
 window.addEventListener('DOMContentLoaded', async () => {
-    // التحقق من وجود توكن الاستعادة في الرابط (Hash أو Query Parameters)
     const hash = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
     
+    // التحقق مما إذا كان الرابط يحتوي على توكن استعادة أو نوع recovery
     if ((hash && hash.includes('type=recovery')) || urlParams.get('type') === 'recovery') {
-        // إظهار نافذة تحديث كلمة المرور بدلاً من شاشة الدخول العادية
+        
+        // الخطوة الأهم: إذا كان التوكن يأتي في الـ Hash، نقوم بإنشاء جلسة لـ Supabase تلقائياً
+        if (hash && hash.includes('access_token')) {
+            const params = new URLSearchParams(hash.substring(1));
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            
+            if (accessToken) {
+                await client.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                });
+            }
+        }
+
+        // إظهار نافذة تحديث كلمة المرور
         const loginPage = document.getElementById('loginPage');
         const loading = document.getElementById('loading');
         if (loading) loading.style.display = 'none';
@@ -1021,7 +1037,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
 
-            // تنفيذ عملية التحديث عبر مكتبة Supabase
+            // تنفيذ التحديث بعد أن أصبحت الجلسة نشطة
             document.getElementById('btnConfirmReset').addEventListener('click', async () => {
                 const newPassword = document.getElementById('resetNewPassword').value;
                 const errorDiv = document.getElementById('resetError');
@@ -1041,7 +1057,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         showToast('تم تحديث كلمة المرور بنجاح! جاري تحويلك...');
                         setTimeout(() => {
-                            window.location.href = window.location.pathname; // مسح الـ Hash والعودة للوحة
+                            window.location.href = window.location.pathname; // العودة للوحة التحكم العادية
                         }, 2000);
                     }
                 } catch (err) {
@@ -1051,4 +1067,3 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
-
