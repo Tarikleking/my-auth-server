@@ -644,7 +644,7 @@ function closeDrawer() {
     if(drawer) drawer.style.right = '-450px'; 
 }
 
-// الدالة الذكية لجلب وعرض بيانات المستخدم بالتفصيل في النافذة الجانبية
+// الدالة الذكية لجلب وعرض بيانات المستخدم بالتفصيل في النافذة الجانبية (تم التعديل عليها)
 async function loadUserDetails(deviceId) {
     const content = document.getElementById("drawerContent");
 
@@ -667,7 +667,14 @@ async function loadUserDetails(deviceId) {
         if (!user) {
             const allUsersRes = await api("get_all_users");
             const allUsers = (allUsersRes && (allUsersRes.data || allUsersRes)) || [];
-            user = allUsers.find(u => (u.device_id === deviceId || u.id === deviceId || u.uuid === deviceId || u.username === deviceId));
+            
+            // 🔥 الإصلاح هنا: تحويل كل المعرفات إلى نصوص (String) لضمان التطابق
+            user = allUsers.find(u => (
+                String(u.device_id) === String(deviceId) || 
+                String(u.id) === String(deviceId) || 
+                String(u.uuid) === String(deviceId) || 
+                String(u.username) === String(deviceId)
+            ));
         }
 
         if (!user) {
