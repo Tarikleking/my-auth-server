@@ -120,6 +120,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
             targetEl.classList.remove('hidden');
             if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {
                 refreshDashboard();
+            } else if (targetSection === 'settings-section') {
+                loadSettings(); // جلب الإعدادات فور النقر على قسم الإعدادات
             }
         }
     });
@@ -698,6 +700,7 @@ function afterLogin() {
     if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "none";
     if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "flex";
     refreshDashboard();
+    loadSettings(); // تحميل الإعدادات فور تسجيل الدخول بنجاح
     
     if (!liveClock) {
         liveClock = setInterval(() => {
@@ -933,7 +936,6 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
     else showToast("تم حفظ الإعدادات بنجاح");
 });
 
-loadSettings();
 checkSession();
 
 async function loadNewVipList() {
