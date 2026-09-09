@@ -76,7 +76,7 @@ document.addEventListener("keydown", e => {
 });
 
 const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6IiqimroleSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 client.auth.onAuthStateChange((event, session) => {
@@ -146,19 +146,16 @@ if (document.getElementById("loginBtn")) {
         }
 
         if (data && data.session) {
-            // إرسال كود التحقق الثنائي 2FA إلى البريد الإلكتروني للمشرف
             const { error: otpError } = await client.auth.signInWithOtp({ email });
             if (otpError) {
                 if(errorEl) errorEl.textContent = "فشل إرسال رمز التحقق الثنائي (2FA)";
                 return;
             }
-            // إظهار نافذة إدخال الكود (2FA Modal)
             show2FAModal(email);
         }
     };
 }
 
-// نافذة إدخال كود التحقق الثنائي 2FA
 function show2FAModal(email) {
     const loginPage = document.getElementById("loginPage");
     if (!loginPage) return;
@@ -199,7 +196,6 @@ function show2FAModal(email) {
     };
 }
 
-// 🔑 زر نسيان كلمة المرور
 document.addEventListener("click", async (e) => {
     if (e.target && e.target.id === "forgotPasswordBtn") {
         const email = document.getElementById("email").value.trim();
@@ -223,7 +219,6 @@ document.addEventListener("click", async (e) => {
     }
 });
 
-// إضافة زر "نسيان كلمة المرور" تلقائياً تحت خانة تسجيل الدخول إذا لم يكن موجوداً
 window.addEventListener('DOMContentLoaded', () => {
     const loginCard = document.querySelector("#loginPage .glass-card, #loginPage > div");
     if (loginCard && !document.getElementById("forgotPasswordBtn")) {
@@ -1058,5 +1053,4 @@ async function loadNewBanList() {
     }
 }
 
-// فحص الجلسة عند بداية التشغيل
 checkSession();
