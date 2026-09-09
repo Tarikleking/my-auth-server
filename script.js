@@ -375,8 +375,8 @@ async function loadStats(uData = null, kData = null) {
                 const email = reg.email || "غير متوفر";
                 const activationKey = reg.activation_key || "KING-DZ-XXXX";
                 
-                const matchedUser = u.find(user => user.username === reg.username) || {};
-                const deviceId = matchedUser.device_id || "غير مسجل/مرتبط بعد";
+                const matchedUser = u.find(user => (user.device_id || user.id || user.uuid) === reg.username) || {};
+                const deviceId = matchedUser.device_id || matchedUser.id || matchedUser.uuid || reg.username || "غير مسجل/مرتبط بعد";
                 
                 let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">مسجل</span>';
                 if (reg.approved) {
@@ -456,12 +456,14 @@ function renderMainUsersTable(users) {
    
     const latest = users.slice(-4).reverse();
     const now = Date.now();
-    tbody.innerHTML = latest.map(u => `
+    tbody.innerHTML = latest.map(u => {
+        const devId = u.device_id || u.id || u.uuid || u.device || "Unknown";
+        return `
         <tr class="hover:bg-white/[0.005]">
             <td class="p-2.5 pr-4">
                 <div class="flex items-center gap-2">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.device_id}" class="w-6 h-6 rounded-full bg-[#111622]">
-                    <span class="font-bold text-purple-300 text-[11px] select-all">${u.device_id || 'غير متوفر'}</span>
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${devId}" class="w-6 h-6 rounded-full bg-[#111622]">
+                    <span class="font-bold text-purple-300 text-[11px] select-all">${devId}</span>
                 </div>
             </td>
             <td class="p-2.5 text-gray-400">${u.country || 'الجزائر 🇩🇿'}</td>
@@ -474,10 +476,10 @@ function renderMainUsersTable(users) {
                 </span>
             </td>
             <td class="p-2.5 text-center pl-4">
-                <button onclick="openDrawer('${u.device_id}')" class="p-1 text-purple-400 hover:bg-purple-500/10 rounded-md"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                <button onclick="openDrawer('${devId}')" class="p-1 text-purple-400 hover:bg-purple-500/10 rounded-md"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
             </td>
         </tr>
-    `).join('');
+    `;}).join('');
     lucide.createIcons();
 }
 
@@ -487,12 +489,13 @@ function renderAllUsersTable(users) {
     tbody.innerHTML = "";
     const now = Date.now();
     users.forEach(u => {
+        const devId = u.device_id || u.id || u.uuid || u.device || "Unknown";
         const online = u.last_online && (now - new Date(u.last_online).getTime()) < 300000;
         const statusText = u.banned ? "🚫 محظور" : (online ? "🟢 متصل الآن" : "⚫ غير متصل");
         const device = u.model || u.device_type || u.manufacturer || "--";
         const vip = u.vip ? '<span class="text-yellow-400 font-bold">👑 VIP</span>' : '<span class="text-gray-400">FREE</span>';
         const row = document.createElement("tr");
-        row.innerHTML = `<td>${u.country || '--'}</td><td>${device}</td><td>${statusText}</td><td>${vip}</td><td class="text-yellow-400 font-bold">${u.duration_type || '--'}</td><td>${u.vip_until ? getRemainingTime(u.vip_until) : '--'}</td><td>${formatDate(u.vip_until)}</td><td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}</td><td><button onclick="openDrawer('${u.device_id}')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white">إدارة</button></td>`;
+        row.innerHTML = `<td>${u.country || '--'}</td><td>${device}</td><td>${statusText}</td><td>${vip}</td><td class="text-yellow-400 font-bold">${u.duration_type || '--'}</td><td>${u.vip_until ? getRemainingTime(u.vip_until) : '--'}</td><td>${formatDate(u.vip_until)}</td><td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}</td><td><button onclick="openDrawer('${devId}')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white">إدارة</button></td>`;
         tbody.appendChild(row);
     });
 }
@@ -567,13 +570,15 @@ function renderBannedTable(users) {
     const tbody = document.getElementById("bannedDevicesTable");
     if (!tbody) return;
     const bannedList = users.filter(u => u.banned === true);
-    tbody.innerHTML = bannedList.reverse().map(b => `
+    tbody.innerHTML = bannedList.reverse().map(b => {
+        const devId = b.device_id || b.id || b.uuid || b.device || "Unknown";
+        return `
         <tr class="hover:bg-white/[0.005]">
-            <td class="p-2 pr-4 text-red-400 font-bold font-mono text-[10px]">${b.device_id}</td>
+            <td class="p-2 pr-4 text-red-400 font-bold font-mono text-[10px]">${devId}</td>
             <td class="p-2 text-gray-400">${b.model || '---'}</td>
-            <td class="p-2 text-center pl-4"><button onclick="liftUserBan('${b.device_id}')" class="text-green-400 font-bold text-[9px]">فك الحظر</button></td>
+            <td class="p-2 text-center pl-4"><button onclick="liftUserBan('${devId}')" class="text-green-400 font-bold text-[9px]">فك الحظر</button></td>
         </tr>
-    `).join('');
+    `;}).join('');
 }
 
 async function liftUserBan(deviceId) {
@@ -639,67 +644,443 @@ function closeDrawer() {
     if(drawer) drawer.style.right = '-450px'; 
 }
 
+// دالة loadUserDetails المحدثة والشاملة
 async function loadUserDetails(deviceId) {
     const content = document.getElementById("drawerContent");
-    if(!content) return;
-    
-    content.innerHTML = `<div class="text-center text-gray-400 py-4">جاري التحميل...</div>`;
-    
-    const res = await api("get_user_details", { device_id: deviceId });
-    const data = (res && (res.data || res)) || null;
-    
-    if (!res || res.error || !data) {
-        // محاولة بديلة لجلب البيانات مباشرة من الجدول إذا فشلت الـ API
+
+    if (!content) {
+        console.error("drawerContent not found");
+        return;
+    }
+
+    content.innerHTML = `
+        <div class="flex items-center justify-center py-10">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        </div>
+    `;
+
+    try {
+        const data = await api("get_user_details", {
+            device_id: deviceId
+        });
+
+        if (!data || !data.user) {
+            content.innerHTML = `
+                <div class="text-center py-10 text-red-400">
+                    لم يتم العثور على بيانات المستخدم
+                </div>
+            `;
+            return;
+        }
+
+        const user = data.user;
+
+        // حماية النصوص من HTML
+        const esc = (value) => {
+            if (value === null || value === undefined || value === "") {
+                return "—";
+            }
+
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        };
+
+        const yesNo = (value) => {
+            return value === true
+                ? '<span class="text-green-400">نعم</span>'
+                : '<span class="text-gray-400">لا</span>';
+        };
+
+        const dateValue = (value) => {
+            if (!value) return "—";
+
+            try {
+                return formatDate(value);
+            } catch (e) {
+                return esc(value);
+            }
+        };
+
+        const vipRemaining = user.vip_until
+            ? getRemainingTime(user.vip_until)
+            : "—";
+
         content.innerHTML = `
             <div class="space-y-4">
-                <div class="glass-card p-4 rounded-xl">
-                    <div class="flex items-center gap-3 mb-4">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${deviceId}" class="w-14 h-14 rounded-full bg-[#161b26]">
-                        <div><h3 class="text-white font-bold text-lg">معرف الجهاز</h3><p class="text-purple-400 text-xs select-all">${deviceId}</p></div>
+
+                <!-- الحساب -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-purple-400 font-bold mb-3">
+                        👤 معلومات الحساب
+                    </h3>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">اسم المستخدم</span>
+                            <span class="text-white font-medium break-all">
+                                ${esc(user.username)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">Device ID</span>
+                            <span class="text-white font-mono text-xs break-all">
+                                ${esc(user.device_id)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">User ID</span>
+                            <span class="text-white font-mono text-xs break-all">
+                                ${esc(user.id)}
+                            </span>
+                        </div>
                     </div>
                 </div>
-                <div class="glass-card p-4 rounded-xl text-center text-gray-400 text-xs">
-                    تم الاتصال بنجاح، وتظهر بيانات الجهاز في الجدول الرئيسي.
+
+
+                <!-- الرصيد -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-yellow-400 font-bold mb-3">
+                        💰 الرصيد
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-3">
+
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-gray-400 text-xs">
+                                USD
+                            </div>
+                            <div class="text-green-400 text-lg font-bold mt-1">
+                                $${esc(user.balance_usd)}
+                            </div>
+                        </div>
+
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-gray-400 text-xs">
+                                DZD
+                            </div>
+                            <div class="text-green-400 text-lg font-bold mt-1">
+                                ${esc(user.balance_dzd)} DA
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- VIP -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-purple-400 font-bold mb-3">
+                        ⭐ معلومات VIP
+                    </h3>
+
+                    <div class="space-y-2 text-sm">
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">VIP</span>
+                            <span>
+                                ${yesNo(user.vip)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">نوع المدة</span>
+                            <span class="text-white">
+                                ${esc(user.duration_type)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">ينتهي في</span>
+                            <span class="text-white text-xs">
+                                ${dateValue(user.vip_until)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">المدة المتبقية</span>
+                            <span class="text-yellow-400 font-medium">
+                                ${esc(vipRemaining)}
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- الجهاز -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-blue-400 font-bold mb-3">
+                        📱 معلومات الجهاز
+                    </h3>
+
+                    <div class="space-y-2 text-sm">
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">الموديل</span>
+                            <span class="text-white">
+                                ${esc(user.model)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">الشركة المصنعة</span>
+                            <span class="text-white">
+                                ${esc(user.manufacturer)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">Brand</span>
+                            <span class="text-white">
+                                ${esc(user.brand)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">Android</span>
+                            <span class="text-white">
+                                ${esc(user.android_version)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">SDK</span>
+                            <span class="text-white">
+                                ${esc(user.sdk)}
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- الاتصال والنشاط -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-cyan-400 font-bold mb-3">
+                        🌐 النشاط والاتصال
+                    </h3>
+
+                    <div class="space-y-2 text-sm">
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">الدولة</span>
+                            <span class="text-white">
+                                ${esc(user.country)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">اللغة</span>
+                            <span class="text-white">
+                                ${esc(user.language)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">آخر ظهور</span>
+                            <span class="text-white text-xs">
+                                ${dateValue(user.last_online)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">عدد تسجيلات الدخول</span>
+                            <span class="text-white font-bold">
+                                ${esc(user.login_count)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">أول تسجيل دخول</span>
+                            <span class="text-white text-xs">
+                                ${dateValue(user.first_login)}
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- البطارية -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-green-400 font-bold mb-3">
+                        🔋 البطارية
+                    </h3>
+
+                    <div class="space-y-2 text-sm">
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">نسبة البطارية</span>
+                            <span class="text-white font-bold">
+                                ${esc(user.battery)}%
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">الشحن</span>
+                            <span>
+                                ${yesNo(user.charging)}
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- الأمان -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-red-400 font-bold mb-3">
+                        🛡️ الأمان
+                    </h3>
+
+                    <div class="space-y-2 text-sm">
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">محظور</span>
+                            <span>
+                                ${yesNo(user.banned)}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Cheat Detected</span>
+                            <span>
+                                ${yesNo(user.cheat_detected)}
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- التحكم -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h3 class="text-orange-400 font-bold mb-3">
+                        ⚙️ التحكم
+                    </h3>
+
+                    <div class="flex gap-2">
+
+                        <button
+                            onclick="handleAction('vip','${esc(user.device_id)}')"
+                            class="flex-1 px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold">
+                            ${user.vip === true ? "إلغاء VIP" : "منح VIP"}
+                        </button>
+
+                        <button
+                            onclick="handleAction('ban','${esc(user.device_id)}')"
+                            class="flex-1 px-3 py-2 rounded-lg ${
+                                user.banned === true
+                                    ? "bg-green-600 hover:bg-green-700"
+                                    : "bg-red-600 hover:bg-red-700"
+                            } text-white text-sm font-bold">
+                            ${user.banned === true ? "إلغاء الحظر" : "حظر"}
+                        </button>
+
+                    </div>
+                </div>
+
+            </div>
+        `;
+
+    } catch (error) {
+        console.error("loadUserDetails error:", error);
+
+        content.innerHTML = `
+            <div class="text-center py-10">
+                <div class="text-red-400 font-bold mb-2">
+                    ❌ فشل تحميل بيانات المستخدم
+                </div>
+
+                <div class="text-gray-500 text-xs break-all">
+                    ${esc(error.message || error)}
                 </div>
             </div>
         `;
-        return;
     }
-    
-    const online = data.last_online && (Date.now() - new Date(data.last_online).getTime()) < 300000;
-    content.innerHTML = `
-        <div class="space-y-4">
-            <div class="glass-card p-4 rounded-xl">
-                <div class="flex items-center gap-3 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${data.device_id || deviceId}" class="w-14 h-14 rounded-full bg-[#161b26]">
-                    <div><h3 class="text-white font-bold text-lg">${data.username || "Player"}</h3><p class="text-gray-500 text-xs select-all">${data.device_id || deviceId}</p></div>
-                </div>
-            </div>
-            <div class="glass-card p-4 rounded-xl">
-                <h4 class="text-purple-400 font-bold mb-3">📱 معلومات الجهاز</h4>
-                <div class="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>الموديل</div><div class="text-white">${data.model || "--"}</div>
-                    <div>الشركة</div><div class="text-white">${data.manufacturer || "--"}</div>
-                    <div>العلامة</div><div class="text-white">${data.brand || "--"}</div>
-                    <div>الدولة</div><div class="text-white">${data.country || "--"}</div>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="handleAction('vip','${data.device_id || deviceId}')" class="bg-yellow-500/10 text-yellow-400 py-2 rounded-lg font-bold">👑 VIP</button>
-                <button onclick="handleAction('ban','${data.device_id || deviceId}')" class="bg-red-500/10 text-red-400 py-2 rounded-lg font-bold">🚫 حظر</button>
-            </div>
-        </div>
-    `;
-    lucide.createIcons();
 }
 
-
+// دالة handleAction المحدثة بالكامل
 async function handleAction(action, deviceId) {
-    if (action === "ban") { await api("ban_user", { device_id: deviceId, banned: true }); }
-    if (action === "vip") { await api("update_vip", { device_id: deviceId, vip: true }); }
-    if (action === "delete") { await api("delete_user", { device_id: deviceId }); }
-    closeDrawer();
-    refreshDashboard();
+    if (!deviceId) {
+        showToast("Device ID غير موجود");
+        return;
+    }
+
+    try {
+        const userRes = await api("get_user_details", {
+            device_id: deviceId
+        });
+
+        if (!userRes || !userRes.user) {
+            showToast("تعذر العثور على المستخدم");
+            return;
+        }
+
+        const user = userRes.user;
+
+        if (action === "ban") {
+            const newStatus = user.banned !== true;
+
+            const res = await api("ban_user", {
+                device_id: deviceId,
+                banned: newStatus
+            });
+
+            if (!res || res.error) {
+                showToast("فشل تغيير حالة الحظر");
+                return;
+            }
+
+            showToast(newStatus ? "تم حظر المستخدم 🚫" : "تم فك حظر المستخدم ✅");
+        }
+
+        else if (action === "vip") {
+            const newStatus = user.vip !== true;
+
+            const res = await api("update_vip", {
+                device_id: deviceId,
+                vip: newStatus
+            });
+
+            if (!res || res.error) {
+                showToast("فشل تغيير حالة VIP");
+                return;
+            }
+
+            showToast(newStatus ? "تم منح VIP 👑" : "تم سحب VIP");
+        }
+
+        else if (action === "delete") {
+            if (!confirm("هل أنت متأكد من حذف هذا المستخدم نهائياً؟")) {
+                return;
+            }
+
+            const res = await api("delete_user", {
+                device_id: deviceId
+            });
+
+            if (!res || res.error) {
+                showToast("فشل حذف المستخدم");
+                return;
+            }
+
+            showToast("تم حذف المستخدم");
+        }
+
+        closeDrawer();
+        await refreshDashboard();
+
+    } catch (error) {
+        console.error("handleAction error:", error);
+        showToast("حدث خطأ أثناء تنفيذ العملية");
+    }
 }
 
 function updateMainCharts(users) {
@@ -1016,7 +1397,7 @@ async function loadNewVipList() {
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
-                const deviceId = user.device_id || user.id || user.device || user.uuid;
+                const deviceId = user.device_id || user.id || user.uuid || user.device;
                 if (!deviceId) return;
 
                 const option = document.createElement("option");
@@ -1043,7 +1424,7 @@ async function loadNewBanList() {
 
         if (Array.isArray(users) && users.length > 0) {
             users.forEach(user => {
-                const deviceId = user.device_id || user.id || user.device || user.uuid;
+                const deviceId = user.device_id || user.id || user.uuid || user.device;
                 if (!deviceId) return;
 
                 const option = document.createElement("option");
