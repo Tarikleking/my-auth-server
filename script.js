@@ -76,7 +76,7 @@ document.addEventListener("keydown", e => {
 });
 
 const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6IiqimroleSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 client.auth.onAuthStateChange((event, session) => {
@@ -629,17 +629,58 @@ async function handleAction(action, deviceId) {
     refreshDashboard();
 }
 
+// 📊 الرسم البياني المحدث المعتمد على النشاط الفعلي
 function updateMainCharts(users) {
     const lineCtx = document.getElementById("statsChart")?.getContext("2d");
     if (!lineCtx) return;
+
+    const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    const now = new Date();
+
+    users.forEach(u => {
+        const dateRaw = u.last_online || u.first_login || u.created_at;
+        if (!dateRaw) return;
+        const d = new Date(dateRaw);
+        const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays < 7) {
+            counts[d.getDay()]++;
+        }
+    });
+
     if (statsChart) statsChart.destroy();
     statsChart = new Chart(lineCtx, {
         type: 'line',
         data: {
-            labels: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
-            datasets: [{ data: [users.length*0.4, users.length*0.6, users.length*0.5, users.length*0.8, users.length*0.7, users.length*0.9, users.length], borderColor: '#a855f7', borderWidth: 2, fill: false, tension: 0.4 }]
+            labels: dayNames,
+            datasets: [{
+                label: 'الأجهزة النشطة',
+                data: counts,
+                borderColor: '#a855f7',
+                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.35,
+                pointBackgroundColor: '#a855f7',
+                pointRadius: 3
+            }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, color: '#9ca3af' },
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                },
+                x: {
+                    ticks: { color: '#9ca3af' },
+                    grid: { display: false }
+                }
+            }
+        }
     });
 }
 
@@ -673,10 +714,27 @@ function formatDate(date) {
     return new Date(date).toLocaleString("ar-DZ", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
+// ⚡ تحسين Realtime مع Debounce لتفادي كثرة الطلبات المتكررة
+let refreshTimer = null;
+function debouncedRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+        refreshDashboard();
+    }, 1200);
+}
+
+let logsTimer = null;
+function debouncedLogs() {
+    clearTimeout(logsTimer);
+    logsTimer = setTimeout(() => {
+        loadActivityLogs();
+    }, 800);
+}
+
 client.channel('kingdz-realtime-sync')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { refreshDashboard(); })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { refreshDashboard(); })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => { loadActivityLogs(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { debouncedRefresh(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { debouncedRefresh(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => { debouncedLogs(); })
     .subscribe();
 
 document.getElementById("btnCopyAllKeys")?.addEventListener("click", async () => {
@@ -840,17 +898,22 @@ async function loadSettings() {
     const res = await api("get_settings");
     const data = (res && (res.data || res)) || null;
     if (!res || res.error || !data) return;
-    document.getElementById("mod_enabled").checked = data.mod_enabled;
-    document.getElementById("vip_enabled").checked = data.vip_enabled;
-    document.getElementById("force_update").checked = data.force_update;
+    document.getElementById("mod_enabled").checked = !!data.mod_enabled;
+    document.getElementById("vip_enabled").checked = !!data.vip_enabled;
+    document.getElementById("force_update").checked = !!data.force_update;
     document.getElementById("latest_version").value = data.latest_version || "";
     document.getElementById("message").value = data.message || "";
     document.getElementById("maintenance_message").value = data.maintenance_message || "";
     document.getElementById("update_url").value = data.update_url || "";
+    
+    const rateEl = document.getElementById("usd_to_dzd");
+    if (rateEl) {
+        rateEl.value = data.usd_to_dzd || 300;
+    }
 }
 
 document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
-    const res = await api("update_settings", {
+    const payload = {
         mod_enabled: document.getElementById("mod_enabled").checked,
         vip_enabled: document.getElementById("vip_enabled").checked,
         force_update: document.getElementById("force_update").checked,
@@ -858,8 +921,15 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
         message: document.getElementById("message").value,
         maintenance_message: document.getElementById("maintenance_message").value,
         update_url: document.getElementById("update_url").value
-    });
-    if(!res || res.error) showToast("فشل حفظ الإعدادات");
+    };
+
+    const rateInput = document.getElementById("usd_to_dzd");
+    if (rateInput && rateInput.value) {
+        payload.usd_to_dzd = Number(rateInput.value);
+    }
+
+    const res = await api("update_settings", payload);
+    if (!res || res.error) showToast("فشل حفظ الإعدادات");
     else showToast("تم حفظ الإعدادات بنجاح");
 });
 
