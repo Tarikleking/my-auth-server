@@ -121,20 +121,31 @@ document.querySelectorAll('.nav-item').forEach(item => {
             if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {
                 refreshDashboard();
             } else if (targetSection === 'settings-section') {
-                loadSettings(); // جلب الإعدادات فور النقر على قسم الإعدادات
+                loadSettings();
             }
         }
     });
 });
 
-// 2. فحص وتأمين الجلسة (تسجيل الدخول / الخروج)
+// 2. فحص وتأمين الجلسة (المصححة لكي لا تظهر شاشة الدخول بلا داعٍ عند التحديث)
 async function checkSession() {
+    const token = localStorage.getItem("admin_token");
+    
+    if (!token) {
+        if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
+        if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
+        return;
+    }
+
     const { data } = await client.auth.getSession();
     if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
     
-    if (data.session) {
+    if (data && data.session) {
+        ADMIN_TOKEN = data.session.access_token;
+        localStorage.setItem("admin_token", ADMIN_TOKEN);
         afterLogin();
     } else {
+        localStorage.removeItem("admin_token");
         if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
     }
 }
@@ -259,7 +270,6 @@ function updateCounter(id, value) {
     if (el) el.textContent = value.toLocaleString();
 }
 
-// 📈 دالة تحديث الإحصائيات وربط الإيميلات بمعلومات والأجهزة
 async function loadStats(uData = null, kData = null) {
     let u = uData;
     let k = kData;
@@ -329,7 +339,6 @@ async function loadStats(uData = null, kData = null) {
     }
 }
 
-// 📌 Event Delegation لأزرار قسم الإحصائيات
 document.addEventListener('click', async function(event) {
     const target = event.target.closest('#btnSelectAllStats, #btnCopySelectedStats, #btnDeleteSelectedStats');
     if (!target) return;
@@ -378,7 +387,6 @@ document.addEventListener('click', async function(event) {
     }
 });
 
-// 4. عرض الأجهزة المتصلة الحقيقية في جدول لوحة التحكم الرئيسي
 function renderMainUsersTable(users) {
     const tbody = document.getElementById("usersTable");
     if (!tbody) return;
@@ -631,7 +639,6 @@ async function handleAction(action, deviceId) {
     refreshDashboard();
 }
 
-// 📊 الرسم البياني المحدث المعتمد على النشاط الفعلي
 function updateMainCharts(users) {
     const lineCtx = document.getElementById("statsChart")?.getContext("2d");
     if (!lineCtx) return;
@@ -700,7 +707,7 @@ function afterLogin() {
     if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "none";
     if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "flex";
     refreshDashboard();
-    loadSettings(); // تحميل الإعدادات فور تسجيل الدخول بنجاح
+    loadSettings();
     
     if (!liveClock) {
         liveClock = setInterval(() => {
@@ -717,7 +724,6 @@ function formatDate(date) {
     return new Date(date).toLocaleString("ar-DZ", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
-// ⚡ تحسين Realtime مع Debounce لتفادي كثرة الطلبات المتكررة
 let refreshTimer = null;
 function debouncedRefresh() {
     clearTimeout(refreshTimer);
@@ -772,7 +778,6 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
     refreshDashboard();
 });
 
-// 5. تحميل وعرض سجل النشاط مع فك تشفير JSON
 async function loadActivityLogs() {
     const container = document.getElementById("activityLogs");
     if (!container) return;
@@ -936,8 +941,6 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
     else showToast("تم حفظ الإعدادات بنجاح");
 });
 
-checkSession();
-
 async function loadNewVipList() {
     const selectElement = document.getElementById("vipDeviceId");
     if (!selectElement) return;
@@ -992,12 +995,11 @@ async function loadNewBanList() {
     }
 }
 
-// 🔑 معالجة روابط التوثيق والقادمين عبر الإيميل (Magic Link أو Recovery)
+// 🔑 معالجة روابط التوثيق والقادمين عبر الإيميل (Magic Link أو Recovery) وتحديث الجلسة التلقائي
 window.addEventListener('DOMContentLoaded', async () => {
     const hash = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
     
-    // إذا كان الرابط يحتوي على access_token (مثل Magic Link أو التسجيل)
     if (hash && hash.includes('access_token')) {
         const params = new URLSearchParams(hash.substring(1));
         const accessToken = params.get('access_token');
@@ -1005,11 +1007,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         const type = params.get('type');
         
         if (accessToken) {
-            // حفظ التوكن في التخزين المحلي لكي تقرأه دالة الـ API فوراً
             localStorage.setItem("admin_token", accessToken);
             ADMIN_TOKEN = accessToken;
 
-            // ضبط الجلسة في عميل Supabase
             await client.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken
@@ -1023,7 +1023,6 @@ window.addEventListener('DOMContentLoaded', async () => {
                     if (loading) loading.style.display = 'none';
                     if (loginPage) loginPage.style.display = 'none';
                     
-                    // استدعاء دالة تشغيل اللوحة وجلب البيانات الأساسية
                     if (typeof afterLogin === 'function') {
                         afterLogin();
                     } else {
@@ -1035,9 +1034,58 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // استدعاء الفحص العادي إذا لم يكن هناك رابط خاص
-    if (typeof checkSession === 'function') {
+    if ((hash && hash.includes('type=recovery')) || urlParams.get('type') === 'recovery') {
+        const loginPage = document.getElementById('loginPage');
+        const loading = document.getElementById('loading');
+        if (loading) loading.style.display = 'none';
+        
+        if (loginPage) {
+            loginPage.style.display = 'flex';
+            loginPage.innerHTML = `
+                <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20">
+                    <div class="text-center mb-8">
+                        <h1 class="text-2xl font-black text-white tracking-wider">تعيين <span class="text-purple-500">كلمة مرور جديدة</span></h1>
+                        <p class="text-gray-400 text-xs mt-2">الرجاء إدخال كلمة المرور الجديدة لحساب المشرف</p>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">كلمة المرور الجديدة</label>
+                            <input type="password" id="resetNewPassword" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="••••••••">
+                        </div>
+                        <div id="resetError" class="text-red-400 text-xs text-center font-medium"></div>
+                        <button id="btnConfirmReset" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تحديث كلمة المرور والدخول</button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('btnConfirmReset').addEventListener('click', async () => {
+                const newPassword = document.getElementById('resetNewPassword').value;
+                const errorDiv = document.getElementById('resetError');
+
+                if (!newPassword || newPassword.length < 6) {
+                    errorDiv.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+                    return;
+                }
+
+                errorDiv.textContent = 'جاري التحديث...';
+
+                try {
+                    const { error } = await client.auth.updateUser({ password: newPassword });
+
+                    if (error) {
+                        errorDiv.textContent = error.message;
+                    } else {
+                        showToast('تم تحديث كلمة المرور بنجاح! جاري تحويلك...');
+                        setTimeout(() => {
+                            window.location.href = window.location.pathname;
+                        }, 2000);
+                    }
+                } catch (err) {
+                    errorDiv.textContent = 'حدث خطأ غير متوقع أثناء التحديث';
+                }
+            });
+        }
+    } else {
         checkSession();
     }
 });
-
