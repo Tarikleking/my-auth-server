@@ -991,13 +991,13 @@ async function loadNewBanList() {
         console.error(e);
     }
 }
-// 🔑 معالجة إعادة تعيين كلمة المرور عبر رابط الإيميل (Recovery Token)
-// 🔑 معالجة روابط التوثيق القادمة عبر الإيميل (Magic Link أو Recovery)
+
+// 🔑 معالجة روابط التوثيق والقادمين عبر الإيميل (Magic Link أو Recovery)
 window.addEventListener('DOMContentLoaded', async () => {
     const hash = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
     
-    // التحقق مما إذا كان الرابط يحتوي على توكن (access_token)
+    // إذا كان الرابط يحتوي على access_token (مثل Magic Link أو التسجيل)
     if (hash && hash.includes('access_token')) {
         const params = new URLSearchParams(hash.substring(1));
         const accessToken = params.get('access_token');
@@ -1005,82 +1005,39 @@ window.addEventListener('DOMContentLoaded', async () => {
         const type = params.get('type');
         
         if (accessToken) {
-            // تعيين الجلسة في Supabase مباشرة
+            // حفظ التوكن في التخزين المحلي لكي تقرأه دالة الـ API فوراً
+            localStorage.setItem("admin_token", accessToken);
+            ADMIN_TOKEN = accessToken;
+
+            // ضبط الجلسة في عميل Supabase
             await client.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken
             });
 
-            // إذا كان الرابط نوعه ماجيك لينك أو تسجيل دخول، نقوم بتوجيهه للوحة مباشرة
-                       if (type === 'magiclink' || !type || hash.includes('type=signup') || hash.includes('access_token')) {
-                showToast('تم تسجيل الدخول بنجاح!');
+            if (type === 'magiclink' || !type || hash.includes('access_token')) {
+                showToast('تم تسجيل دخول المشرف بنجاح!');
                 setTimeout(() => {
-                    // إخفاء شاشة تسجيل الدخول وإظهار لوحة التحكم فوراً
                     const loginPage = document.getElementById('loginPage');
+                    const loading = document.getElementById('loading');
+                    if (loading) loading.style.display = 'none';
                     if (loginPage) loginPage.style.display = 'none';
+                    
+                    // استدعاء دالة تشغيل اللوحة وجلب البيانات الأساسية
                     if (typeof afterLogin === 'function') {
                         afterLogin();
                     } else {
-                        window.location.href = window.location.pathname;
+                        window.location.reload();
                     }
-                }, 1000);
+                }, 800);
                 return;
             }
-
         }
     }
 
-    // إذا كان الرابط مخصصاً لاستعادة كلمة المرور (Recovery)
-    if ((hash && hash.includes('type=recovery')) || urlParams.get('type') === 'recovery') {
-        const loginPage = document.getElementById('loginPage');
-        const loading = document.getElementById('loading');
-        if (loading) loading.style.display = 'none';
-        
-        if (loginPage) {
-            loginPage.style.display = 'flex';
-            loginPage.innerHTML = `
-                <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20">
-                    <div class="text-center mb-8">
-                        <h1 class="text-2xl font-black text-white tracking-wider">تعيين <span class="text-purple-500">كلمة مرور جديدة</span></h1>
-                        <p class="text-gray-400 text-xs mt-2">الرجاء إدخال كلمة المرور الجديدة لحساب المشرف</p>
-                    </div>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs text-gray-400 mb-1">كلمة المرور الجديدة</label>
-                            <input type="password" id="resetNewPassword" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="••••••••">
-                        </div>
-                        <div id="resetError" class="text-red-400 text-xs text-center font-medium"></div>
-                        <button id="btnConfirmReset" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تحديث كلمة المرور والدخول</button>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('btnConfirmReset').addEventListener('click', async () => {
-                const newPassword = document.getElementById('resetNewPassword').value;
-                const errorDiv = document.getElementById('resetError');
-
-                if (!newPassword || newPassword.length < 6) {
-                    errorDiv.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                    return;
-                }
-
-                errorDiv.textContent = 'جاري التحديث...';
-
-                try {
-                    const { error } = await client.auth.updateUser({ password: newPassword });
-
-                    if (error) {
-                        errorDiv.textContent = error.message;
-                    } else {
-                        showToast('تم تحديث كلمة المرور بنجاح! جاري تحويلك...');
-                        setTimeout(() => {
-                            window.location.href = window.location.pathname;
-                        }, 2000);
-                    }
-                } catch (err) {
-                    errorDiv.textContent = 'حدث خطأ غير متوقع أثناء التحديث';
-                }
-            });
-        }
+    // استدعاء الفحص العادي إذا لم يكن هناك رابط خاص
+    if (typeof checkSession === 'function') {
+        checkSession();
     }
 });
+
