@@ -384,7 +384,7 @@ async function loadStats(uData = null, kData = null) {
                 }
 
                 return `
-                    <tr class="hover:bg-white/[0.02] border-b border-white/5">
+                    <tr class="hover:bg-white/[0.005] border-b border-white/5">
                         <td class="p-3 text-center"><input type="checkbox" class="stat-checkbox accent-purple-600 rounded w-4 h-4" data-id="${reg.id || ''}" data-email="${email}"></td>
                         <td class="p-3 text-white font-medium select-all">${email}</td>
                         <td class="p-3 font-mono text-xs text-purple-300 select-all">${deviceId}</td>
@@ -1171,41 +1171,104 @@ document.getElementById("btnDeleteSelectedLogs")?.addEventListener("click", asyn
 
 async function loadSettings() {
     const res = await api("get_settings");
-    const data = (res && (res.data || res)) || null;
-    if (!res || res.error || !data) return;
-    document.getElementById("mod_enabled").checked = !!data.mod_enabled;
-    document.getElementById("vip_enabled").checked = !!data.vip_enabled;
-    document.getElementById("force_update").checked = !!data.force_update;
-    document.getElementById("latest_version").value = data.latest_version || "";
-    document.getElementById("message").value = data.message || "";
-    document.getElementById("maintenance_message").value = data.maintenance_message || "";
-    document.getElementById("update_url").value = data.update_url || "";
-    
+
+    if (!res || res.error) {
+        console.error("get_settings error:", res);
+        return;
+    }
+
+    // توحيد شكل الاستجابة سواء رجعت object أو array
+    let rawData = res.data ?? res;
+
+    const data = Array.isArray(rawData)
+        ? (rawData[0] || {})
+        : (rawData || {});
+
+    console.log("SETTINGS DATA:", data);
+
+    const modEl = document.getElementById("mod_enabled");
+    const vipEl = document.getElementById("vip_enabled");
+    const forceEl = document.getElementById("force_update");
+    const versionEl = document.getElementById("latest_version");
+    const messageEl = document.getElementById("message");
+    const maintenanceEl = document.getElementById("maintenance_message");
+    const updateUrlEl = document.getElementById("update_url");
     const rateEl = document.getElementById("usd_to_dzd");
+
+    if (modEl) {
+        modEl.checked = data.mod_enabled === true;
+    }
+
+    if (vipEl) {
+        vipEl.checked = data.vip_enabled === true;
+    }
+
+    if (forceEl) {
+        forceEl.checked = data.force_update === true;
+    }
+
+    if (versionEl) {
+        versionEl.value = data.latest_version ?? "";
+    }
+
+    if (messageEl) {
+        messageEl.value = data.message ?? "";
+    }
+
+    if (maintenanceEl) {
+        maintenanceEl.value = data.maintenance_message ?? "";
+    }
+
+    if (updateUrlEl) {
+        updateUrlEl.value = data.update_url ?? "";
+    }
+
     if (rateEl) {
-        rateEl.value = data.usd_to_dzd || 300;
+        rateEl.value = data.usd_to_dzd ?? 300;
     }
 }
 
 document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
-    const payload = {
-        mod_enabled: document.getElementById("mod_enabled").checked,
-        vip_enabled: document.getElementById("vip_enabled").checked,
-        force_update: document.getElementById("force_update").checked,
-        latest_version: document.getElementById("latest_version").value,
-        message: document.getElementById("message").value,
-        maintenance_message: document.getElementById("maintenance_message").value,
-        update_url: document.getElementById("update_url").value
-    };
 
     const rateInput = document.getElementById("usd_to_dzd");
-    if (rateInput && rateInput.value) {
-        payload.usd_to_dzd = Number(rateInput.value);
-    }
+
+    const payload = {
+        mod_enabled: !!document.getElementById("mod_enabled")?.checked,
+        vip_enabled: !!document.getElementById("vip_enabled")?.checked,
+        force_update: !!document.getElementById("force_update")?.checked,
+
+        latest_version:
+            document.getElementById("latest_version")?.value?.trim() || "",
+
+        message:
+            document.getElementById("message")?.value || "",
+
+        maintenance_message:
+            document.getElementById("maintenance_message")?.value || "",
+
+        update_url:
+            document.getElementById("update_url")?.value?.trim() || "",
+
+        usd_to_dzd:
+            rateInput && rateInput.value
+                ? Number(rateInput.value)
+                : 300
+    };
+
+    console.log("SAVING SETTINGS:", payload);
 
     const res = await api("update_settings", payload);
-    if (!res || res.error) showToast("فشل حفظ الإعدادات");
-    else showToast("تم حفظ الإعدادات بنجاح");
+
+    if (!res || res.error) {
+        console.error("update_settings error:", res);
+        showToast("فشل حفظ الإعدادات");
+        return;
+    }
+
+    showToast("تم حفظ الإعدادات بنجاح");
+
+    // إعادة قراءة البيانات من قاعدة البيانات
+    await loadSettings();
 });
 
 async function loadNewVipList() {
