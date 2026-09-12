@@ -767,7 +767,24 @@ async function loadUserDetails(deviceId) {
                         <div class="flex justify-between gap-3"><span class="text-gray-400">الموديل</span><span class="text-white">${esc(user.model)}</span></div>
                         <div class="flex justify-between gap-3"><span class="text-gray-400">الشركة المصنعة</span><span class="text-white">${esc(user.manufacturer)}</span></div>
                         <div class="flex justify-between gap-3"><span class="text-gray-400">Brand</span><span class="text-white">${esc(user.brand)}</span></div>
-                        <div class="flex justify-between gap-3"><span class="text-gray-400">Android</span><span class="text-white">${esc(user.android_version)}</span></div>
+                        <div class="flex justify-between gap-3">
+    <span class="text-gray-400">Android</span>
+    <span class="text-white">${esc(user.android_version)}</span>
+</div>
+
+<div class="flex justify-between gap-3">
+    <span class="text-gray-400">🔋 البطارية</span>
+    <span class="text-white font-bold">
+        ${user.battery != null ? esc(user.battery) + "%" : "—"}
+    </span>
+</div>
+
+<div class="flex justify-between gap-3">
+    <span class="text-gray-400">⚡ حالة الشحن</span>
+    <span class="${user.charging === true ? 'text-green-400 font-bold' : 'text-gray-400'}">
+        ${user.charging === true ? "⚡ يشحن الآن" : "غير متصل"}
+    </span>
+</div>
                     </div>
                 </div>
 
