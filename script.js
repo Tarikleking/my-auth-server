@@ -77,11 +77,21 @@ const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+let passwordRecoveryMode = false;
+
 client.auth.onAuthStateChange((event, session) => {
-    if (session) {
+    if (event === "PASSWORD_RECOVERY") {
+        passwordRecoveryMode = true;
+        ADMIN_TOKEN = null;
+        localStorage.removeItem("admin_token");
+        showPasswordResetScreen();
+        return;
+    }
+
+    if (session && !passwordRecoveryMode) {
         ADMIN_TOKEN = session.access_token;
         localStorage.setItem("admin_token", ADMIN_TOKEN);
-    } else {
+    } else if (!session) {
         ADMIN_TOKEN = null;
         localStorage.removeItem("admin_token");
     }
@@ -116,6 +126,14 @@ document.querySelectorAll('.nav-item').forEach(item => {
 async function checkSession() {
     const { data } = await client.auth.getSession();
     if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
+
+    // Password-recovery sessions must never enter the admin dashboard directly.
+    const recoveryFromUrl = /(?:^|[&#])type=recovery(?:&|$)/i.test(window.location.hash);
+    if (passwordRecoveryMode || recoveryFromUrl) {
+        passwordRecoveryMode = true;
+        showPasswordResetScreen();
+        return;
+    }
     
     if (data.session) {
         afterLogin();
@@ -191,6 +209,72 @@ function show2FAModal(email) {
             showToast("تم التحقق وتسجيل الدخول بنجاح!");
             setTimeout(() => { location.reload(); }, 1000);
         }
+    };
+}
+
+function showPasswordResetScreen() {
+    const loginPage = document.getElementById("loginPage");
+    if (!loginPage) return;
+
+    loginPage.style.display = "flex";
+    loginPage.innerHTML = `
+        <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
+            <h1 class="text-2xl font-black text-white tracking-wider mb-2">تغيير كلمة المرور</h1>
+            <p class="text-gray-400 text-xs mb-6">أنشئ كلمة مرور جديدة لحساب الإدارة.</p>
+
+            <div class="space-y-4">
+                <input type="password" id="newPassword" autocomplete="new-password" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" placeholder="كلمة المرور الجديدة">
+                <input type="password" id="confirmNewPassword" autocomplete="new-password" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" placeholder="تأكيد كلمة المرور">
+                <div id="passwordResetError" class="text-red-400 text-xs font-medium"></div>
+                <button id="updatePasswordBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">حفظ كلمة المرور</button>
+            </div>
+        </div>
+    `;
+
+    const newPassword = document.getElementById("newPassword");
+    const confirmPassword = document.getElementById("confirmNewPassword");
+    const errorEl = document.getElementById("passwordResetError");
+    const button = document.getElementById("updatePasswordBtn");
+
+    button.onclick = async () => {
+        const password = newPassword.value;
+        const confirmation = confirmPassword.value;
+
+        errorEl.className = "text-red-400 text-xs font-medium";
+        errorEl.textContent = "";
+
+        if (password.length < 8) {
+            errorEl.textContent = "كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
+            return;
+        }
+
+        if (password !== confirmation) {
+            errorEl.textContent = "كلمتا المرور غير متطابقتين.";
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "جاري حفظ كلمة المرور...";
+
+        const { error } = await client.auth.updateUser({ password });
+
+        if (error) {
+            button.disabled = false;
+            button.textContent = "حفظ كلمة المرور";
+            errorEl.textContent = "تعذر تغيير كلمة المرور: " + error.message;
+            return;
+        }
+
+        errorEl.className = "text-green-400 text-xs font-medium";
+        errorEl.textContent = "تم تغيير كلمة المرور بنجاح. أعد تسجيل الدخول.";
+
+        await client.auth.signOut();
+        localStorage.removeItem("admin_token");
+        passwordRecoveryMode = false;
+
+        setTimeout(() => {
+            window.location.replace(window.location.pathname + window.location.search);
+        }, 900);
     };
 }
 
@@ -1003,8 +1087,8 @@ function debouncedLogs() {
 }
 
 client.channel('kingdz-realtime-sync')
-    .on('postgres_changes', { event: '', schema: 'public', table: 'keys' }, () => { debouncedRefresh(); })
-    .on('postgres_changes', { event: '', schema: 'public', table: 'users' }, () => { debouncedRefresh(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { debouncedRefresh(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { debouncedRefresh(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => { debouncedLogs(); })
     .subscribe();
 
