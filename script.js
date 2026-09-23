@@ -4,7 +4,7 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 let liveClock = null;
 
-// 🔐 دالة الـ api المحدثة
+// 🔐 دالة الـ api الجديدة والمحدثة
 async function api(action, data = {}) {
   const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
 
@@ -46,7 +46,7 @@ async function api(action, data = {}) {
   }
 }
 
-// 🔥 حماية الـ Console
+// 🔥 يمنع التلاعب بالـ console (basic)
 (function () {
   const devtools = /./;
   devtools.toString = function () {
@@ -57,10 +57,10 @@ async function api(action, data = {}) {
     if (devtools.opened) {
       document.body.innerHTML = "Blocked";
     }
-  }, 2000);
+  }, 1000);
 })();
 
-// 🚫 تعطيل Inspect
+// 🚫 🔐 تعطيل inspect (حماية إضافية)
 document.addEventListener("contextmenu", e => e.preventDefault());
 
 document.addEventListener("keydown", e => {
@@ -77,21 +77,11 @@ const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let passwordRecoveryMode = false;
-
 client.auth.onAuthStateChange((event, session) => {
-    if (event === "PASSWORD_RECOVERY") {
-        passwordRecoveryMode = true;
-        ADMIN_TOKEN = null;
-        localStorage.removeItem("admin_token");
-        showPasswordResetScreen();
-        return;
-    }
-
-    if (session && !passwordRecoveryMode) {
+    if (session) {
         ADMIN_TOKEN = session.access_token;
         localStorage.setItem("admin_token", ADMIN_TOKEN);
-    } else if (!session) {
+    } else {
         ADMIN_TOKEN = null;
         localStorage.removeItem("admin_token");
     }
@@ -100,7 +90,7 @@ client.auth.onAuthStateChange((event, session) => {
 let statsChart = null;
 let deviceChart = null;
 
-// 1. نظام التنقل السلس بين أقسام اللوحة
+// 1. نظام التنقل السلس بين أقسام اللوحة الجانبية
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function() {
         const targetSection = this.getAttribute('data-target');
@@ -114,7 +104,9 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (targetEl) {
             targetEl.classList.remove('hidden');
             if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {
-                debouncedRefresh();
+                refreshDashboard();
+            } else if (targetSection === 'mediation-section') {
+                loadMediationDisputes();
             } else if (targetSection === 'settings-section') {
                 loadSettings();
             }
@@ -126,13 +118,6 @@ document.querySelectorAll('.nav-item').forEach(item => {
 async function checkSession() {
     const { data } = await client.auth.getSession();
     if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
-
-    const recoveryFromUrl = /(?:^|[&#])type=recovery(?:&|$)/i.test(window.location.hash);
-    if (passwordRecoveryMode || recoveryFromUrl) {
-        passwordRecoveryMode = true;
-        showPasswordResetScreen();
-        return;
-    }
     
     if (data.session) {
         afterLogin();
@@ -141,7 +126,7 @@ async function checkSession() {
     }
 }
 
-// 🔐 إدارة تسجيل الدخول مع التحقق الثنائي (2FA)
+// 🔐 إدارة تسجيل الدخول مع التحقق الثنائي (2FA via OTP)
 if (document.getElementById("loginBtn")) {
     document.getElementById("loginBtn").onclick = async () => {
         const email = document.getElementById("email").value.trim();
@@ -211,72 +196,6 @@ function show2FAModal(email) {
     };
 }
 
-function showPasswordResetScreen() {
-    const loginPage = document.getElementById("loginPage");
-    if (!loginPage) return;
-
-    loginPage.style.display = "flex";
-    loginPage.innerHTML = `
-        <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
-            <h1 class="text-2xl font-black text-white tracking-wider mb-2">تغيير كلمة المرور</h1>
-            <p class="text-gray-400 text-xs mb-6">أنشئ كلمة مرور جديدة لحساب الإدارة.</p>
-
-            <div class="space-y-4">
-                <input type="password" id="newPassword" autocomplete="new-password" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" placeholder="كلمة المرور الجديدة">
-                <input type="password" id="confirmNewPassword" autocomplete="new-password" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" placeholder="تأكيد كلمة المرور">
-                <div id="passwordResetError" class="text-red-400 text-xs font-medium"></div>
-                <button id="updatePasswordBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">حفظ كلمة المرور</button>
-            </div>
-        </div>
-    `;
-
-    const newPassword = document.getElementById("newPassword");
-    const confirmPassword = document.getElementById("confirmNewPassword");
-    const errorEl = document.getElementById("passwordResetError");
-    const button = document.getElementById("updatePasswordBtn");
-
-    button.onclick = async () => {
-        const password = newPassword.value;
-        const confirmation = confirmPassword.value;
-
-        errorEl.className = "text-red-400 text-xs font-medium";
-        errorEl.textContent = "";
-
-        if (password.length < 8) {
-            errorEl.textContent = "كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
-            return;
-        }
-
-        if (password !== confirmation) {
-            errorEl.textContent = "كلمتا المرور غير متطابقتين.";
-            return;
-        }
-
-        button.disabled = true;
-        button.textContent = "جاري حفظ كلمة المرور...";
-
-        const { error } = await client.auth.updateUser({ password });
-
-        if (error) {
-            button.disabled = false;
-            button.textContent = "حفظ كلمة المرور";
-            errorEl.textContent = "تعذر تغيير كلمة المرور: " + error.message;
-            return;
-        }
-
-        errorEl.className = "text-green-400 text-xs font-medium";
-        errorEl.textContent = "تم تغيير كلمة المرور بنجاح. أعد تسجيل الدخول.";
-
-        await client.auth.signOut();
-        localStorage.removeItem("admin_token");
-        passwordRecoveryMode = false;
-
-        setTimeout(() => {
-            window.location.replace(window.location.pathname + window.location.search);
-        }, 900);
-    };
-}
-
 document.addEventListener("click", async (e) => {
     if (e.target && e.target.id === "forgotPasswordBtn") {
         const email = document.getElementById("email").value.trim();
@@ -320,41 +239,37 @@ if (document.getElementById("logout")) {
     };
 }
 
-// 3. المحرك الموحد المطور للبيانات بدون إثقال الـ CPU
+// 3. المحرك الموحد لجلب البيانات الحقيقية وتعبئة جداول الإحصائيات
 async function refreshDashboard() {
-    try {
-        const [usersRes, keysRes] = await Promise.all([
-            api("get_all_users"),
-            api("get_keys")
-        ]);
+    const usersRes = await api("get_all_users");
+    const keysRes = await api("get_keys");
 
-        const uData = (usersRes && (usersRes.data || usersRes)) || [];
-        const kData = (keysRes && (keysRes.data || keysRes)) || [];
+    const uData = (usersRes && (usersRes.data || usersRes)) || [];
+    const kData = (keysRes && (keysRes.data || keysRes)) || [];
 
-        updateCounter("usersCount", uData.length);
-        updateCounter("keysCount", kData.filter(k => k.status === 'new').length);
-        updateCounter("vipCount", uData.filter(u => u.vip === true).length);
+    updateCounter("usersCount", uData.length);
+    updateCounter("keysCount", kData.filter(k => k.status === 'new').length);
+    updateCounter("vipCount", uData.filter(u => u.vip === true).length);
 
-        const onlineCount = uData.filter(u => {
-            return u.last_online && (Date.now() - new Date(u.last_online).getTime()) < 300000;
-        }).length;
+    const onlineCount = uData.filter(u => {
+        return u.last_online &&
+               (Date.now() - new Date(u.last_online).getTime()) < 300000;
+    }).length;
 
-        updateCounter("onlineUsers", onlineCount);
+    updateCounter("onlineUsers", onlineCount);
 
-        renderMainUsersTable(uData);
-        renderAllUsersTable(uData);
-        renderKeysTable(kData);
-        renderBannedTable(uData);
-        updateMainCharts(uData);
-        updateDeviceChart(uData);
-        
-        loadStats(uData, kData);
-        loadActivityLogs();
-        loadNewVipList();
-        loadNewBanList();
-    } catch (err) {
-        console.error("Refresh dashboard error:", err);
-    }
+    renderMainUsersTable(uData);
+    renderAllUsersTable(uData);
+    renderKeysTable(kData);
+    renderBannedTable(uData);
+    updateMainCharts(uData);
+    updateDeviceChart(uData);
+    
+    await loadStats(uData, kData);
+    await loadActivityLogs();
+    
+    await loadNewVipList();
+    await loadNewBanList();
 }
 
 function updateDeviceChart(users) {
@@ -386,7 +301,6 @@ function updateDeviceChart(users) {
         },
         options: {
             responsive: true,
-            animation: false, // ⚡ إيقاف الأنيميشن يمنع التشنج
             plugins: { legend: { display: false } },
             cutout: "72%"
         }
@@ -419,10 +333,8 @@ async function loadStats(uData = null, kData = null) {
     let k = kData;
 
     if (!u || !k) {
-        const [usersRes, keysRes] = await Promise.all([
-            api("get_all_users"),
-            api("get_keys")
-        ]);
+        const usersRes = await api("get_all_users");
+        const keysRes = await api("get_keys");
         u = (usersRes && (usersRes.data || usersRes)) || [];
         k = (keysRes && (keysRes.data || keysRes)) || [];
     }
@@ -529,7 +441,7 @@ document.addEventListener('click', async function(event) {
         }
         
         if(typeof showToast === 'function') showToast("تم حذف الإيميلات المحددة بنجاح");
-        debouncedRefresh();
+        refreshDashboard();
     }
 });
 
@@ -568,35 +480,24 @@ function renderMainUsersTable(users) {
             </td>
         </tr>
     `;}).join('');
-    if(window.lucide) lucide.createIcons();
+    lucide.createIcons();
 }
 
 function renderAllUsersTable(users) {
     const tbody = document.getElementById("allUsersTable");
     if (!tbody) return;
-    
+    tbody.innerHTML = "";
     const now = Date.now();
-    const rowsHtml = users.map(u => {
+    users.forEach(u => {
         const devId = u.device_id || u.id || u.uuid || u.device || "Unknown";
         const online = u.last_online && (now - new Date(u.last_online).getTime()) < 300000;
         const statusText = u.banned ? "🚫 محظور" : (online ? "🟢 متصل الآن" : "⚫ غير متصل");
         const device = u.model || u.device_type || u.manufacturer || "--";
         const vip = u.vip ? '<span class="text-yellow-400 font-bold">👑 VIP</span>' : '<span class="text-gray-400">FREE</span>';
-        
-        return `<tr>
-            <td>${u.country || '--'}</td>
-            <td>${device}</td>
-            <td>${statusText}</td>
-            <td>${vip}</td>
-            <td class="text-yellow-400 font-bold">${u.duration_type || '--'}</td>
-            <td>${u.vip_until ? getRemainingTime(u.vip_until) : '--'}</td>
-            <td>${formatDate(u.vip_until)}</td>
-            <td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}</td>
-            <td><button onclick="openDrawer('${devId}')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white">إدارة</button></td>
-        </tr>`;
-    }).join("");
-
-    tbody.innerHTML = rowsHtml; // ⚡ بناء دفعة واحدة تسّرع الأداء 10x
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${u.country || '--'}</td><td>${device}</td><td>${statusText}</td><td>${vip}</td><td class="text-yellow-400 font-bold">${u.duration_type || '--'}</td><td>${u.vip_until ? getRemainingTime(u.vip_until) : '--'}</td><td>${formatDate(u.vip_until)}</td><td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}</td><td><button onclick="openDrawer('${devId}')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white">إدارة</button></td>`;
+        tbody.appendChild(row);
+    });
 }
 
 function getRemainingTime(vipUntil) {
@@ -634,7 +535,7 @@ if (document.getElementById("btnGenerateKey")) {
         }
        if (successCount > 0) {
             showToast("تم توليد " + successCount + " مفتاح");
-            debouncedRefresh();
+            refreshDashboard();
         }
     };
 }
@@ -652,7 +553,7 @@ function renderKeysTable(keys) {
             <td class="p-2 text-center pl-4"><button onclick="deleteKeyRow(${k.id})" class="p-1 text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></td>
         </tr>
     `).join('');
-    if(window.lucide) lucide.createIcons();
+    lucide.createIcons();
     initSelectAllButton();
 }
 
@@ -661,7 +562,7 @@ if (document.getElementById("btnApplyBan")) {
         const targetDeviceId = document.getElementById("banDeviceId").value.trim();
         if (!targetDeviceId) return;
         const res = await api("ban_user", { device_id: targetDeviceId, banned: true });
-        if (res && !res.error) { showToast("تم الحظر 🚫"); debouncedRefresh(); }
+        if (res && !res.error) { showToast("تم الحظر 🚫"); refreshDashboard(); }
     };
 }
 
@@ -684,7 +585,7 @@ async function liftUserBan(deviceId) {
     const res = await api("ban_user", { device_id: deviceId, banned: false });
     if (res && !res.error) {
         showToast("تم فك الحظر");
-        debouncedRefresh();
+        refreshDashboard();
     }
 }
 
@@ -693,7 +594,7 @@ async function deleteUserRow(deviceId) {
         const res = await api("delete_user", { device_id: deviceId });
         if (res && !res.error) {
             showToast("تم الحذف");
-            debouncedRefresh();
+            refreshDashboard();
         }
     }
 }
@@ -703,7 +604,7 @@ async function deleteKeyRow(id) {
         const res = await api("delete_key", { id });
         if (res && !res.error) {
             showToast("تم الحذف");
-            debouncedRefresh();
+            refreshDashboard();
         }
     }
 }
@@ -715,7 +616,7 @@ if (document.getElementById("btnGrantVip")) {
         const res = await api("update_vip", { device_id: targetDeviceId, vip: true });
         if (res && !res.error) {
             showToast("تم الترقية لـ VIP ✨");
-            debouncedRefresh();
+            refreshDashboard();
         }
     };
 }
@@ -727,10 +628,212 @@ if (document.getElementById("btnRevokeVip")) {
         const res = await api("update_vip", { device_id: targetDeviceId, vip: false });
         if (res && !res.error) {
             showToast("تم سحب VIP");
-            debouncedRefresh();
+            refreshDashboard();
         }
     };
 }
+
+
+// ============================================================
+// MEDIATION DISPUTES
+// ============================================================
+
+async function loadMediationDisputes() {
+    const table = document.getElementById("mediationDisputesTable");
+    if (!table) return;
+
+    table.innerHTML = `
+        <tr>
+            <td colspan="8" class="p-6 text-center text-gray-500">
+                جاري تحميل نزاعات الوساطة...
+            </td>
+        </tr>
+    `;
+
+    const res = await api("get_mediation_disputes");
+
+    if (!res || res.error) {
+        table.innerHTML = `
+            <tr>
+                <td colspan="8" class="p-6 text-center text-red-400">
+                    تعذر تحميل نزاعات الوساطة
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    const deals = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.deals)
+            ? res.deals
+            : Array.isArray(res)
+                ? res
+                : [];
+
+    if (!deals.length) {
+        table.innerHTML = `
+            <tr>
+                <td colspan="8" class="p-6 text-center text-gray-500">
+                    لا توجد صفقات في حالة نزاع حالياً
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    table.innerHTML = deals.map(deal => {
+        const dealId = deal.id ?? deal.deal_id ?? "";
+        const code = deal.code ?? deal.deal_code ?? "—";
+        const amount = deal.amount_usd ?? deal.amount ?? 0;
+        const buyer = deal.buyer_id ?? "—";
+        const seller = deal.seller_id ?? "—";
+        const status = deal.status ?? "dispute";
+        const disputeAt =
+            deal.dispute_opened_at ??
+            deal.opened_at ??
+            deal.created_at ??
+            "";
+
+        return `
+            <tr class="hover:bg-white/[0.02]">
+                <td class="p-3 text-white font-mono">${escapeHtml(String(dealId))}</td>
+                <td class="p-3 text-purple-400 font-mono">${escapeHtml(String(code))}</td>
+                <td class="p-3 text-white">$${escapeHtml(Number(amount || 0).toFixed(2))}</td>
+                <td class="p-3 text-gray-300">${escapeHtml(String(buyer))}</td>
+                <td class="p-3 text-gray-300">${escapeHtml(String(seller))}</td>
+                <td class="p-3">
+                    <span class="px-2 py-1 rounded-lg bg-red-500/10 text-red-400">
+                        ${escapeHtml(String(status))}
+                    </span>
+                </td>
+                <td class="p-3 text-gray-400">${formatMediationDate(disputeAt)}</td>
+                <td class="p-3 text-center">
+                    <button
+                        class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg"
+                        data-mediation-deal-id="${escapeHtml(String(dealId))}">
+                        عرض الأدلة
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    table.querySelectorAll("[data-mediation-deal-id]").forEach(button => {
+        button.addEventListener("click", () => {
+            const dealId = Number(button.dataset.mediationDealId);
+            if (Number.isInteger(dealId) && dealId > 0) {
+                loadMediationEvidence(dealId);
+            }
+        });
+    });
+}
+
+async function loadMediationEvidence(dealId) {
+    const panel = document.getElementById("mediationEvidencePanel");
+    const content = document.getElementById("mediationEvidenceContent");
+    const dealLabel = document.getElementById("mediationEvidenceDeal");
+
+    if (!panel || !content) return;
+
+    panel.classList.remove("hidden");
+
+    if (dealLabel) dealLabel.textContent = `Deal #${dealId}`;
+
+    content.innerHTML = `
+        <div class="flex items-center justify-center py-10">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        </div>
+    `;
+
+    const res = await api("get_mediation_dispute_evidence", {
+        deal_id: dealId
+    });
+
+    if (!res || res.error || !res.evidence) {
+        content.innerHTML = `
+            <div class="text-center py-10 text-red-400">
+                تعذر جلب ملف أدلة الصفقة #${escapeHtml(String(dealId))}
+            </div>
+        `;
+        return;
+    }
+
+    const evidence = res.evidence;
+
+    content.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            ${mediationEvidenceStat("الحالة", evidence.deal?.status ?? "—")}
+            ${mediationEvidenceStat("عدد الأحداث", evidence.events?.length ?? 0)}
+            ${mediationEvidenceStat("عدد الرسائل", evidence.messages?.count ?? 0)}
+        </div>
+
+        <div>
+            <h5 class="text-white font-bold text-sm mb-3">ملخص Evidence Engine</h5>
+            <pre class="bg-[#0b0f19] rounded-xl p-4 text-[11px] text-gray-300 overflow-auto max-h-[420px] whitespace-pre-wrap">${escapeHtml(JSON.stringify(evidence.summary ?? {}, null, 2))}</pre>
+        </div>
+
+        <div>
+            <h5 class="text-white font-bold text-sm mb-3">الفحوصات</h5>
+            <pre class="bg-[#0b0f19] rounded-xl p-4 text-[11px] text-gray-300 overflow-auto max-h-[520px] whitespace-pre-wrap">${escapeHtml(JSON.stringify(evidence.checks ?? {}, null, 2))}</pre>
+        </div>
+
+        <div>
+            <h5 class="text-white font-bold text-sm mb-3">النزاع</h5>
+            <pre class="bg-[#0b0f19] rounded-xl p-4 text-[11px] text-gray-300 overflow-auto max-h-[420px] whitespace-pre-wrap">${escapeHtml(JSON.stringify(evidence.dispute ?? {}, null, 2))}</pre>
+        </div>
+
+        <div>
+            <h5 class="text-white font-bold text-sm mb-3">الشهادة و Snapshot</h5>
+            <pre class="bg-[#0b0f19] rounded-xl p-4 text-[11px] text-gray-300 overflow-auto max-h-[520px] whitespace-pre-wrap">${escapeHtml(JSON.stringify({
+                certificate: evidence.certificate ?? null,
+                snapshot: evidence.snapshot ?? null
+            }, null, 2))}</pre>
+        </div>
+
+        <div>
+            <h5 class="text-white font-bold text-sm mb-3">الأحداث</h5>
+            <pre class="bg-[#0b0f19] rounded-xl p-4 text-[11px] text-gray-300 overflow-auto max-h-[520px] whitespace-pre-wrap">${escapeHtml(JSON.stringify(evidence.events ?? [], null, 2))}</pre>
+        </div>
+    `;
+}
+
+function mediationEvidenceStat(label, value) {
+    return `
+        <div class="glass-card rounded-xl border border-white/5 p-4">
+            <p class="text-gray-500 text-[11px]">${escapeHtml(String(label))}</p>
+            <p class="text-white font-bold text-sm mt-1">${escapeHtml(String(value))}</p>
+        </div>
+    `;
+}
+
+function formatMediationDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString("ar-DZ");
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+document.getElementById("btnRefreshMediation")?.addEventListener(
+    "click",
+    loadMediationDisputes
+);
+
+document.getElementById("btnCloseMediationEvidence")?.addEventListener(
+    "click",
+    () => {
+        document.getElementById("mediationEvidencePanel")?.classList.add("hidden");
+    }
+);
 
 function openDrawer(deviceId) { 
     const drawer = document.getElementById('userDrawer');
@@ -743,10 +846,14 @@ function closeDrawer() {
     if(drawer) drawer.style.right = '-450px'; 
 }
 
+// الدالة الذكية لجلب وعرض بيانات المستخدم بالتفصيل في النافذة الجانبية
 async function loadUserDetails(deviceId) {
     const content = document.getElementById("drawerContent");
 
-    if (!content) return;
+    if (!content) {
+        console.error("drawerContent not found");
+        return;
+    }
 
     content.innerHTML = `
         <div class="flex items-center justify-center py-10">
@@ -783,7 +890,9 @@ async function loadUserDetails(deviceId) {
         const realDevId = user.device_id || user.id || user.uuid || deviceId;
 
         const esc = (value) => {
-            if (value === null || value === undefined || value === "") return "—";
+            if (value === null || value === undefined || value === "") {
+                return "—";
+            }
             return String(value)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
@@ -792,34 +901,62 @@ async function loadUserDetails(deviceId) {
                 .replace(/'/g, "&#039;");
         };
 
-        const yesNo = (value) => value === true ? '<span class="text-green-400">نعم</span>' : '<span class="text-gray-400">لا</span>';
+        const yesNo = (value) => {
+            return value === true
+                ? '<span class="text-green-400">نعم</span>'
+                : '<span class="text-gray-400">لا</span>';
+        };
 
         const dateValue = (value) => {
             if (!value) return "—";
-            try { return formatDate(value); } catch (e) { return esc(value); }
+            try {
+                return formatDate(value);
+            } catch (e) {
+                return esc(value);
+            }
         };
 
         const vipRemaining = user.vip_until ? getRemainingTime(user.vip_until) : "—";
 
         content.innerHTML = `
             <div class="space-y-4">
+                <!-- الحساب -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
                     <h3 class="text-purple-400 font-bold mb-3">👤 معلومات الحساب</h3>
                     <div class="space-y-2 text-sm">
-                        <div class="flex justify-between gap-3"><span class="text-gray-400">اسم المستخدم</span><span class="text-white font-medium break-all">${esc(user.username || "Player")}</span></div>
-                        <div class="flex justify-between gap-3"><span class="text-gray-400">📧 الإيميل</span><span class="text-blue-400 font-medium break-all">${esc(user.email || "غير متوفر")}</span></div>
-                        <div class="flex justify-between gap-3"><span class="text-gray-400">Device ID</span><span class="text-white font-mono text-xs break-all">${esc(realDevId)}</span></div>
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">اسم المستخدم</span>
+                            <span class="text-white font-medium break-all">${esc(user.username || "Player")}</span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">📧 الإيميل</span>
+                            <span class="text-blue-400 font-medium break-all">${esc(user.email || "غير متوفر")}</span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">Device ID</span>
+                            <span class="text-white font-mono text-xs break-all">${esc(realDevId)}</span>
+                        </div>
                     </div>
                 </div>
 
+                <!-- الرصيد -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
                     <h3 class="text-yellow-400 font-bold mb-3">💰 الرصيد</h3>
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-black/20 rounded-lg p-3"><div class="text-gray-400 text-xs">USD</div><div class="text-green-400 text-lg font-bold mt-1">$${esc(user.balance_usd || 0)}</div></div>
-                        <div class="bg-black/20 rounded-lg p-3"><div class="text-gray-400 text-xs">DZD</div><div class="text-green-400 text-lg font-bold mt-1">${esc(user.balance_dzd || 0)} DA</div></div>
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-gray-400 text-xs">USD</div>
+                            <div class="text-green-400 text-lg font-bold mt-1">$${esc(user.balance_usd || 0)}</div>
+                        </div>
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-gray-400 text-xs">DZD</div>
+                            <div class="text-green-400 text-lg font-bold mt-1">${esc(user.balance_dzd || 0)} DA</div>
+                        </div>
                     </div>
                 </div>
 
+                <!-- VIP -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
                     <h3 class="text-purple-400 font-bold mb-3">⭐ معلومات VIP</h3>
                     <div class="space-y-2 text-sm">
@@ -830,23 +967,44 @@ async function loadUserDetails(deviceId) {
                     </div>
                 </div>
 
+                <!-- الجهاز -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
                     <h3 class="text-blue-400 font-bold mb-3">📱 معلومات الجهاز</h3>
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between gap-3"><span class="text-gray-400">الموديل</span><span class="text-white">${esc(user.model)}</span></div>
                         <div class="flex justify-between gap-3"><span class="text-gray-400">الشركة المصنعة</span><span class="text-white">${esc(user.manufacturer)}</span></div>
                         <div class="flex justify-between gap-3"><span class="text-gray-400">Brand</span><span class="text-white">${esc(user.brand)}</span></div>
-                        <div class="flex justify-between gap-3"><span class="text-gray-400">Android</span><span class="text-white">${esc(user.android_version)}</span></div>
-                        <div class="flex justify-between gap-3"><span class="text-gray-400">🔋 البطارية</span><span class="text-white font-bold">${user.battery != null ? esc(user.battery) + "%" : "—"}</span></div>
-                        <div class="flex justify-between gap-3"><span class="text-gray-400">⚡ حالة الشحن</span><span class="${user.charging === true ? 'text-green-400 font-bold' : 'text-gray-400'}">${user.charging === true ? "⚡ يشحن الآن" : "غير متصل"}</span></div>
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">Android</span>
+                            <span class="text-white">${esc(user.android_version)}</span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">🔋 البطارية</span>
+                            <span class="text-white font-bold">
+                                ${user.battery != null ? esc(user.battery) + "%" : "—"}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">⚡ حالة الشحن</span>
+                            <span class="${user.charging === true ? 'text-green-400 font-bold' : 'text-gray-400'}">
+                                ${user.charging === true ? "⚡ يشحن الآن" : "غير متصل"}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
+                <!-- التحكم -->
                 <div class="bg-white/5 rounded-xl p-4 border border-white/10">
                     <h3 class="text-orange-400 font-bold mb-3">⚙️ التحكم</h3>
                     <div class="flex gap-2">
-                        <button onclick="handleAction('vip','${esc(realDevId)}')" class="flex-1 px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold">${user.vip === true ? "إلغاء VIP" : "منح VIP"}</button>
-                        <button onclick="handleAction('ban','${esc(realDevId)}')" class="flex-1 px-3 py-2 rounded-lg ${user.banned === true ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white text-sm font-bold">${user.banned === true ? "إلغاء الحظر" : "حظر"}</button>
+                        <button onclick="handleAction('vip','${esc(realDevId)}')" class="flex-1 px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold">
+                            ${user.vip === true ? "إلغاء VIP" : "منح VIP"}
+                        </button>
+                        <button onclick="handleAction('ban','${esc(realDevId)}')" class="flex-1 px-3 py-2 rounded-lg ${user.banned === true ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white text-sm font-bold">
+                            ${user.banned === true ? "إلغاء الحظر" : "حظر"}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -862,6 +1020,7 @@ async function loadUserDetails(deviceId) {
     }
 }
 
+// دالة التحكم في الحظر ومنح الـ VIP أو الحذف
 async function handleAction(action, deviceId) {
     if (!deviceId) {
         showToast("Device ID غير موجود");
@@ -869,7 +1028,10 @@ async function handleAction(action, deviceId) {
     }
 
     try {
-        const userRes = await api("get_user_details", { device_id: deviceId });
+        const userRes = await api("get_user_details", {
+            device_id: deviceId
+        });
+
         if (!userRes || !userRes.user) {
             showToast("تعذر العثور على المستخدم");
             return;
@@ -879,23 +1041,56 @@ async function handleAction(action, deviceId) {
 
         if (action === "ban") {
             const newStatus = user.banned !== true;
-            const res = await api("ban_user", { device_id: deviceId, banned: newStatus });
-            if (!res || res.error) { showToast("فشل تغيير حالة الحظر"); return; }
+
+            const res = await api("ban_user", {
+                device_id: deviceId,
+                banned: newStatus
+            });
+
+            if (!res || res.error) {
+                showToast("فشل تغيير حالة الحظر");
+                return;
+            }
+
             showToast(newStatus ? "تم حظر المستخدم 🚫" : "تم فك حظر المستخدم ✅");
-        } else if (action === "vip") {
+        }
+
+        else if (action === "vip") {
             const newStatus = user.vip !== true;
-            const res = await api("update_vip", { device_id: deviceId, vip: newStatus });
-            if (!res || res.error) { showToast("فشل تغيير حالة VIP"); return; }
+
+            const res = await api("update_vip", {
+                device_id: deviceId,
+                vip: newStatus
+            });
+
+            if (!res || res.error) {
+                showToast("فشل تغيير حالة VIP");
+                return;
+            }
+
             showToast(newStatus ? "تم منح VIP 👑" : "تم سحب VIP");
-        } else if (action === "delete") {
-            if (!confirm("هل أنت متأكد من حذف هذا المستخدم نهائياً؟")) return;
-            const res = await api("delete_user", { device_id: deviceId });
-            if (!res || res.error) { showToast("فشل حذف المستخدم"); return; }
+        }
+
+        else if (action === "delete") {
+            if (!confirm("هل أنت متأكد من حذف هذا المستخدم نهائياً؟")) {
+                return;
+            }
+
+            const res = await api("delete_user", {
+                device_id: deviceId
+            });
+
+            if (!res || res.error) {
+                showToast("فشل حذف المستخدم");
+                return;
+            }
+
             showToast("تم حذف المستخدم");
         }
 
         closeDrawer();
-        debouncedRefresh();
+        await refreshDashboard();
+
     } catch (error) {
         console.error("handleAction error:", error);
         showToast("حدث خطأ أثناء تنفيذ العملية");
@@ -915,7 +1110,9 @@ function updateMainCharts(users) {
         if (!dateRaw) return;
         const d = new Date(dateRaw);
         const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-        if (diffDays >= 0 && diffDays < 7) counts[d.getDay()]++;
+        if (diffDays >= 0 && diffDays < 7) {
+            counts[d.getDay()]++;
+        }
     });
 
     if (statsChart) statsChart.destroy();
@@ -938,11 +1135,17 @@ function updateMainCharts(users) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: false, // ⚡ إيقاف الأنيميشن يمنع التشنج
             plugins: { legend: { display: false } },
             scales: {
-                y: { beginAtZero: true, ticks: { precision: 0, color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, color: '#9ca3af' },
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                },
+                x: {
+                    ticks: { color: '#9ca3af' },
+                    grid: { display: false }
+                }
             }
         }
     });
@@ -961,7 +1164,6 @@ function showToast(text) {
 function afterLogin() {
     if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "none";
     if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "flex";
-    
     refreshDashboard();
     loadSettings();
     
@@ -974,11 +1176,12 @@ function afterLogin() {
         }, 1000);
     }
 
-    // ⚡ تم زيادة الوقت إلى 60 ثانية لتخفيف الضغط ومنع التعليق
+    // النبضة التلقائية لتحديث حالة الاتصال (Heartbeat Timer)
     if (!window.heartbeatTimer) {
         window.heartbeatTimer = setInterval(async () => {
             await api("update_online_status", { timestamp: Date.now() }).catch(() => {});
-        }, 60000);
+            refreshDashboard();
+        }, 20000);
     }
 }
 
@@ -987,13 +1190,12 @@ function formatDate(date) {
     return new Date(date).toLocaleString("ar-DZ", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
-// ⚡ زيادة مهلة الـ Debounce لتجميع الطلبات ومنع التحديث المتكرر عند النقر
 let refreshTimer = null;
 function debouncedRefresh() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
         refreshDashboard();
-    }, 2500);
+    }, 1200);
 }
 
 let logsTimer = null;
@@ -1001,7 +1203,7 @@ function debouncedLogs() {
     clearTimeout(logsTimer);
     logsTimer = setTimeout(() => {
         loadActivityLogs();
-    }, 1500);
+    }, 800);
 }
 
 client.channel('kingdz-realtime-sync')
@@ -1039,7 +1241,7 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
     const res = await api("delete_keys_batch", { ids });
     if (!res || res.error) { showToast("فشل الحذف"); return; }
     showToast(`تم حذف ${ids.length} مفتاح`);
-    debouncedRefresh();
+    refreshDashboard();
 });
 
 async function loadActivityLogs() {
@@ -1050,7 +1252,7 @@ async function loadActivityLogs() {
     if (!res || res.error) { container.innerHTML = `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`; return; }
     if (!data || data.length === 0) { container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات نشاط</div>`; return; }
     
-    let logsHtml = "";
+    container.innerHTML = "";
     data.forEach(log => {
         let color = "text-purple-400"; 
         let icon = "📋";
@@ -1122,7 +1324,7 @@ async function loadActivityLogs() {
             displayHtml = `<div class="text-white text-xs mt-1">${log.details || "--"}</div>`;
         }
 
-        logsHtml += `
+        container.innerHTML += `
             <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">
                 <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${log.id}">
                 <div class="flex-1 flex justify-between items-start">
@@ -1142,8 +1344,6 @@ async function loadActivityLogs() {
             </div>
         `;
     });
-
-    container.innerHTML = logsHtml;
 }
 
 async function deleteActivityLog(id) {
@@ -1177,7 +1377,12 @@ async function loadSettings() {
     }
 
     let rawData = res.data ?? res;
-    const data = Array.isArray(rawData) ? (rawData[0] || {}) : (rawData || {});
+
+    const data = Array.isArray(rawData)
+        ? (rawData[0] || {})
+        : (rawData || {});
+
+    console.log("SETTINGS DATA:", data);
 
     const modEl = document.getElementById("mod_enabled");
     const vipEl = document.getElementById("vip_enabled");
@@ -1188,38 +1393,78 @@ async function loadSettings() {
     const updateUrlEl = document.getElementById("update_url");
     const rateEl = document.getElementById("usd_to_dzd");
 
-    if (modEl) modEl.checked = data.mod_enabled === true;
-    if (vipEl) vipEl.checked = data.vip_enabled === true;
-    if (forceEl) forceEl.checked = data.force_update === true;
-    if (versionEl) versionEl.value = data.latest_version ?? "";
-    if (messageEl) messageEl.value = data.message ?? "";
-    if (maintenanceEl) maintenanceEl.value = data.maintenance_message ?? "";
-    if (updateUrlEl) updateUrlEl.value = data.update_url ?? "";
-    if (rateEl) rateEl.value = data.usd_to_dzd ?? 300;
+    if (modEl) {
+        modEl.checked = data.mod_enabled === true;
+    }
+
+    if (vipEl) {
+        vipEl.checked = data.vip_enabled === true;
+    }
+
+    if (forceEl) {
+        forceEl.checked = data.force_update === true;
+    }
+
+    if (versionEl) {
+        versionEl.value = data.latest_version ?? "";
+    }
+
+    if (messageEl) {
+        messageEl.value = data.message ?? "";
+    }
+
+    if (maintenanceEl) {
+        maintenanceEl.value = data.maintenance_message ?? "";
+    }
+
+    if (updateUrlEl) {
+        updateUrlEl.value = data.update_url ?? "";
+    }
+
+    if (rateEl) {
+        rateEl.value = data.usd_to_dzd ?? 300;
+    }
 }
 
 document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
+
     const rateInput = document.getElementById("usd_to_dzd");
 
     const payload = {
         mod_enabled: !!document.getElementById("mod_enabled")?.checked,
         vip_enabled: !!document.getElementById("vip_enabled")?.checked,
         force_update: !!document.getElementById("force_update")?.checked,
-        latest_version: document.getElementById("latest_version")?.value?.trim() || "",
-        message: document.getElementById("message")?.value || "",
-        maintenance_message: document.getElementById("maintenance_message")?.value || "",
-        update_url: document.getElementById("update_url")?.value?.trim() || "",
-        usd_to_dzd: rateInput && rateInput.value ? Number(rateInput.value) : 300
+
+        latest_version:
+            document.getElementById("latest_version")?.value?.trim() || "",
+
+        message:
+            document.getElementById("message")?.value || "",
+
+        maintenance_message:
+            document.getElementById("maintenance_message")?.value || "",
+
+        update_url:
+            document.getElementById("update_url")?.value?.trim() || "",
+
+        usd_to_dzd:
+            rateInput && rateInput.value
+                ? Number(rateInput.value)
+                : 300
     };
+
+    console.log("SAVING SETTINGS:", payload);
 
     const res = await api("update_settings", payload);
 
     if (!res || res.error) {
+        console.error("update_settings error:", res);
         showToast("فشل حفظ الإعدادات");
         return;
     }
 
     showToast("تم حفظ الإعدادات بنجاح");
+
     await loadSettings();
 });
 
