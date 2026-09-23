@@ -737,6 +737,315 @@ function mediationEvidenceStat(title, value) {
     `;
 }
 
+// ============================================================
+// 🤖 AI / SMART MEDIATION ANALYSIS
+// التحليل هنا مساعد للإدمن فقط ولا ينفذ أي قرار
+// ============================================================
+
+async function analyzeMediationDispute(dealId) {
+    if (!Number.isInteger(Number(dealId)) || Number(dealId) <= 0) {
+        showToast("رقم الصفقة غير صالح");
+        return;
+    }
+
+    const resultPanel = document.getElementById("mediationAnalysisPanel");
+
+    if (resultPanel) {
+        resultPanel.innerHTML = `
+            <div class="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5">
+                <div class="flex items-center gap-3">
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-400"></div>
+                    <div>
+                        <div class="text-purple-300 font-bold text-sm">
+                            🤖 جاري تحليل النزاع...
+                        </div>
+                        <div class="text-gray-500 text-[10px] mt-1">
+                            تتم مقارنة الأدلة المتوفرة فقط. القرار النهائي للإدمن.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    const res = await api("analyze_mediation_dispute", {
+        deal_id: Number(dealId)
+    });
+
+    if (!res || res.error || !res.analysis) {
+        if (resultPanel) {
+            resultPanel.innerHTML = `
+                <div class="bg-red-500/10 border border-red-500/20 rounded-2xl p-5">
+                    <div class="text-red-400 font-bold text-sm">
+                        ❌ تعذر تحليل النزاع
+                    </div>
+                    <div class="text-gray-500 text-[10px] mt-1">
+                        ${escapeHtml(String(res?.error || "حدث خطأ أثناء التحليل"))}
+                    </div>
+                </div>
+            `;
+        }
+
+        showToast("فشل تحليل النزاع");
+        return;
+    }
+
+    const analysis = res.analysis;
+
+    const buyerPercentage = Number(analysis.buyer_percentage || 0);
+    const sellerPercentage = Number(analysis.seller_percentage || 0);
+    const confidence = Number(analysis.confidence_percentage || 0);
+
+    const findings = Array.isArray(analysis.findings)
+        ? analysis.findings
+        : [];
+
+    const limitations = Array.isArray(analysis.limitations)
+        ? analysis.limitations
+        : [];
+
+    const sideLabel = (side) => {
+        if (side === "buyer") return "المشتري";
+        if (side === "seller") return "البائع";
+        return "محايد";
+    };
+
+    const sideClass = (side) => {
+        if (side === "buyer") {
+            return "text-blue-400 bg-blue-500/10 border-blue-500/20";
+        }
+
+        if (side === "seller") {
+            return "text-orange-400 bg-orange-500/10 border-orange-500/20";
+        }
+
+        return "text-gray-400 bg-gray-500/10 border-gray-500/20";
+    };
+
+    const statusInfo = {
+        preliminary_assessment: {
+            text: "ترجيح أولي",
+            cls: "text-green-400 bg-green-500/10 border-green-500/20"
+        },
+        needs_admin_review: {
+            text: "يحتاج مراجعة الإدمن",
+            cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
+        },
+        insufficient_directional_evidence: {
+            text: "أدلة غير كافية للترجيح",
+            cls: "text-gray-400 bg-gray-500/10 border-gray-500/20"
+        }
+    };
+
+    const status = statusInfo[analysis.status] || {
+        text: analysis.status || "غير محدد",
+        cls: "text-gray-400 bg-gray-500/10 border-gray-500/20"
+    };
+
+    const findingsHtml = findings.length
+        ? findings.map(item => `
+            <div class="bg-black/20 border border-white/5 rounded-xl p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="px-2 py-1 rounded-lg border text-[10px] font-bold ${sideClass(item.side)}">
+                        ${sideLabel(item.side)}
+                    </span>
+
+                    <span class="text-gray-500 text-[10px]">
+                        وزن الإشارة: ${Number(item.weight || 0)}%
+                    </span>
+                </div>
+
+                <div class="text-white font-bold text-xs mt-3">
+                    ${escapeHtml(String(item.title || item.code || "إشارة أدلة"))}
+                </div>
+
+                <div class="text-gray-400 text-[11px] mt-1 leading-5">
+                    ${escapeHtml(String(item.detail || ""))}
+                </div>
+            </div>
+        `).join("")
+        : `
+            <div class="text-gray-500 text-xs text-center py-5">
+                لا توجد إشارات تحليلية مباشرة.
+            </div>
+        `;
+
+    const limitationsHtml = limitations.length
+        ? limitations.map(item => `
+            <div class="flex gap-2 items-start text-[11px] text-gray-400">
+                <span class="text-yellow-400">⚠️</span>
+                <span>${escapeHtml(String(item))}</span>
+            </div>
+        `).join("")
+        : `
+            <div class="text-gray-500 text-xs">
+                لا توجد قيود إضافية مسجلة.
+            </div>
+        `;
+
+    if (!resultPanel) {
+        console.warn("mediationAnalysisPanel not found");
+        return;
+    }
+
+    resultPanel.innerHTML = `
+        <div class="bg-white/[0.03] border border-purple-500/20 rounded-2xl p-5">
+
+            <!-- Header -->
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div>
+                    <h5 class="text-white font-black text-sm">
+                        🤖 التحليل الذكي للنزاع
+                    </h5>
+
+                    <p class="text-gray-500 text-[10px] mt-1">
+                        تحليل آلي مساعد مبني على الأدلة المتاحة فقط
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="px-3 py-1 rounded-lg border text-[10px] font-bold ${status.cls}">
+                        ${escapeHtml(status.text)}
+                    </span>
+
+                    <span class="px-3 py-1 rounded-lg bg-purple-500/10 text-purple-300 text-[10px] font-bold">
+                        ${escapeHtml(String(analysis.methodology || "deterministic_evidence_v1"))}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Percentages -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                <div class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-center">
+                    <div class="text-blue-300 text-[10px]">
+                        ترجيح المشتري
+                    </div>
+
+                    <div class="text-blue-400 text-3xl font-black mt-2">
+                        ${buyerPercentage}%
+                    </div>
+                </div>
+
+                <div class="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 text-center">
+                    <div class="text-orange-300 text-[10px]">
+                        ترجيح البائع
+                    </div>
+
+                    <div class="text-orange-400 text-3xl font-black mt-2">
+                        ${sellerPercentage}%
+                    </div>
+                </div>
+
+                <div class="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-center">
+                    <div class="text-purple-300 text-[10px]">
+                        مستوى الثقة
+                    </div>
+
+                    <div class="text-purple-400 text-3xl font-black mt-2">
+                        ${confidence}%
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Visual split -->
+            <div class="mt-4">
+                <div class="flex justify-between text-[10px] mb-2">
+                    <span class="text-blue-400 font-bold">
+                        المشتري ${buyerPercentage}%
+                    </span>
+
+                    <span class="text-orange-400 font-bold">
+                        البائع ${sellerPercentage}%
+                    </span>
+                </div>
+
+                <div class="h-3 rounded-full bg-black/30 overflow-hidden flex">
+                    <div
+                        class="bg-blue-500 h-full transition-all"
+                        style="width:${Math.max(0, Math.min(100, buyerPercentage))}%">
+                    </div>
+
+                    <div
+                        class="bg-orange-500 h-full transition-all"
+                        style="width:${Math.max(0, Math.min(100, sellerPercentage))}%">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Important notice -->
+            <div class="mt-5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
+                <div class="text-yellow-300 text-xs font-black mb-1">
+                    ⚠️ القرار النهائي
+                </div>
+
+                <div class="text-gray-400 text-[11px] leading-5">
+                    هذا التحليل ترجيح أولي فقط لمساعدة الإدمن في مراجعة الملف.
+                    لا يتم إصدار قرار تلقائي، ولا يتم تحويل الأموال أو تغيير حالة الصفقة أو حظر أي مستخدم من خلال هذا التحليل.
+                </div>
+            </div>
+
+            <!-- Findings -->
+            <div class="mt-5">
+                <div class="mb-3">
+                    <h6 class="text-white font-bold text-xs">
+                        🔎 الإشارات التي اعتمد عليها التحليل
+                    </h6>
+
+                    <p class="text-gray-500 text-[10px] mt-1">
+                        كل إشارة معروضة بشكل مستقل حتى يتمكن الإدمن من التحقق منها.
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    ${findingsHtml}
+                </div>
+            </div>
+
+            <!-- Limitations -->
+            <div class="mt-5">
+                <div class="mb-3">
+                    <h6 class="text-white font-bold text-xs">
+                        ⚠️ حدود التحليل
+                    </h6>
+                </div>
+
+                <div class="space-y-2">
+                    ${limitationsHtml}
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="mt-5 bg-black/20 border border-white/5 rounded-xl p-4">
+                <div class="text-gray-500 text-[10px] mb-1">
+                    الخلاصة
+                </div>
+
+                <div class="text-gray-200 text-xs leading-6">
+                    ${escapeHtml(String(
+                        analysis.summary ||
+                        "لا توجد خلاصة متاحة."
+                    ))}
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-gray-600 text-[9px]">
+                    Deal #${escapeHtml(String(analysis.deal_id || dealId))}
+                </span>
+
+                <span class="text-gray-600 text-[9px]">
+                    القرار النهائي: Admin
+                </span>
+            </div>
+
+        </div>
+    `;
+
+    showToast("تم تحليل النزاع بنجاح 🤖");
+}
+
 async function loadMediationEvidence(dealId) {
     const panel = document.getElementById("mediationEvidencePanel");
     const content = document.getElementById("mediationEvidenceContent");
@@ -744,10 +1053,47 @@ async function loadMediationEvidence(dealId) {
 
     if (!panel || !content) return;
 
+    // إنشاء زر ومكان التحليل داخل ملف الأدلة
+    let analysisPanel = document.getElementById("mediationAnalysisPanel");
+
+    if (!analysisPanel) {
+        analysisPanel = document.createElement("div");
+        analysisPanel.id = "mediationAnalysisPanel";
+        analysisPanel.className = "mb-5";
+
+        content.prepend(analysisPanel);
+    }
+
     panel.classList.remove("hidden");
 
     if (dealLabel) {
         dealLabel.textContent = `ملف أدلة الصفقة #${dealId}`;
+    }
+
+    const analyzeButtonId = `btnAnalyzeMediation_${dealId}`;
+
+    if (!document.getElementById(analyzeButtonId)) {
+        const headerButton = document.createElement("button");
+
+        headerButton.id = analyzeButtonId;
+        headerButton.type = "button";
+        headerButton.className =
+            "ml-2 px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 " +
+            "border border-purple-500/20 text-purple-300 text-xs font-bold transition";
+
+        headerButton.innerHTML = "🤖 تحليل النزاع";
+
+        headerButton.addEventListener("click", () => {
+            analyzeMediationDispute(dealId);
+        });
+
+        const dealLabelParent = dealLabel?.parentElement;
+
+        if (dealLabelParent) {
+            dealLabelParent.appendChild(headerButton);
+        } else {
+            panel.prepend(headerButton);
+        }
     }
 
     content.innerHTML = `
