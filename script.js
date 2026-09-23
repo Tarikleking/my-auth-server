@@ -1047,314 +1047,1296 @@ async function analyzeMediationDispute(dealId) {
 }
 
 async function loadMediationEvidence(dealId) {
-    const panel = document.getElementById("mediationEvidencePanel");
-    const content = document.getElementById("mediationEvidenceContent");
-    const dealLabel = document.getElementById("mediationEvidenceDeal");
+    const panel =
+        document.getElementById("mediationEvidencePanel") ||
+        document.getElementById("mediation-evidence-panel") ||
+        document.getElementById("mediationEvidence");
 
-    if (!panel || !content) return;
-
-    // إنشاء زر ومكان التحليل داخل ملف الأدلة
-    let analysisPanel = document.getElementById("mediationAnalysisPanel");
-
-    if (!analysisPanel) {
-        analysisPanel = document.createElement("div");
-        analysisPanel.id = "mediationAnalysisPanel";
-        analysisPanel.className = "mb-5";
-
-        content.prepend(analysisPanel);
-    }
-
-    panel.classList.remove("hidden");
-
-    if (dealLabel) {
-        dealLabel.textContent = `ملف أدلة الصفقة #${dealId}`;
-    }
-
-    const analyzeButtonId = `btnAnalyzeMediation_${dealId}`;
-
-    if (!document.getElementById(analyzeButtonId)) {
-        const headerButton = document.createElement("button");
-
-        headerButton.id = analyzeButtonId;
-        headerButton.type = "button";
-        headerButton.className =
-            "ml-2 px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 " +
-            "border border-purple-500/20 text-purple-300 text-xs font-bold transition";
-
-        headerButton.innerHTML = "🤖 تحليل النزاع";
-
-        headerButton.addEventListener("click", () => {
-            analyzeMediationDispute(dealId);
-        });
-
-        const dealLabelParent = dealLabel?.parentElement;
-
-        if (dealLabelParent) {
-            dealLabelParent.appendChild(headerButton);
-        } else {
-            panel.prepend(headerButton);
-        }
-    }
-
-    content.innerHTML = `
-        <div class="flex items-center justify-center py-10">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-        </div>
-    `;
-
-    const res = await api("get_mediation_dispute_evidence", {
-        deal_id: dealId
-    });
-
-    if (!res || res.error || !res.evidence) {
-        content.innerHTML = `
-            <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
-                <div class="text-red-400 font-bold mb-1">
-                    ❌ تعذر جلب ملف أدلة الصفقة
-                </div>
-                <div class="text-gray-500 text-xs">
-                    الصفقة #${escapeHtml(String(dealId))}
-                </div>
-            </div>
-        `;
+    if (!panel) {
+        console.error("Mediation evidence panel not found");
         return;
     }
 
-    const evidence = res.evidence;
-    const deal = evidence.deal || {};
-    const dispute = evidence.dispute || {};
-    const certificate = evidence.certificate || {};
-    const snapshot = evidence.snapshot || {};
-    const messages = evidence.messages || {};
-    const checks = evidence.checks || {};
-    const summary = evidence.summary || {};
-    const events = Array.isArray(evidence.events) ? evidence.events : [];
+    // ---------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------
 
-    const statusBadge = (status) => {
-        const value = String(status || "").toUpperCase();
-
-        const map = {
-            PASS: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
-            FAIL: { text: "فشل", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
-            MISSING: { text: "مفقود", cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-            CONFLICT: { text: "تعارض", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
-            NOT_APPLICABLE: { text: "غير مطلوب", cls: "bg-gray-500/10 text-gray-400 border-gray-500/20" }
-        };
-
-        const item = map[value] || {
-            text: status || "غير معروف",
-            cls: "bg-gray-500/10 text-gray-400 border-gray-500/20"
-        };
-
-        return `
-            <span class="inline-flex items-center px-2 py-1 rounded-lg border text-[10px] font-bold ${item.cls}">
-                ${item.text}
-            </span>
-        `;
+    const esc = (value) => {
+        if (value === null || value === undefined) return "";
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     };
 
-    const valueOrDash = (value) => {
-        if (value === null || value === undefined || value === "") return "—";
-        return escapeHtml(String(value));
+    const num = (value, fallback = 0) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
     };
 
-    const boolText = (value) => {
-        if (value === true) return `<span class="text-green-400 font-bold">نعم</span>`;
-        if (value === false) return `<span class="text-gray-500">لا</span>`;
-        return `<span class="text-gray-500">—</span>`;
+    const pct = (value) => {
+        return Math.max(0, Math.min(100, num(value)));
     };
 
-    const checkRows = Object.entries(checks).map(([key, item]) => {
-        const status = item && typeof item === "object" ? item.status : item;
-        const description = item && typeof item === "object" ? (item.description || item.reason || item.message || "") : "";
+    const strengthLabel = {
+        strong: "قوي",
+        medium: "متوسط",
+        weak: "ضعيف"
+    };
 
-        return `
-            <div class="flex items-center justify-between gap-4 py-3 border-b border-white/5 last:border-0">
-                <div class="min-w-0">
-                    <div class="text-white text-xs font-bold break-words">${escapeHtml(key)}</div>
-                    ${description ? `<div class="text-gray-500 text-[10px] mt-1">${escapeHtml(String(description))}</div>` : ""}
-                </div>
-                <div class="shrink-0">${statusBadge(status)}</div>
-            </div>
-        `;
-    }).join("");
+    const sideLabel = {
+        buyer: "المشتري",
+        seller: "البائع",
+        neutral: "محايد"
+    };
 
-    const eventRows = events.length
-        ? events.map((event, index) => {
-            const eventType = event.event_type || "EVENT";
-            const createdAt = event.created_at;
-            const actor = event.actor_user_id;
-            const amount = event.amount_usd;
+    const assessmentLabel = {
+        buyer_supported: "الأدلة تميل للمشتري",
+        seller_supported: "الأدلة تميل للبائع",
+        mixed_evidence: "أدلة متعارضة",
+        inconclusive: "الأدلة غير حاسمة",
+        insufficient_evidence: "أدلة غير كافية"
+    };
 
-            return `
-                <div class="relative pl-5 pb-5 last:pb-0">
-                    <div class="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-purple-500"></div>
-                    ${index < events.length - 1 ? `<div class="absolute left-[3px] top-4 bottom-0 w-px bg-white/10"></div>` : ""}
-                    <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <span class="text-purple-400 font-bold text-xs">${escapeHtml(String(eventType))}</span>
-                            <span class="text-gray-500 text-[10px]">${formatMediationDate(createdAt)}</span>
-                        </div>
-                        <div class="flex flex-wrap gap-3 mt-2 text-[10px] text-gray-500">
-                            ${actor !== undefined && actor !== null ? `<span>👤 Actor: ${escapeHtml(String(actor))}</span>` : ""}
-                            ${amount !== undefined && amount !== null ? `<span>💰 $${escapeHtml(Number(amount).toFixed(2))}</span>` : ""}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join("")
-        : `<div class="text-center py-6 text-gray-500 text-xs">لا توجد أحداث مسجلة</div>`;
+    const priorityLabel = {
+        high: "مراجعة دقيقة",
+        medium: "مراجعة",
+        normal: "مراجعة عادية"
+    };
 
-    const messageCount = Number(messages.count || 0);
+    // ---------------------------------------------------------
+    // Loading
+    // ---------------------------------------------------------
 
-    content.innerHTML = `
-        <div class="space-y-5">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                ${mediationEvidenceStat("رقم الصفقة", `#${deal.id ?? dealId}`)}
-                ${mediationEvidenceStat("الكود", deal.code ?? "—")}
-                ${mediationEvidenceStat("المبلغ", `$${Number(deal.amount_usd || 0).toFixed(2)}`)}
-                ${mediationEvidenceStat("الحالة", deal.status ?? "—")}
-            </div>
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h5 class="text-white font-black text-sm">🛡️ ملخص الأدلة</h5>
-                        <p class="text-gray-500 text-[10px] mt-1">نتيجة Evidence Engine</p>
-                    </div>
-                    <span class="px-3 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[10px] font-bold">
-                        ${escapeHtml(String(evidence.engine_version || "v2"))}
-                    </span>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">الأحداث</div>
-                        <div class="text-white font-black text-lg mt-1">${events.length}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">الرسائل</div>
-                        <div class="text-white font-black text-lg mt-1">${messageCount}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">الشهادة</div>
-                        <div class="mt-2">${certificate && Object.keys(certificate).length ? statusBadge("PASS") : statusBadge("MISSING")}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">Snapshot</div>
-                        <div class="mt-2">${snapshot && Object.keys(snapshot).length ? statusBadge("PASS") : statusBadge("MISSING")}</div>
-                    </div>
+    panel.innerHTML = `
+        <div class="med-score-loading">
+            <div class="med-score-spinner"></div>
+            <div>
+                <strong>جاري تحليل الأدلة...</strong>
+                <div class="med-muted">
+                    يتم فحص الأدلة والاتساق والتناقضات
                 </div>
             </div>
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-                <div class="mb-3">
-                    <h5 class="text-white font-black text-sm">🔍 فحوصات الأدلة</h5>
-                    <p class="text-gray-500 text-[10px] mt-1">كل فحص يظهر حالته بشكل مستقل</p>
-                </div>
-                <div>${checkRows || `<div class="text-gray-500 text-xs text-center py-5">لا توجد فحوصات</div>`}</div>
-            </div>
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-                <h5 class="text-white font-black text-sm mb-4">⚖️ معلومات النزاع</h5>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">فتح بواسطة</div>
-                        <div class="text-white text-sm mt-1">${valueOrDash(dispute.opened_by)}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">الحالة</div>
-                        <div class="mt-1">${statusBadge(dispute.status)}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3 md:col-span-2">
-                        <div class="text-gray-500 text-[10px]">سبب النزاع</div>
-                        <div class="text-white text-sm mt-1 whitespace-pre-wrap">${valueOrDash(dispute.reason)}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">موافقة المشتري</div>
-                        <div class="mt-1">${boolText(dispute.buyer_agreed)}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">موافقة البائع</div>
-                        <div class="mt-1">${boolText(dispute.seller_agreed)}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">تاريخ فتح النزاع</div>
-                        <div class="text-white text-xs mt-1">${formatMediationDate(dispute.opened_at)}</div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">تاريخ التصعيد</div>
-                        <div class="text-white text-xs mt-1">${formatMediationDate(dispute.escalated_at)}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-                <h5 class="text-white font-black text-sm mb-4">📜 الشهادة و Snapshot</h5>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-black/20 rounded-xl p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">الشهادة</span>
-                            ${certificate && Object.keys(certificate).length ? statusBadge("PASS") : statusBadge("MISSING")}
-                        </div>
-                        <div class="space-y-2 text-[11px]">
-                            <div class="flex justify-between gap-3"><span class="text-gray-500">ID</span><span class="text-gray-300 font-mono break-all">${valueOrDash(certificate.id)}</span></div>
-                            <div class="flex justify-between gap-3"><span class="text-gray-500">الحالة</span><span class="text-gray-300">${valueOrDash(certificate.status)}</span></div>
-                            <div class="flex justify-between gap-3"><span class="text-gray-500">Deal ID</span><span class="text-gray-300">${valueOrDash(certificate.deal_id)}</span></div>
-                        </div>
-                    </div>
-                    <div class="bg-black/20 rounded-xl p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">Snapshot</span>
-                            ${snapshot && Object.keys(snapshot).length ? statusBadge("PASS") : statusBadge("MISSING")}
-                        </div>
-                        <div class="space-y-2 text-[11px]">
-                            <div class="flex justify-between gap-3"><span class="text-gray-500">ID</span><span class="text-gray-300 font-mono break-all">${valueOrDash(snapshot.id)}</span></div>
-                            <div class="flex justify-between gap-3"><span class="text-gray-500">Deal ID</span><span class="text-gray-300">${valueOrDash(snapshot.deal_id)}</span></div>
-                            <div class="flex justify-between gap-3"><span class="text-gray-500">Platform</span><span class="text-purple-400 font-bold">${valueOrDash(snapshot.platform)}</span></div>
-                            <div class="flex justify-between gap-3"><span class="text-gray-500">Account</span><span class="text-gray-300">${valueOrDash(snapshot.account_url)}</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-                <div class="mb-4">
-                    <h5 class="text-white font-black text-sm">🕒 الخط الزمني للصفقة</h5>
-                    <p class="text-gray-500 text-[10px] mt-1">الأحداث المسجلة بالترتيب</p>
-                </div>
-                <div>${eventRows}</div>
-            </div>
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h5 class="text-white font-black text-sm">💬 محادثة الصفقة</h5>
-                        <p class="text-gray-500 text-[10px] mt-1">${messageCount} رسالة مسجلة</p>
-                    </div>
-                    ${messages.temporal_context ? `<span class="text-[10px] text-gray-500">سياق زمني متوفر</span>` : ""}
-                </div>
-                ${messageCount > 0 ? `
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-black/20 rounded-xl p-3">
-                            <div class="text-gray-500 text-[10px]">أول رسالة</div>
-                            <div class="text-gray-300 text-xs mt-1">${formatMediationDate(messages.first)}</div>
-                        </div>
-                        <div class="bg-black/20 rounded-xl p-3">
-                            <div class="text-gray-500 text-[10px]">آخر رسالة</div>
-                            <div class="text-gray-300 text-xs mt-1">${formatMediationDate(messages.last)}</div>
-                        </div>
-                    </div>
-                ` : `<div class="text-gray-500 text-xs text-center py-5">لا توجد رسائل</div>`}
-            </div>
-
-            <details class="bg-black/20 border border-white/5 rounded-xl">
-                <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">⚙️ التفاصيل التقنية الخام</summary>
-                <div class="p-4 space-y-4">
-                    <pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[400px] whitespace-pre-wrap">${escapeHtml(JSON.stringify({ summary, checks }, null, 2))}</pre>
-                </div>
-            </details>
         </div>
     `;
+
+    try {
+        // -----------------------------------------------------
+        // Call deterministic evidence engine
+        // -----------------------------------------------------
+
+        const response = await api(
+            "analyze_mediation_dispute",
+            {
+                deal_id: Number(dealId)
+            }
+        );
+
+        if (!response || response.success !== true) {
+            throw new Error(
+                response?.error ||
+                response?.message ||
+                "فشل تحليل الأدلة"
+            );
+        }
+
+        const result = response;
+        const assessment = result.assessment || {};
+        const summary = result.evidence_summary || {};
+        const findings = Array.isArray(result.findings)
+            ? result.findings
+            : [];
+        const limitations = Array.isArray(result.limitations)
+            ? result.limitations
+            : [];
+        const adminReview = result.admin_review || {};
+        const evidence = result.evidence || {};
+
+        // -----------------------------------------------------
+        // Values
+        // -----------------------------------------------------
+
+        const buyerPct = pct(assessment.buyer_percentage);
+        const sellerPct = pct(assessment.seller_percentage);
+        const coverage = pct(assessment.evidence_coverage);
+        const confidence = pct(assessment.analysis_confidence);
+
+        const buyerSupport = num(
+            assessment.buyer_support
+        );
+
+        const sellerSupport = num(
+            assessment.seller_support
+        );
+
+        const contradictionCount = num(
+            assessment.contradiction_count
+        );
+
+        const strong = num(summary.strong);
+        const medium = num(summary.medium);
+        const weak = num(summary.weak);
+
+        const assessmentText =
+            assessmentLabel[assessment.result] ||
+            "غير محدد";
+
+        const priorityText =
+            priorityLabel[adminReview.admin_review_priority] ||
+            "مراجعة";
+
+        // -----------------------------------------------------
+        // Assessment state
+        // -----------------------------------------------------
+
+        let assessmentClass = "neutral";
+
+        if (assessment.result === "buyer_supported") {
+            assessmentClass = "buyer";
+        } else if (assessment.result === "seller_supported") {
+            assessmentClass = "seller";
+        } else if (
+            assessment.result === "mixed_evidence"
+        ) {
+            assessmentClass = "warning";
+        } else if (
+            assessment.result === "insufficient_evidence"
+        ) {
+            assessmentClass = "danger";
+        }
+
+        // -----------------------------------------------------
+        // Findings
+        // -----------------------------------------------------
+
+        const findingHtml = findings.length
+            ? findings.map((finding) => {
+
+                const side = finding.side || "neutral";
+                const strength = finding.strength || "weak";
+
+                const sideText =
+                    sideLabel[side] || "محايد";
+
+                const strengthText =
+                    strengthLabel[strength] || strength;
+
+                const sideClass =
+                    side === "buyer"
+                        ? "buyer"
+                        : side === "seller"
+                            ? "seller"
+                            : "neutral";
+
+                const strengthClass =
+                    strength === "strong"
+                        ? "strong"
+                        : strength === "medium"
+                            ? "medium"
+                            : "weak";
+
+                return `
+                    <div class="med-finding ${sideClass}">
+
+                        <div class="med-finding-top">
+
+                            <div class="med-finding-title">
+                                <span class="med-side-dot ${sideClass}"></span>
+
+                                <strong>
+                                    ${esc(finding.title || "دليل")}
+                                </strong>
+                            </div>
+
+                            <div class="med-finding-badges">
+
+                                <span class="med-badge ${sideClass}">
+                                    ${esc(sideText)}
+                                </span>
+
+                                <span class="med-badge ${strengthClass}">
+                                    ${esc(strengthText)}
+                                </span>
+
+                                <span class="med-weight">
+                                    +${num(finding.weight)}
+                                </span>
+
+                            </div>
+                        </div>
+
+                        <div class="med-finding-code">
+                            ${esc(finding.code || "")}
+                        </div>
+
+                        <div class="med-finding-description">
+                            ${esc(
+                                finding.explanation ||
+                                "لا يوجد شرح إضافي."
+                            )}
+                        </div>
+
+                        <div class="med-finding-source">
+                            المصدر:
+                            <strong>
+                                ${esc(finding.source || "غير محدد")}
+                            </strong>
+                        </div>
+
+                    </div>
+                `;
+            }).join("")
+            : `
+                <div class="med-empty">
+                    لا توجد إشارات تقييمية كافية.
+                </div>
+            `;
+
+        // -----------------------------------------------------
+        // Limitations
+        // -----------------------------------------------------
+
+        const limitationsHtml = limitations.length
+            ? limitations.map((item) => `
+                <div class="med-limitation">
+
+                    <div class="med-limit-icon">!</div>
+
+                    <div>
+                        <strong>
+                            ${esc(item.title || "بيانات ناقصة")}
+                        </strong>
+
+                        <div class="med-muted">
+                            ${esc(
+                                item.explanation ||
+                                ""
+                            )}
+                        </div>
+
+                        <div class="med-limit-code">
+                            ${esc(item.code || "")}
+                        </div>
+                    </div>
+
+                </div>
+            `).join("")
+            : `
+                <div class="med-success-note">
+                    لم يتم تسجيل قيود إضافية على الأدلة.
+                </div>
+            `;
+
+        // -----------------------------------------------------
+        // Admin actions
+        // -----------------------------------------------------
+
+        const adminActions = Array.isArray(
+            adminReview.actions
+        )
+            ? adminReview.actions
+            : [];
+
+        const adminActionsHtml = adminActions.length
+            ? adminActions.map((action) => `
+                <li>${esc(action)}</li>
+            `).join("")
+            : `
+                <li>
+                    راجع الأدلة المتاحة واتخذ القرار يدوياً.
+                </li>
+            `;
+
+        // -----------------------------------------------------
+        // Integrity / evidence counters
+        // -----------------------------------------------------
+
+        const chatCount = Array.isArray(evidence.chat_logs)
+            ? evidence.chat_logs.length
+            : 0;
+
+        const attachmentCount = Array.isArray(
+            evidence.attachments
+        )
+            ? evidence.attachments.length
+            : 0;
+
+        const timelineCount = Array.isArray(
+            evidence.timeline
+        )
+            ? evidence.timeline.length
+            : 0;
+
+        // -----------------------------------------------------
+        // Render
+        // -----------------------------------------------------
+
+        panel.innerHTML = `
+
+            <div class="med-scorecard">
+
+                <!-- =========================================
+                     HEADER
+                ========================================== -->
+
+                <div class="med-score-header">
+
+                    <div>
+                        <div class="med-eyebrow">
+                            MEDIATION EVIDENCE ENGINE
+                        </div>
+
+                        <h3>
+                            Evidence Scorecard
+                        </h3>
+
+                        <div class="med-muted">
+                            Deal #${esc(dealId)}
+                            · تحليل آلي منظم للأدلة
+                        </div>
+                    </div>
+
+                    <div class="
+                        med-assessment
+                        ${assessmentClass}
+                    ">
+                        <span class="med-assessment-label">
+                            التقييم الأولي
+                        </span>
+
+                        <strong>
+                            ${esc(assessmentText)}
+                        </strong>
+
+                        <small>
+                            ${esc(priorityText)}
+                        </small>
+                    </div>
+
+                </div>
+
+
+                <!-- =========================================
+                     MAIN METRICS
+                ========================================== -->
+
+                <div class="med-metrics">
+
+                    <div class="med-metric-card buyer">
+
+                        <div class="med-metric-label">
+                            دعم الأدلة للمشتري
+                        </div>
+
+                        <div class="med-metric-value">
+                            ${buyerPct}%
+                        </div>
+
+                        <div class="med-progress">
+                            <div
+                                class="med-progress-fill buyer"
+                                style="width:${buyerPct}%"
+                            ></div>
+                        </div>
+
+                        <div class="med-metric-sub">
+                            وزن الأدلة: ${buyerSupport}
+                        </div>
+
+                    </div>
+
+
+                    <div class="med-metric-card seller">
+
+                        <div class="med-metric-label">
+                            دعم الأدلة للبائع
+                        </div>
+
+                        <div class="med-metric-value">
+                            ${sellerPct}%
+                        </div>
+
+                        <div class="med-progress">
+                            <div
+                                class="med-progress-fill seller"
+                                style="width:${sellerPct}%"
+                            ></div>
+                        </div>
+
+                        <div class="med-metric-sub">
+                            وزن الأدلة: ${sellerSupport}
+                        </div>
+
+                    </div>
+
+
+                    <div class="med-metric-card">
+
+                        <div class="med-metric-label">
+                            تغطية الأدلة
+                        </div>
+
+                        <div class="med-metric-value">
+                            ${coverage}%
+                        </div>
+
+                        <div class="med-progress">
+                            <div
+                                class="med-progress-fill neutral"
+                                style="width:${coverage}%"
+                            ></div>
+                        </div>
+
+                        <div class="med-metric-sub">
+                            جودة وتوفر المصادر
+                        </div>
+
+                    </div>
+
+
+                    <div class="med-metric-card">
+
+                        <div class="med-metric-label">
+                            ثقة التحليل
+                        </div>
+
+                        <div class="med-metric-value">
+                            ${confidence}%
+                        </div>
+
+                        <div class="med-progress">
+                            <div
+                                class="med-progress-fill neutral"
+                                style="width:${confidence}%"
+                            ></div>
+                        </div>
+
+                        <div class="med-metric-sub">
+                            ليست احتمالاً لصحة الادعاء
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =========================================
+                     EVIDENCE QUALITY
+                ========================================== -->
+
+                <div class="med-section">
+
+                    <div class="med-section-header">
+                        <div>
+                            <h4>جودة الأدلة</h4>
+                            <span>
+                                تصنيف الأدلة التي اعتمد عليها المحرك
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="med-quality-grid">
+
+                        <div class="med-quality strong">
+                            <strong>${strong}</strong>
+                            <span>أدلة قوية</span>
+                        </div>
+
+                        <div class="med-quality medium">
+                            <strong>${medium}</strong>
+                            <span>أدلة متوسطة</span>
+                        </div>
+
+                        <div class="med-quality weak">
+                            <strong>${weak}</strong>
+                            <span>أدلة ضعيفة</span>
+                        </div>
+
+                        <div class="
+                            med-quality
+                            ${contradictionCount > 0
+                                ? "danger"
+                                : ""}
+                        ">
+                            <strong>
+                                ${contradictionCount}
+                            </strong>
+                            <span>تناقضات</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =========================================
+                     EVIDENCE SOURCES
+                ========================================== -->
+
+                <div class="med-section">
+
+                    <div class="med-section-header">
+
+                        <div>
+                            <h4>مصادر الأدلة</h4>
+                            <span>
+                                ما الذي توفر للمحرك؟
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <div class="med-source-grid">
+
+                        <div class="med-source">
+                            <span>المحادثة</span>
+                            <strong>
+                                ${chatCount}
+                            </strong>
+                        </div>
+
+                        <div class="med-source">
+                            <span>المرفقات</span>
+                            <strong>
+                                ${attachmentCount}
+                            </strong>
+                        </div>
+
+                        <div class="med-source">
+                            <span>الأحداث الزمنية</span>
+                            <strong>
+                                ${timelineCount}
+                            </strong>
+                        </div>
+
+                        <div class="med-source">
+                            <span>إشارات النزاهة</span>
+                            <strong>
+                                ${num(summary.integrity_signals)}
+                            </strong>
+                        </div>
+
+                        <div class="med-source">
+                            <span>الفئات المتوفرة</span>
+                            <strong>
+                                ${num(summary.available_categories)}
+                                /
+                                ${num(summary.possible_categories)}
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =========================================
+                     FINDINGS
+                ========================================== -->
+
+                <div class="med-section">
+
+                    <div class="med-section-header">
+
+                        <div>
+                            <h4>
+                                تحليل الأدلة
+                            </h4>
+
+                            <span>
+                                كل إشارة مستقلة مع مصدرها ودرجة قوتها
+                            </span>
+                        </div>
+
+                        <span class="med-count">
+                            ${findings.length} دليل
+                        </span>
+
+                    </div>
+
+                    <div class="med-findings">
+                        ${findingHtml}
+                    </div>
+
+                </div>
+
+
+                <!-- =========================================
+                     LIMITATIONS
+                ========================================== -->
+
+                <div class="med-section">
+
+                    <div class="med-section-header">
+
+                        <div>
+                            <h4>
+                                الأدلة الناقصة والقيود
+                            </h4>
+
+                            <span>
+                                معلومات لم يتمكن المحرك من التحقق منها
+                            </span>
+                        </div>
+
+                        <span class="med-count">
+                            ${limitations.length}
+                        </span>
+
+                    </div>
+
+                    <div class="med-limitations">
+                        ${limitationsHtml}
+                    </div>
+
+                </div>
+
+
+                <!-- =========================================
+                     ADMIN REVIEW
+                ========================================== -->
+
+                <div class="med-admin-review">
+
+                    <div class="med-admin-review-header">
+
+                        <div>
+                            <div class="med-eyebrow">
+                                ADMIN REVIEW
+                            </div>
+
+                            <h4>
+                                القرار النهائي للإدمن
+                            </h4>
+                        </div>
+
+                        <span class="med-admin-required">
+                            مطلوب تدخل الإدمن
+                        </span>
+
+                    </div>
+
+                    <div class="med-admin-warning">
+
+                        <strong>
+                            هذا التحليل لا يتخذ القرار النهائي.
+                        </strong>
+
+                        <p>
+                            النتائج أعلاه هي تقييم منظم للأدلة
+                            المتوفرة فقط. لا يتم تلقائياً تحرير
+                            الأموال أو معاقبة أي طرف أو إغلاق النزاع.
+                        </p>
+
+                    </div>
+
+                    <div class="med-admin-actions">
+
+                        <strong>
+                            نقاط يجب على الإدمن مراجعتها:
+                        </strong>
+
+                        <ul>
+                            ${adminActionsHtml}
+                        </ul>
+
+                    </div>
+
+                    <div class="med-admin-status">
+
+                        <span>
+                            القرار النهائي:
+                        </span>
+
+                        <strong>
+                            بانتظار الإدمن
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+        `;
+
+        // -----------------------------------------------------
+        // Inject stylesheet once
+        // -----------------------------------------------------
+
+        if (!document.getElementById("mediation-scorecard-style")) {
+
+            const style = document.createElement("style");
+
+            style.id = "mediation-scorecard-style";
+
+            style.textContent = `
+
+                .med-scorecard {
+                    width: 100%;
+                    color: #e5e7eb;
+                    font-family: inherit;
+                }
+
+                .med-score-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 20px;
+                    margin-bottom: 20px;
+                }
+
+                .med-eyebrow {
+                    font-size: 10px;
+                    letter-spacing: 1.4px;
+                    font-weight: 800;
+                    opacity: .55;
+                    margin-bottom: 5px;
+                }
+
+                .med-score-header h3,
+                .med-section h4,
+                .med-admin-review h4 {
+                    margin: 0;
+                }
+
+                .med-muted {
+                    color: #94a3b8;
+                    font-size: 12px;
+                    line-height: 1.6;
+                }
+
+                .med-assessment {
+                    min-width: 190px;
+                    padding: 13px 16px;
+                    border-radius: 14px;
+                    border: 1px solid #334155;
+                    background: #0f172a;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 3px;
+                }
+
+                .med-assessment.buyer {
+                    border-color: rgba(59,130,246,.45);
+                }
+
+                .med-assessment.seller {
+                    border-color: rgba(34,197,94,.45);
+                }
+
+                .med-assessment.warning {
+                    border-color: rgba(245,158,11,.55);
+                }
+
+                .med-assessment.danger {
+                    border-color: rgba(239,68,68,.55);
+                }
+
+                .med-assessment-label {
+                    color: #94a3b8;
+                    font-size: 11px;
+                }
+
+                .med-assessment strong {
+                    font-size: 15px;
+                }
+
+                .med-assessment small {
+                    color: #94a3b8;
+                }
+
+                .med-metrics {
+                    display: grid;
+                    grid-template-columns:
+                        repeat(4, minmax(0, 1fr));
+                    gap: 12px;
+                    margin-bottom: 16px;
+                }
+
+                .med-metric-card {
+                    padding: 15px;
+                    background: #0f172a;
+                    border: 1px solid #1e293b;
+                    border-radius: 14px;
+                }
+
+                .med-metric-label {
+                    color: #94a3b8;
+                    font-size: 12px;
+                    margin-bottom: 8px;
+                }
+
+                .med-metric-value {
+                    font-size: 27px;
+                    font-weight: 800;
+                    margin-bottom: 10px;
+                }
+
+                .med-metric-sub {
+                    color: #64748b;
+                    font-size: 10px;
+                    margin-top: 7px;
+                }
+
+                .med-progress {
+                    height: 6px;
+                    background: #1e293b;
+                    border-radius: 99px;
+                    overflow: hidden;
+                }
+
+                .med-progress-fill {
+                    height: 100%;
+                    border-radius: inherit;
+                    transition: width .35s ease;
+                }
+
+                .med-progress-fill.buyer {
+                    background: #3b82f6;
+                }
+
+                .med-progress-fill.seller {
+                    background: #22c55e;
+                }
+
+                .med-progress-fill.neutral {
+                    background: #94a3b8;
+                }
+
+                .med-section {
+                    background: #0f172a;
+                    border: 1px solid #1e293b;
+                    border-radius: 14px;
+                    padding: 17px;
+                    margin-bottom: 14px;
+                }
+
+                .med-section-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 14px;
+                }
+
+                .med-section-header span {
+                    color: #64748b;
+                    font-size: 11px;
+                }
+
+                .med-count {
+                    background: #1e293b;
+                    color: #cbd5e1 !important;
+                    padding: 5px 9px;
+                    border-radius: 8px;
+                }
+
+                .med-quality-grid {
+                    display: grid;
+                    grid-template-columns:
+                        repeat(4, minmax(0, 1fr));
+                    gap: 10px;
+                }
+
+                .med-quality {
+                    padding: 13px;
+                    border-radius: 11px;
+                    background: #111827;
+                    border: 1px solid #1f2937;
+                }
+
+                .med-quality strong {
+                    display: block;
+                    font-size: 22px;
+                }
+
+                .med-quality span {
+                    color: #94a3b8;
+                    font-size: 11px;
+                }
+
+                .med-quality.strong {
+                    border-color: rgba(34,197,94,.35);
+                }
+
+                .med-quality.medium {
+                    border-color: rgba(245,158,11,.35);
+                }
+
+                .med-quality.weak {
+                    border-color: rgba(148,163,184,.25);
+                }
+
+                .med-quality.danger {
+                    border-color: rgba(239,68,68,.5);
+                }
+
+                .med-source-grid {
+                    display: grid;
+                    grid-template-columns:
+                        repeat(5, minmax(0, 1fr));
+                    gap: 9px;
+                }
+
+                .med-source {
+                    background: #111827;
+                    border: 1px solid #1f2937;
+                    border-radius: 10px;
+                    padding: 11px;
+                }
+
+                .med-source span {
+                    display: block;
+                    color: #94a3b8;
+                    font-size: 10px;
+                    margin-bottom: 5px;
+                }
+
+                .med-source strong {
+                    font-size: 17px;
+                }
+
+                .med-findings {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 9px;
+                }
+
+                .med-finding {
+                    padding: 13px;
+                    border-radius: 11px;
+                    background: #111827;
+                    border: 1px solid #1f2937;
+                }
+
+                .med-finding.buyer {
+                    border-right: 3px solid #3b82f6;
+                }
+
+                .med-finding.seller {
+                    border-right: 3px solid #22c55e;
+                }
+
+                .med-finding.neutral {
+                    border-right: 3px solid #94a3b8;
+                }
+
+                .med-finding-top {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 12px;
+                    align-items: center;
+                }
+
+                .med-finding-title {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    min-width: 0;
+                }
+
+                .med-side-dot {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    flex: 0 0 auto;
+                }
+
+                .med-side-dot.buyer {
+                    background: #3b82f6;
+                }
+
+                .med-side-dot.seller {
+                    background: #22c55e;
+                }
+
+                .med-side-dot.neutral {
+                    background: #94a3b8;
+                }
+
+                .med-finding-badges {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 5px;
+                }
+
+                .med-badge {
+                    font-size: 10px;
+                    padding: 4px 7px;
+                    border-radius: 7px;
+                    background: #1e293b;
+                }
+
+                .med-badge.buyer {
+                    color: #93c5fd;
+                }
+
+                .med-badge.seller {
+                    color: #86efac;
+                }
+
+                .med-badge.strong {
+                    border: 1px solid rgba(239,68,68,.25);
+                }
+
+                .med-badge.medium {
+                    border: 1px solid rgba(245,158,11,.25);
+                }
+
+                .med-badge.weak {
+                    border: 1px solid rgba(148,163,184,.2);
+                }
+
+                .med-weight {
+                    font-size: 11px;
+                    font-weight: 800;
+                    color: #cbd5e1;
+                }
+
+                .med-finding-code,
+                .med-limit-code {
+                    font-size: 9px;
+                    color: #64748b;
+                    margin-top: 7px;
+                    font-family: monospace;
+                }
+
+                .med-finding-description {
+                    margin-top: 8px;
+                    color: #cbd5e1;
+                    font-size: 12px;
+                    line-height: 1.7;
+                }
+
+                .med-finding-source {
+                    margin-top: 8px;
+                    color: #64748b;
+                    font-size: 10px;
+                }
+
+                .med-finding-source strong {
+                    color: #94a3b8;
+                }
+
+                .med-limitations {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .med-limitation {
+                    display: flex;
+                    gap: 10px;
+                    padding: 11px;
+                    background: #111827;
+                    border-radius: 10px;
+                    border: 1px solid #1f2937;
+                }
+
+                .med-limit-icon {
+                    width: 22px;
+                    height: 22px;
+                    border-radius: 50%;
+                    display: grid;
+                    place-items: center;
+                    background: rgba(245,158,11,.12);
+                    color: #f59e0b;
+                    font-weight: 800;
+                    flex: 0 0 auto;
+                }
+
+                .med-success-note {
+                    color: #86efac;
+                    font-size: 12px;
+                    padding: 10px;
+                }
+
+                .med-admin-review {
+                    border: 1px solid #334155;
+                    border-radius: 15px;
+                    padding: 18px;
+                    margin-top: 16px;
+                    background:
+                        linear-gradient(
+                            135deg,
+                            #111827,
+                            #0f172a
+                        );
+                }
+
+                .med-admin-review-header {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 15px;
+                    align-items: center;
+                }
+
+                .med-admin-required {
+                    font-size: 10px;
+                    padding: 6px 9px;
+                    border-radius: 8px;
+                    background: rgba(245,158,11,.12);
+                    color: #fbbf24;
+                }
+
+                .med-admin-warning {
+                    margin-top: 14px;
+                    padding: 12px;
+                    border-radius: 10px;
+                    background: rgba(245,158,11,.07);
+                    border: 1px solid rgba(245,158,11,.18);
+                }
+
+                .med-admin-warning p {
+                    margin: 5px 0 0;
+                    color: #94a3b8;
+                    font-size: 11px;
+                    line-height: 1.7;
+                }
+
+                .med-admin-actions {
+                    margin-top: 15px;
+                    color: #cbd5e1;
+                    font-size: 12px;
+                }
+
+                .med-admin-actions ul {
+                    margin: 8px 0 0;
+                    padding-right: 20px;
+                    color: #94a3b8;
+                    line-height: 1.9;
+                }
+
+                .med-admin-status {
+                    margin-top: 15px;
+                    padding-top: 13px;
+                    border-top: 1px solid #1e293b;
+                    display: flex;
+                    justify-content: space-between;
+                    color: #64748b;
+                    font-size: 11px;
+                }
+
+                .med-admin-status strong {
+                    color: #fbbf24;
+                }
+
+                .med-empty {
+                    padding: 20px;
+                    text-align: center;
+                    color: #64748b;
+                }
+
+                .med-score-loading {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 30px;
+                    color: #cbd5e1;
+                }
+
+                .med-score-spinner {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 2px solid #334155;
+                    border-top-color: #94a3b8;
+                    animation: med-spin .7s linear infinite;
+                }
+
+                @keyframes med-spin {
+                    to {
+                        transform: rotate(360deg);
+                    }
+                }
+
+                @media (max-width: 900px) {
+
+                    .med-metrics {
+                        grid-template-columns:
+                            repeat(2, minmax(0, 1fr));
+                    }
+
+                    .med-quality-grid {
+                        grid-template-columns:
+                            repeat(2, minmax(0, 1fr));
+                    }
+
+                    .med-source-grid {
+                        grid-template-columns:
+                            repeat(2, minmax(0, 1fr));
+                    }
+                }
+
+                @media (max-width: 600px) {
+
+                    .med-score-header {
+                        flex-direction: column;
+                    }
+
+                    .med-assessment {
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+
+                    .med-metrics {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .med-quality-grid {
+                        grid-template-columns: 1fr 1fr;
+                    }
+
+                    .med-finding-top {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+
+                    .med-admin-review-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                }
+            `;
+
+            document.head.appendChild(style);
+        }
+
+    } catch (error) {
+
+        console.error(
+            "loadMediationEvidence error:",
+            error
+        );
+
+        panel.innerHTML = `
+            <div style="
+                padding:18px;
+                border:1px solid rgba(239,68,68,.3);
+                background:rgba(239,68,68,.06);
+                border-radius:12px;
+                color:#fca5a5;
+            ">
+                <strong>
+                    تعذر تحليل أدلة الوساطة
+                </strong>
+
+                <div style="
+                    margin-top:7px;
+                    font-size:12px;
+                    color:#94a3b8;
+                ">
+                    ${esc(
+                        error?.message ||
+                        "حدث خطأ غير معروف"
+                    )}
+                </div>
+            </div>
+        `;
+    }
 }
 
 function formatMediationDate(value) {
