@@ -82,6 +82,9 @@
                     <button data-target="logs-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="file-text" class="w-4 h-4"></i> سجل النشاط
                     </button>
+                    <button data-target="mediation-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="scale" class="w-4 h-4"></i> نزاعات الوساطة
+                    </button>
                     <button data-target="settings-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="settings" class="w-4 h-4"></i> الإعدادات
                     </button>
@@ -401,6 +404,51 @@
                         </div>
                         <div id="activityLogs" class="space-y-3">
                             <div class="text-center text-gray-500 py-8">جاري تحميل السجلات...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم نزاعات الوساطة -->
+                <section id="mediation-section" class="tab-content hidden space-y-6">
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+                            <div>
+                                <h4 class="text-white font-bold text-sm">نزاعات الوساطة</h4>
+                                <p class="text-gray-500 text-[11px] mt-1">الصفقات التي تحتاج مراجعة المشرف</p>
+                            </div>
+                            <button id="btnRefreshMediation" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                                    <tr>
+                                        <th class="p-3">رقم الصفقة</th>
+                                        <th class="p-3">الكود</th>
+                                        <th class="p-3">المبلغ</th>
+                                        <th class="p-3">المشتري</th>
+                                        <th class="p-3">البائع</th>
+                                        <th class="p-3">الحالة</th>
+                                        <th class="p-3">تاريخ النزاع</th>
+                                        <th class="p-3 text-center">الأدلة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mediationDisputesTable" class="divide-y divide-white/5">
+                                    <tr><td colspan="8" class="p-6 text-center text-gray-500">جاري تحميل النزاعات...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="mediationEvidencePanel" class="glass-card rounded-2xl border border-white/5 overflow-hidden hidden">
+                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+                            <div>
+                                <h4 class="text-white font-bold text-sm">ملف أدلة النزاع</h4>
+                                <p id="mediationEvidenceDeal" class="text-gray-500 text-[11px] mt-1"></p>
+                            </div>
+                            <button id="btnCloseMediationEvidence" class="text-gray-400 hover:text-white text-lg">✕</button>
+                        </div>
+                        <div id="mediationEvidenceContent" class="p-6 space-y-6">
+                            <div class="text-center text-gray-500 py-8">اختر صفقة لعرض الأدلة</div>
                         </div>
                     </div>
                 </section>
