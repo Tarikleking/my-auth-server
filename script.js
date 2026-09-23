@@ -164,7 +164,7 @@ function show2FAModal(email) {
         <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
             <h1 class="text-2xl font-black text-white tracking-wider mb-2">التحقق الثنائي <span class="text-purple-500">2FA</span></h1>
             <p class="text-gray-400 text-xs mb-6">تم إرسال رمز التحقق المكون من 6 أرقام إلى بريدك الإلكتروني.</p>
-            
+
             <div class="space-y-4">
                 <input type="text" id="otpCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="------">
                 <div id="otpError" class="text-red-400 text-xs font-medium"></div>
@@ -204,7 +204,7 @@ document.addEventListener("click", async (e) => {
             if (errorEl) errorEl.textContent = "الرجاء كتابة بريدك الإلكتروني في خانة الإيميل أولاً!";
             return;
         }
-        
+
         if (errorEl) errorEl.textContent = "جاري إرسال رابط الاستعادة...";
         const { error } = await client.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin,
@@ -264,10 +264,10 @@ async function refreshDashboard() {
     renderBannedTable(uData);
     updateMainCharts(uData);
     updateDeviceChart(uData);
-    
+
     await loadStats(uData, kData);
     await loadActivityLogs();
-    
+
     await loadNewVipList();
     await loadNewBanList();
 }
@@ -343,16 +343,16 @@ async function loadStats(uData = null, kData = null) {
     const rData = (regRes && (regRes.data || regRes)) || [];
 
     const now = Date.now();
-    
+
     if(document.getElementById("statsUsers")) document.getElementById("statsUsers").textContent = u.length;
     if(document.getElementById("statsOnline")) document.getElementById("statsOnline").textContent = u.filter(user => user.last_online && (now - new Date(user.last_online).getTime()) < 300000).length;
     if(document.getElementById("statsVip")) document.getElementById("statsVip").textContent = u.filter(user => user.vip).length;
     if(document.getElementById("statsBanned")) document.getElementById("statsBanned").textContent = u.filter(user => user.banned).length;
-    
+
     if(document.getElementById("statsKeys")) document.getElementById("statsKeys").textContent = k.length;
     if(document.getElementById("statsKeysNew")) document.getElementById("statsKeysNew").textContent = k.filter(key => key.status === "new").length;
     if(document.getElementById("statsKeysUsed")) document.getElementById("statsKeysUsed").textContent = k.filter(key => key.status === "used").length;
-    
+
     const activeVips = u.filter(user => user.vip && user.vip_until && new Date(user.vip_until) > new Date()).length;
     if(document.getElementById("statsVipActive")) document.getElementById("statsVipActive").textContent = activeVips;
     if(document.getElementById("activeVipCount")) document.getElementById("activeVipCount").textContent = activeVips;
@@ -374,10 +374,10 @@ async function loadStats(uData = null, kData = null) {
             statsDataTable.innerHTML = rData.map(reg => {
                 const email = reg.email || "غير متوفر";
                 const activationKey = reg.activation_key || "KING-DZ-XXXX";
-                
+
                 const matchedUser = u.find(user => (user.device_id || user.id || user.uuid) === reg.username) || {};
                 const deviceId = matchedUser.device_id || matchedUser.id || matchedUser.uuid || reg.username || "غير مسجل/مرتبط بعد";
-                
+
                 let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">مسجل</span>';
                 if (reg.approved) {
                     statusHtml = '<span class="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg">موافق عليه</span>';
@@ -428,7 +428,7 @@ document.addEventListener('click', async function(event) {
             else alert("حدد إيميل واحد على الأقل للحذف"); 
             return; 
         }
-        
+
         if (!confirm("هل أنت متأكد من حذف " + checked.length + " إيميل مسجل؟")) return;
 
         for (const cb of checked) {
@@ -439,7 +439,7 @@ document.addEventListener('click', async function(event) {
                 cb.closest("tr")?.remove();
             }
         }
-        
+
         if(typeof showToast === 'function') showToast("تم حذف الإيميلات المحددة بنجاح");
         refreshDashboard();
     }
@@ -453,7 +453,7 @@ function renderMainUsersTable(users) {
         tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500 text-[10px]">لا توجد أجهزة متصلة بالسيرفر حالياً.</td></tr>`;
         return;
     }
-   
+
     const latest = users.slice(-4).reverse();
     const now = Date.now();
     tbody.innerHTML = latest.map(u => {
@@ -633,7 +633,6 @@ if (document.getElementById("btnRevokeVip")) {
     };
 }
 
-
 // ============================================================
 // MEDIATION DISPUTES
 // ============================================================
@@ -729,37 +728,16 @@ async function loadMediationDisputes() {
     });
 }
 
-async function loadMediationEvidence(dealId) {
-    const panel = document.getElementById("mediationEvidencePanel");
-    const content = document.getElementById("mediationEvidenceContent");
-    const dealLabel = document.getElementById("mediationEvidenceDeal");
-
-    if (!panel || !content) return;
-
-    panel.classList.remove("hidden");
-
-    if (dealLabel) dealLabel.textContent = `Deal #${dealId}`;
-
-    content.innerHTML = `
-        <div class="flex items-center justify-center py-10">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+function mediationEvidenceStat(title, value) {
+    return `
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+            <div class="text-gray-500 text-[10px]">${escapeHtml(title)}</div>
+            <div class="text-white font-bold text-sm mt-1">${escapeHtml(String(value))}</div>
         </div>
     `;
+}
 
-    const res = await api("get_mediation_dispute_evidence", {
-        deal_id: dealId
-    });
-
-    if (!res || res.error || !res.evidence) {
-        content.innerHTML = `
-            <div class="text-center py-10 text-red-400">
-                تعذر جلب ملف أدلة الصفقة #${escapeHtml(String(dealId))}
-            </div>
-        `;
-        return;
-    }
-
-    async function loadMediationEvidence(dealId) {
+async function loadMediationEvidence(dealId) {
     const panel = document.getElementById("mediationEvidencePanel");
     const content = document.getElementById("mediationEvidenceContent");
     const dealLabel = document.getElementById("mediationEvidenceDeal");
@@ -806,34 +784,15 @@ async function loadMediationEvidence(dealId) {
     const summary = evidence.summary || {};
     const events = Array.isArray(evidence.events) ? evidence.events : [];
 
-    // ---------------------------------------------------------
-    // helpers
-    // ---------------------------------------------------------
-
     const statusBadge = (status) => {
         const value = String(status || "").toUpperCase();
 
         const map = {
-            PASS: {
-                text: "سليم",
-                cls: "bg-green-500/10 text-green-400 border-green-500/20"
-            },
-            FAIL: {
-                text: "فشل",
-                cls: "bg-red-500/10 text-red-400 border-red-500/20"
-            },
-            MISSING: {
-                text: "مفقود",
-                cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-            },
-            CONFLICT: {
-                text: "تعارض",
-                cls: "bg-orange-500/10 text-orange-400 border-orange-500/20"
-            },
-            NOT_APPLICABLE: {
-                text: "غير مطلوب",
-                cls: "bg-gray-500/10 text-gray-400 border-gray-500/20"
-            }
+            PASS: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
+            FAIL: { text: "فشل", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+            MISSING: { text: "مفقود", cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
+            CONFLICT: { text: "تعارض", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
+            NOT_APPLICABLE: { text: "غير مطلوب", cls: "bg-gray-500/10 text-gray-400 border-gray-500/20" }
         };
 
         const item = map[value] || {
@@ -849,66 +808,27 @@ async function loadMediationEvidence(dealId) {
     };
 
     const valueOrDash = (value) => {
-        if (
-            value === null ||
-            value === undefined ||
-            value === ""
-        ) {
-            return "—";
-        }
-
+        if (value === null || value === undefined || value === "") return "—";
         return escapeHtml(String(value));
     };
 
     const boolText = (value) => {
-        if (value === true) {
-            return `<span class="text-green-400 font-bold">نعم</span>`;
-        }
-
-        if (value === false) {
-            return `<span class="text-gray-500">لا</span>`;
-        }
-
+        if (value === true) return `<span class="text-green-400 font-bold">نعم</span>`;
+        if (value === false) return `<span class="text-gray-500">لا</span>`;
         return `<span class="text-gray-500">—</span>`;
     };
 
     const checkRows = Object.entries(checks).map(([key, item]) => {
-        const status =
-            item && typeof item === "object"
-                ? item.status
-                : item;
-
-        const description =
-            item && typeof item === "object"
-                ? (
-                    item.description ||
-                    item.reason ||
-                    item.message ||
-                    ""
-                )
-                : "";
+        const status = item && typeof item === "object" ? item.status : item;
+        const description = item && typeof item === "object" ? (item.description || item.reason || item.message || "") : "";
 
         return `
             <div class="flex items-center justify-between gap-4 py-3 border-b border-white/5 last:border-0">
                 <div class="min-w-0">
-                    <div class="text-white text-xs font-bold break-words">
-                        ${escapeHtml(key)}
-                    </div>
-
-                    ${
-                        description
-                            ? `
-                                <div class="text-gray-500 text-[10px] mt-1">
-                                    ${escapeHtml(String(description))}
-                                </div>
-                              `
-                            : ""
-                    }
+                    <div class="text-white text-xs font-bold break-words">${escapeHtml(key)}</div>
+                    ${description ? `<div class="text-gray-500 text-[10px] mt-1">${escapeHtml(String(description))}</div>` : ""}
                 </div>
-
-                <div class="shrink-0">
-                    ${statusBadge(status)}
-                </div>
+                <div class="shrink-0">${statusBadge(status)}</div>
             </div>
         `;
     }).join("");
@@ -923,463 +843,170 @@ async function loadMediationEvidence(dealId) {
             return `
                 <div class="relative pl-5 pb-5 last:pb-0">
                     <div class="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-purple-500"></div>
-
-                    ${
-                        index < events.length - 1
-                            ? `
-                                <div class="absolute left-[3px] top-4 bottom-0 w-px bg-white/10"></div>
-                              `
-                            : ""
-                    }
-
+                    ${index < events.length - 1 ? `<div class="absolute left-[3px] top-4 bottom-0 w-px bg-white/10"></div>` : ""}
                     <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <span class="text-purple-400 font-bold text-xs">
-                                ${escapeHtml(String(eventType))}
-                            </span>
-
-                            <span class="text-gray-500 text-[10px]">
-                                ${formatMediationDate(createdAt)}
-                            </span>
+                            <span class="text-purple-400 font-bold text-xs">${escapeHtml(String(eventType))}</span>
+                            <span class="text-gray-500 text-[10px]">${formatMediationDate(createdAt)}</span>
                         </div>
-
                         <div class="flex flex-wrap gap-3 mt-2 text-[10px] text-gray-500">
-                            ${
-                                actor !== undefined &&
-                                actor !== null
-                                    ? `<span>👤 Actor: ${escapeHtml(String(actor))}</span>`
-                                    : ""
-                            }
-
-                            ${
-                                amount !== undefined &&
-                                amount !== null
-                                    ? `<span>💰 $${escapeHtml(Number(amount).toFixed(2))}</span>`
-                                    : ""
-                            }
+                            ${actor !== undefined && actor !== null ? `<span>👤 Actor: ${escapeHtml(String(actor))}</span>` : ""}
+                            ${amount !== undefined && amount !== null ? `<span>💰 $${escapeHtml(Number(amount).toFixed(2))}</span>` : ""}
                         </div>
                     </div>
                 </div>
             `;
         }).join("")
-        : `
-            <div class="text-center py-6 text-gray-500 text-xs">
-                لا توجد أحداث مسجلة
-            </div>
-        `;
+        : `<div class="text-center py-6 text-gray-500 text-xs">لا توجد أحداث مسجلة</div>`;
 
     const messageCount = Number(messages.count || 0);
 
-    // ---------------------------------------------------------
-    // main UI
-    // ---------------------------------------------------------
-
     content.innerHTML = `
         <div class="space-y-5">
-
-            <!-- ================= SUMMARY ================= -->
-
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                ${mediationEvidenceStat(
-                    "رقم الصفقة",
-                    `#${deal.id ?? dealId}`
-                )}
-
-                ${mediationEvidenceStat(
-                    "الكود",
-                    deal.code ?? "—"
-                )}
-
-                ${mediationEvidenceStat(
-                    "المبلغ",
-                    `$${Number(deal.amount_usd || 0).toFixed(2)}`
-                )}
-
-                ${mediationEvidenceStat(
-                    "الحالة",
-                    deal.status ?? "—"
-                )}
-
+                ${mediationEvidenceStat("رقم الصفقة", `#${deal.id ?? dealId}`)}
+                ${mediationEvidenceStat("الكود", deal.code ?? "—")}
+                ${mediationEvidenceStat("المبلغ", `$${Number(deal.amount_usd || 0).toFixed(2)}`)}
+                ${mediationEvidenceStat("الحالة", deal.status ?? "—")}
             </div>
 
-            <!-- ================= EVIDENCE SUMMARY ================= -->
-
             <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h5 class="text-white font-black text-sm">
-                            🛡️ ملخص الأدلة
-                        </h5>
-
-                        <p class="text-gray-500 text-[10px] mt-1">
-                            نتيجة Evidence Engine
-                        </p>
+                        <h5 class="text-white font-black text-sm">🛡️ ملخص الأدلة</h5>
+                        <p class="text-gray-500 text-[10px] mt-1">نتيجة Evidence Engine</p>
                     </div>
-
                     <span class="px-3 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[10px] font-bold">
                         ${escapeHtml(String(evidence.engine_version || "v2"))}
                     </span>
                 </div>
-
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الأحداث
-                        </div>
-                        <div class="text-white font-black text-lg mt-1">
-                            ${events.length}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">الأحداث</div>
+                        <div class="text-white font-black text-lg mt-1">${events.length}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الرسائل
-                        </div>
-                        <div class="text-white font-black text-lg mt-1">
-                            ${messageCount}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">الرسائل</div>
+                        <div class="text-white font-black text-lg mt-1">${messageCount}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الشهادة
-                        </div>
-                        <div class="mt-2">
-                            ${
-                                certificate &&
-                                Object.keys(certificate).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
+                        <div class="text-gray-500 text-[10px]">الشهادة</div>
+                        <div class="mt-2">${certificate && Object.keys(certificate).length ? statusBadge("PASS") : statusBadge("MISSING")}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            Snapshot
-                        </div>
-                        <div class="mt-2">
-                            ${
-                                snapshot &&
-                                Object.keys(snapshot).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
+                        <div class="text-gray-500 text-[10px]">Snapshot</div>
+                        <div class="mt-2">${snapshot && Object.keys(snapshot).length ? statusBadge("PASS") : statusBadge("MISSING")}</div>
                     </div>
-
                 </div>
             </div>
 
-            <!-- ================= CHECKS ================= -->
-
             <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
                 <div class="mb-3">
-                    <h5 class="text-white font-black text-sm">
-                        🔍 فحوصات الأدلة
-                    </h5>
-
-                    <p class="text-gray-500 text-[10px] mt-1">
-                        كل فحص يظهر حالته بشكل مستقل
-                    </p>
+                    <h5 class="text-white font-black text-sm">🔍 فحوصات الأدلة</h5>
+                    <p class="text-gray-500 text-[10px] mt-1">كل فحص يظهر حالته بشكل مستقل</p>
                 </div>
-
-                <div>
-                    ${
-                        checkRows ||
-                        `
-                            <div class="text-gray-500 text-xs text-center py-5">
-                                لا توجد فحوصات
-                            </div>
-                        `
-                    }
-                </div>
-
+                <div>${checkRows || `<div class="text-gray-500 text-xs text-center py-5">لا توجد فحوصات</div>`}</div>
             </div>
 
-            <!-- ================= DISPUTE ================= -->
-
             <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <h5 class="text-white font-black text-sm mb-4">
-                    ⚖️ معلومات النزاع
-                </h5>
-
+                <h5 class="text-white font-black text-sm mb-4">⚖️ معلومات النزاع</h5>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            فتح بواسطة
-                        </div>
-                        <div class="text-white text-sm mt-1">
-                            ${valueOrDash(dispute.opened_by)}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">فتح بواسطة</div>
+                        <div class="text-white text-sm mt-1">${valueOrDash(dispute.opened_by)}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الحالة
-                        </div>
-                        <div class="mt-1">
-                            ${statusBadge(dispute.status)}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">الحالة</div>
+                        <div class="mt-1">${statusBadge(dispute.status)}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3 md:col-span-2">
-                        <div class="text-gray-500 text-[10px]">
-                            سبب النزاع
-                        </div>
-                        <div class="text-white text-sm mt-1 whitespace-pre-wrap">
-                            ${valueOrDash(dispute.reason)}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">سبب النزاع</div>
+                        <div class="text-white text-sm mt-1 whitespace-pre-wrap">${valueOrDash(dispute.reason)}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            موافقة المشتري
-                        </div>
-                        <div class="mt-1">
-                            ${boolText(dispute.buyer_agreed)}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">موافقة المشتري</div>
+                        <div class="mt-1">${boolText(dispute.buyer_agreed)}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            موافقة البائع
-                        </div>
-                        <div class="mt-1">
-                            ${boolText(dispute.seller_agreed)}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">موافقة البائع</div>
+                        <div class="mt-1">${boolText(dispute.seller_agreed)}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            تاريخ فتح النزاع
-                        </div>
-                        <div class="text-white text-xs mt-1">
-                            ${formatMediationDate(dispute.opened_at)}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">تاريخ فتح النزاع</div>
+                        <div class="text-white text-xs mt-1">${formatMediationDate(dispute.opened_at)}</div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            تاريخ التصعيد
-                        </div>
-                        <div class="text-white text-xs mt-1">
-                            ${formatMediationDate(dispute.escalated_at)}
-                        </div>
+                        <div class="text-gray-500 text-[10px]">تاريخ التصعيد</div>
+                        <div class="text-white text-xs mt-1">${formatMediationDate(dispute.escalated_at)}</div>
                     </div>
-
                 </div>
             </div>
 
-            <!-- ================= CERTIFICATE / SNAPSHOT ================= -->
-
             <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <h5 class="text-white font-black text-sm mb-4">
-                    📜 الشهادة و Snapshot
-                </h5>
-
+                <h5 class="text-white font-black text-sm mb-4">📜 الشهادة و Snapshot</h5>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                     <div class="bg-black/20 rounded-xl p-4">
-
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">
-                                الشهادة
-                            </span>
-
-                            ${
-                                certificate &&
-                                Object.keys(certificate).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
+                            <span class="text-gray-300 font-bold text-xs">الشهادة</span>
+                            ${certificate && Object.keys(certificate).length ? statusBadge("PASS") : statusBadge("MISSING")}
                         </div>
-
                         <div class="space-y-2 text-[11px]">
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">ID</span>
-                                <span class="text-gray-300 font-mono break-all">
-                                    ${valueOrDash(certificate.id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">الحالة</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(certificate.status)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Deal ID</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(certificate.deal_id)}
-                                </span>
-                            </div>
-
+                            <div class="flex justify-between gap-3"><span class="text-gray-500">ID</span><span class="text-gray-300 font-mono break-all">${valueOrDash(certificate.id)}</span></div>
+                            <div class="flex justify-between gap-3"><span class="text-gray-500">الحالة</span><span class="text-gray-300">${valueOrDash(certificate.status)}</span></div>
+                            <div class="flex justify-between gap-3"><span class="text-gray-500">Deal ID</span><span class="text-gray-300">${valueOrDash(certificate.deal_id)}</span></div>
                         </div>
                     </div>
-
                     <div class="bg-black/20 rounded-xl p-4">
-
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">
-                                Snapshot
-                            </span>
-
-                            ${
-                                snapshot &&
-                                Object.keys(snapshot).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
+                            <span class="text-gray-300 font-bold text-xs">Snapshot</span>
+                            ${snapshot && Object.keys(snapshot).length ? statusBadge("PASS") : statusBadge("MISSING")}
                         </div>
-
                         <div class="space-y-2 text-[11px]">
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">ID</span>
-                                <span class="text-gray-300 font-mono break-all">
-                                    ${valueOrDash(snapshot.id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Deal ID</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(snapshot.deal_id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Platform</span>
-                                <span class="text-purple-400 font-bold">
-                                    ${valueOrDash(snapshot.platform)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Account</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(snapshot.account_url)}
-                                </span>
-                            </div>
-
+                            <div class="flex justify-between gap-3"><span class="text-gray-500">ID</span><span class="text-gray-300 font-mono break-all">${valueOrDash(snapshot.id)}</span></div>
+                            <div class="flex justify-between gap-3"><span class="text-gray-500">Deal ID</span><span class="text-gray-300">${valueOrDash(snapshot.deal_id)}</span></div>
+                            <div class="flex justify-between gap-3"><span class="text-gray-500">Platform</span><span class="text-purple-400 font-bold">${valueOrDash(snapshot.platform)}</span></div>
+                            <div class="flex justify-between gap-3"><span class="text-gray-500">Account</span><span class="text-gray-300">${valueOrDash(snapshot.account_url)}</span></div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
-            <!-- ================= TIMELINE ================= -->
-
             <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
                 <div class="mb-4">
-                    <h5 class="text-white font-black text-sm">
-                        🕒 الخط الزمني للصفقة
-                    </h5>
-
-                    <p class="text-gray-500 text-[10px] mt-1">
-                        الأحداث المسجلة بالترتيب
-                    </p>
+                    <h5 class="text-white font-black text-sm">🕒 الخط الزمني للصفقة</h5>
+                    <p class="text-gray-500 text-[10px] mt-1">الأحداث المسجلة بالترتيب</p>
                 </div>
-
-                <div>
-                    ${eventRows}
-                </div>
-
+                <div>${eventRows}</div>
             </div>
-
-            <!-- ================= CHAT ================= -->
 
             <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
                 <div class="flex items-center justify-between mb-4">
-
                     <div>
-                        <h5 class="text-white font-black text-sm">
-                            💬 محادثة الصفقة
-                        </h5>
-
-                        <p class="text-gray-500 text-[10px] mt-1">
-                            ${messageCount} رسالة مسجلة
-                        </p>
+                        <h5 class="text-white font-black text-sm">💬 محادثة الصفقة</h5>
+                        <p class="text-gray-500 text-[10px] mt-1">${messageCount} رسالة مسجلة</p>
                     </div>
-
-                    ${
-                        messages.temporal_context
-                            ? `
-                                <span class="text-[10px] text-gray-500">
-                                    سياق زمني متوفر
-                                </span>
-                              `
-                            : ""
-                    }
-
+                    ${messages.temporal_context ? `<span class="text-[10px] text-gray-500">سياق زمني متوفر</span>` : ""}
                 </div>
-
-                ${
-                    messageCount > 0
-                        ? `
-                            <div class="grid grid-cols-2 gap-3">
-
-                                <div class="bg-black/20 rounded-xl p-3">
-                                    <div class="text-gray-500 text-[10px]">
-                                        أول رسالة
-                                    </div>
-                                    <div class="text-gray-300 text-xs mt-1">
-                                        ${formatMediationDate(messages.first)}
-                                    </div>
-                                </div>
-
-                                <div class="bg-black/20 rounded-xl p-3">
-                                    <div class="text-gray-500 text-[10px]">
-                                        آخر رسالة
-                                    </div>
-                                    <div class="text-gray-300 text-xs mt-1">
-                                        ${formatMediationDate(messages.last)}
-                                    </div>
-                                </div>
-
-                            </div>
-                          `
-                        : `
-                            <div class="text-gray-500 text-xs text-center py-5">
-                                لا توجد رسائل
-                            </div>
-                          `
-                }
-
+                ${messageCount > 0 ? `
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-black/20 rounded-xl p-3">
+                            <div class="text-gray-500 text-[10px]">أول رسالة</div>
+                            <div class="text-gray-300 text-xs mt-1">${formatMediationDate(messages.first)}</div>
+                        </div>
+                        <div class="bg-black/20 rounded-xl p-3">
+                            <div class="text-gray-500 text-[10px]">آخر رسالة</div>
+                            <div class="text-gray-300 text-xs mt-1">${formatMediationDate(messages.last)}</div>
+                        </div>
+                    </div>
+                ` : `<div class="text-gray-500 text-xs text-center py-5">لا توجد رسائل</div>`}
             </div>
-
-            <!-- ================= TECHNICAL DETAILS ================= -->
 
             <details class="bg-black/20 border border-white/5 rounded-xl">
-
-                <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">
-                    ⚙️ التفاصيل التقنية الخام
-                </summary>
-
+                <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">⚙️ التفاصيل التقنية الخام</summary>
                 <div class="p-4 space-y-4">
-
-                    <pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[400px] whitespace-pre-wrap">${escapeHtml(JSON.stringify({
-                        summary,
-                        checks
-                    }, null, 2))}</pre>
-
+                    <pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[400px] whitespace-pre-wrap">${escapeHtml(JSON.stringify({ summary, checks }, null, 2))}</pre>
                 </div>
-
             </details>
-
         </div>
     `;
 }
@@ -1400,17 +1027,11 @@ function escapeHtml(value) {
         .replaceAll("'", "&#039;");
 }
 
-document.getElementById("btnRefreshMediation")?.addEventListener(
-    "click",
-    loadMediationDisputes
-);
+document.getElementById("btnRefreshMediation")?.addEventListener("click", loadMediationDisputes);
 
-document.getElementById("btnCloseMediationEvidence")?.addEventListener(
-    "click",
-    () => {
-        document.getElementById("mediationEvidencePanel")?.classList.add("hidden");
-    }
-);
+document.getElementById("btnCloseMediationEvidence")?.addEventListener("click", () => {
+    document.getElementById("mediationEvidencePanel")?.classList.add("hidden");
+});
 
 function openDrawer(deviceId) { 
     const drawer = document.getElementById('userDrawer');
@@ -1743,7 +1364,7 @@ function afterLogin() {
     if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "flex";
     refreshDashboard();
     loadSettings();
-    
+
     if (!liveClock) {
         liveClock = setInterval(() => {
             const liveTimeEl = document.getElementById("liveTime");
