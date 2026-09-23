@@ -4,7 +4,7 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 let liveClock = null;
 
-// 🔐 دالة الـ api الذكية
+// 🔐 دالة الـ api الجديدة والمحدثة
 async function api(action, data = {}) {
   const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
 
@@ -18,13 +18,11 @@ async function api(action, data = {}) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + currentToken,
-        "x-client-check": btoa(action + "_secure")
+        "Authorization": "Bearer " + currentToken
       },
       body: JSON.stringify({
         action,
-        ...data,
-        timestamp: Date.now()
+        ...data
       })
     });
 
@@ -644,7 +642,7 @@ function closeDrawer() {
     if(drawer) drawer.style.right = '-450px'; 
 }
 
-// الدالة الذكية لجلب وعرض بيانات المستخدم بالتفصيل في النافذة الجانبية (تم التعديل عليها)
+// الدالة الذكية لجلب وعرض بيانات المستخدم بالتفصيل في النافذة الجانبية
 async function loadUserDetails(deviceId) {
     const content = document.getElementById("drawerContent");
 
@@ -668,7 +666,6 @@ async function loadUserDetails(deviceId) {
             const allUsersRes = await api("get_all_users");
             const allUsers = (allUsersRes && (allUsersRes.data || allUsersRes)) || [];
             
-            // 🔥 الإصلاح هنا: تحويل كل المعرفات إلى نصوص (String) لضمان التطابق
             user = allUsers.find(u => (
                 String(u.device_id) === String(deviceId) || 
                 String(u.id) === String(deviceId) || 
@@ -774,23 +771,23 @@ async function loadUserDetails(deviceId) {
                         <div class="flex justify-between gap-3"><span class="text-gray-400">الشركة المصنعة</span><span class="text-white">${esc(user.manufacturer)}</span></div>
                         <div class="flex justify-between gap-3"><span class="text-gray-400">Brand</span><span class="text-white">${esc(user.brand)}</span></div>
                         <div class="flex justify-between gap-3">
-    <span class="text-gray-400">Android</span>
-    <span class="text-white">${esc(user.android_version)}</span>
-</div>
+                            <span class="text-gray-400">Android</span>
+                            <span class="text-white">${esc(user.android_version)}</span>
+                        </div>
 
-<div class="flex justify-between gap-3">
-    <span class="text-gray-400">🔋 البطارية</span>
-    <span class="text-white font-bold">
-        ${user.battery != null ? esc(user.battery) + "%" : "—"}
-    </span>
-</div>
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">🔋 البطارية</span>
+                            <span class="text-white font-bold">
+                                ${user.battery != null ? esc(user.battery) + "%" : "—"}
+                            </span>
+                        </div>
 
-<div class="flex justify-between gap-3">
-    <span class="text-gray-400">⚡ حالة الشحن</span>
-    <span class="${user.charging === true ? 'text-green-400 font-bold' : 'text-gray-400'}">
-        ${user.charging === true ? "⚡ يشحن الآن" : "غير متصل"}
-    </span>
-</div>
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-400">⚡ حالة الشحن</span>
+                            <span class="${user.charging === true ? 'text-green-400 font-bold' : 'text-gray-400'}">
+                                ${user.charging === true ? "⚡ يشحن الآن" : "غير متصل"}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -978,11 +975,9 @@ function afterLogin() {
     // النبضة التلقائية لتحديث حالة الاتصال (Heartbeat Timer)
     if (!window.heartbeatTimer) {
         window.heartbeatTimer = setInterval(async () => {
-            // تحديث حالة الاتصال في قاعدة البيانات للجهاز الحالي
             await api("update_online_status", { timestamp: Date.now() }).catch(() => {});
-            // تحديث اللوحة بسلاسة
             refreshDashboard();
-        }, 20000); // كل 20 ثانية
+        }, 20000);
     }
 }
 
@@ -1008,8 +1003,8 @@ function debouncedLogs() {
 }
 
 client.channel('kingdz-realtime-sync')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'keys' }, () => { debouncedRefresh(); })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { debouncedRefresh(); })
+    .on('postgres_changes', { event: '', schema: 'public', table: 'keys' }, () => { debouncedRefresh(); })
+    .on('postgres_changes', { event: '', schema: 'public', table: 'users' }, () => { debouncedRefresh(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => { debouncedLogs(); })
     .subscribe();
 
@@ -1177,7 +1172,6 @@ async function loadSettings() {
         return;
     }
 
-    // توحيد شكل الاستجابة سواء رجعت object أو array
     let rawData = res.data ?? res;
 
     const data = Array.isArray(rawData)
@@ -1267,7 +1261,6 @@ document.getElementById("btnSaveSettings")?.addEventListener("click", async () =
 
     showToast("تم حفظ الإعدادات بنجاح");
 
-    // إعادة قراءة البيانات من قاعدة البيانات
     await loadSettings();
 });
 
