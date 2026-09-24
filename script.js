@@ -760,10 +760,13 @@ function mediationAnalysisFinding(finding) {
                 </div>
             </div>
             <p class="text-gray-300 text-[11px] leading-6 mt-3">${escapeHtml(finding?.detail || finding?.explanation || "—")}</p>
-            <div class="flex gap-2 mt-3 text-[10px] text-gray-500">
+            <div class="flex flex-wrap gap-2 mt-3 text-[10px] text-gray-500">
                 <span>القوة: ${escapeHtml(finding?.strength || "—")}</span>
                 <span>الموثوقية: ${escapeHtml(finding?.reliability || "—")}</span>
+                <span>المصدر: ${escapeHtml(finding?.evidence_source_label || finding?.evidence_source || "—")}</span>
+                ${Number(finding?.score_contribution || finding?.weight || 0) > 0 ? `<span class="text-cyan-400">المساهمة: +${escapeHtml(String(finding?.score_contribution ?? finding?.weight))}</span>` : `<span>محايد: 0</span>`}
             </div>
+            ${finding?.scoring_basis ? `<div class="mt-2 text-[10px] text-gray-600 leading-5">${escapeHtml(finding.scoring_basis)}</div>` : ""}
         </div>
     `;
 }
@@ -856,6 +859,32 @@ async function loadMediationAnalysis(dealId) {
         </div>
 
         <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">🧮 تفصيل الدرجات القابل للتدقيق</h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${(() => {
+                    const breakdown = Array.isArray(analysis.score_breakdown) ? analysis.score_breakdown : [];
+                    if (!breakdown.length) return `<div class="text-gray-500 text-xs md:col-span-2">لا يوجد تفصيل درجات إضافي من المحرك.</div>`;
+                    return breakdown.map(item => {
+                        const side = item?.side === "buyer" ? "المشتري" : item?.side === "seller" ? "البائع" : (item?.side || "محايد");
+                        const total = Number(item?.total || 0);
+                        const categories = item?.by_category && typeof item.by_category === "object" ? Object.entries(item.by_category) : [];
+                        return `
+                            <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-300 text-xs font-bold">${escapeHtml(side)}</span>
+                                    <span class="text-cyan-400 font-black">${escapeHtml(String(total))}</span>
+                                </div>
+                                <div class="mt-3 space-y-2">
+                                    ${categories.length ? categories.map(([key, value]) => `<div class="flex justify-between text-[10px] text-gray-500"><span>${escapeHtml(key)}</span><span>+${escapeHtml(String(value))}</span></div>`).join("") : `<div class="text-gray-600 text-[10px]">لا توجد فئات مسجلة.</div>`}
+                                </div>
+                            </div>
+                        `;
+                    }).join("");
+                })()}
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
             <h5 class="text-white font-black text-sm mb-4">🔎 الأدلة الاتجاهية</h5>
             <div class="space-y-3">
                 ${directionalFindings.length ? directionalFindings.map(mediationAnalysisFinding).join("") : `<div class="text-gray-500 text-xs text-center py-5">لا توجد أدلة اتجاهية آلية كافية.</div>`}
@@ -883,6 +912,21 @@ async function loadMediationAnalysis(dealId) {
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <span class="text-gray-400 text-[10px]">${escapeHtml(analysis.methodology || scorecard.version || "evidence_scorecard_v2")}</span>
                 <span class="text-green-400 text-[10px] font-bold">READ-ONLY · القرار النهائي للأدمن</span>
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">🧾 منهجية التتبع</h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px] text-gray-400 leading-5">
+                ${(() => {
+                    const policy = analysis.weighting_policy && typeof analysis.weighting_policy === "object" ? analysis.weighting_policy : {};
+                    return Object.entries(policy).map(([key, value]) => `
+                        <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+                            <div class="text-gray-500 mb-1">${escapeHtml(key)}</div>
+                            <div>${escapeHtml(String(value))}</div>
+                        </div>
+                    `).join("") || `<div class="text-gray-500 md:col-span-2">لا توجد سياسة ترجيح إضافية.</div>`;
+                })()}
             </div>
         </div>
 
