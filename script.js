@@ -839,17 +839,20 @@ async function loadMediationAnalysis(dealId) {
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="bg-blue-500/5 border border-blue-500/15 rounded-2xl p-5">
-                <div class="flex justify-between text-xs mb-2"><span class="text-gray-300">المشتري</span><span class="text-blue-400 font-bold">${buyerPercent}%</span></div>
+                <div class="flex justify-between text-xs mb-2"><span class="text-gray-300">المشتري — توزيع النقاط</span><span class="text-blue-400 font-bold">${buyerPercent}%</span></div>
                 <div class="h-2 rounded-full bg-white/5 overflow-hidden"><div class="h-full bg-blue-500/70" style="width:${Math.max(0, Math.min(100, buyerPercent))}%"></div></div>
             </div>
             <div class="bg-purple-500/5 border border-purple-500/15 rounded-2xl p-5">
-                <div class="flex justify-between text-xs mb-2"><span class="text-gray-300">البائع</span><span class="text-purple-400 font-bold">${sellerPercent}%</span></div>
+                <div class="flex justify-between text-xs mb-2"><span class="text-gray-300">البائع — توزيع النقاط</span><span class="text-purple-400 font-bold">${sellerPercent}%</span></div>
                 <div class="h-2 rounded-full bg-white/5 overflow-hidden"><div class="h-full bg-purple-500/70" style="width:${Math.max(0, Math.min(100, sellerPercent))}%"></div></div>
             </div>
         </div>
 
         <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-            <h5 class="text-white font-black text-sm mb-4">📊 تغطية الأدلة</h5>
+            <div class="flex items-center justify-between gap-3 mb-3">
+                <h5 class="text-white font-black text-sm">📊 تغطية الأدلة</h5>
+                <span class="text-[10px] text-gray-500">النسب أدناه توزيع للنقاط وليست احتمالاً لصحة أي طرف</span>
+            </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 ${mediationAnalysisStat("تغطية المصادر", `${Number(evidenceCoverage.source_coverage_percentage ?? scorecard.source_coverage_percentage ?? 0)}%`)}
                 ${mediationAnalysisStat("التغطية الاتجاهية", `${Number(evidenceCoverage.directional_evidence_coverage ?? scorecard.directional_evidence_coverage ?? 0)}%`)}
