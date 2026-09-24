@@ -780,13 +780,20 @@ async function loadMediationDisputes() {
     }).join("");
 
     table.querySelectorAll("[data-mediation-deal-id]").forEach(button => {
-        button.addEventListener("click", () => {
-            const dealId = Number(button.dataset.mediationDealId);
-            if (Number.isInteger(dealId) && dealId > 0) {
-                loadMediationEvidence(dealId);
-            }
-        });
+    button.addEventListener("click", async () => {
+        const dealId = button.getAttribute("data-mediation-deal-id");
+
+        if (!dealId) {
+            console.error("MEDIATION: missing deal id");
+            showToast("رقم الصفقة غير موجود");
+            return;
+        }
+
+        console.log("MEDIATION EVIDENCE CLICK:", dealId);
+
+        await loadMediationEvidence(dealId);
     });
+});
 }
 
 function mediationEvidenceStat(title, value) {
@@ -1108,6 +1115,15 @@ async function analyzeMediationDispute(dealId) {
 }
 
 async function loadMediationEvidence(dealId) {
+    dealId = String(dealId ?? "").trim();
+
+    if (!dealId) {
+        console.error("MEDIATION: invalid deal id");
+        showToast("رقم الصفقة غير صالح");
+        return;
+    }
+
+    console.log("MEDIATION: loading evidence for deal:", dealId);
     const panel =
         document.getElementById("mediationEvidencePanel") ||
         document.getElementById("mediation-evidence-panel") ||
@@ -1189,11 +1205,11 @@ async function loadMediationEvidence(dealId) {
         // -----------------------------------------------------
 
         const response = await api(
-            "analyze_mediation_dispute",
-            {
-                deal_id: Number(dealId)
-            }
-        );
+    "get_mediation_dispute_evidence",
+    {
+        deal_id: dealId
+    }
+);
 
         if (!response || response.success !== true) {
             throw new Error(
