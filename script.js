@@ -4,7 +4,7 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 let liveClock = null;
 
-// 🔐 دالة الـ api الجديدة والمحدثة
+// 🔐 دالة API - نسخة تشخيصية
 async function api(action, data = {}) {
   const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
 
@@ -12,6 +12,8 @@ async function api(action, data = {}) {
     console.warn("No admin token found. Please login.");
     return null;
   }
+
+  console.log("API REQUEST:", action, data);
 
   try {
     const res = await fetch(API_URL, {
@@ -26,6 +28,15 @@ async function api(action, data = {}) {
       })
     });
 
+    const responseText = await res.text();
+
+    console.log("API RESPONSE:", {
+      action,
+      status: res.status,
+      ok: res.ok,
+      body: responseText
+    });
+
     if (res.status === 401) {
       console.warn("Unauthorized request, check session.");
       localStorage.removeItem("admin_token");
@@ -33,15 +44,37 @@ async function api(action, data = {}) {
       return null;
     }
 
-    if (!res.ok) {
-      console.error("API ERROR:", res.status);
+    let responseData = null;
+
+    try {
+      responseData = responseText
+        ? JSON.parse(responseText)
+        : null;
+    } catch (parseError) {
+      console.error("API JSON PARSE ERROR:", parseError);
       return null;
     }
 
-    return await res.json();
+    if (!res.ok) {
+      console.error("API ERROR:", {
+        action,
+        status: res.status,
+        response: responseData
+      });
+
+      return responseData || {
+        error: `HTTP ${res.status}`
+      };
+    }
+
+    return responseData;
 
   } catch (err) {
-    console.error("NETWORK ERROR:", err);
+    console.error("NETWORK ERROR:", {
+      action,
+      error: err
+    });
+
     return null;
   }
 }
