@@ -640,7 +640,7 @@ async function loadMediationDisputes() {
   if (!res || res.error) {  
       table.innerHTML = `  
           <tr>  
-              <td colspan="8" class="p-6 text-center text-red-400">  
+              <td colspan="9" class="p-6 text-center text-red-400">  
                   تعذر تحميل نزاعات الوساطة  
               </td>  
           </tr>  
@@ -659,7 +659,7 @@ async function loadMediationDisputes() {
   if (!deals.length) {  
       table.innerHTML = `  
           <tr>  
-              <td colspan="8" class="p-6 text-center text-gray-500">  
+              <td colspan="9" class="p-6 text-center text-gray-500">  
                   لا توجد صفقات في حالة نزاع حالياً  
               </td>  
           </tr>  
@@ -699,7 +699,14 @@ async function loadMediationDisputes() {
                       data-mediation-deal-id="${escapeHtml(String(dealId))}">  
                       عرض الأدلة  
                   </button>  
-              </td>  
+              </td>
+              <td class="p-3 text-center">
+                  <button
+                      class="bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 px-3 py-1.5 rounded-lg"
+                      data-mediation-analyze-deal-id="${escapeHtml(String(dealId))}">
+                      تحليل النزاع
+                  </button>
+              </td>
           </tr>  
       `;  
   }).join("");  
@@ -712,6 +719,178 @@ async function loadMediationDisputes() {
           }  
       });  
   });
+
+  table.querySelectorAll("[data-mediation-analyze-deal-id]").forEach(button => {
+      button.addEventListener("click", () => {
+          const dealId = Number(button.dataset.mediationAnalyzeDealId);
+          if (Number.isInteger(dealId) && dealId > 0) {
+              loadMediationAnalysis(dealId);
+          }
+      });
+  });
+}
+
+function mediationAnalysisStat(label, value, tone = "text-white") {
+    return `
+        <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+            <div class="text-gray-500 text-[10px]">${escapeHtml(String(label))}</div>
+            <div class="${tone} font-black text-lg mt-1">${escapeHtml(String(value))}</div>
+        </div>
+    `;
+}
+
+function mediationAnalysisFinding(finding) {
+    const side = finding?.side || "neutral";
+    const sideText = side === "buyer" ? "المشتري" : side === "seller" ? "البائع" : "محايد";
+    const sideClass = side === "buyer"
+        ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
+        : side === "seller"
+            ? "text-purple-400 bg-purple-500/10 border-purple-500/20"
+            : "text-gray-400 bg-gray-500/10 border-gray-500/20";
+
+    return `
+        <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-white font-bold text-xs">${escapeHtml(finding?.title || "دليل")}</div>
+                    <div class="text-gray-500 text-[10px] mt-1">${escapeHtml(finding?.category || "—")} · ${escapeHtml(finding?.code || "—")}</div>
+                </div>
+                <div class="shrink-0 px-2 py-1 rounded-lg border text-[10px] ${sideClass}">
+                    ${escapeHtml(sideText)}${Number(finding?.weight || 0) > 0 ? ` · +${escapeHtml(String(finding.weight))}` : ""}
+                </div>
+            </div>
+            <p class="text-gray-300 text-[11px] leading-6 mt-3">${escapeHtml(finding?.detail || finding?.explanation || "—")}</p>
+            <div class="flex gap-2 mt-3 text-[10px] text-gray-500">
+                <span>القوة: ${escapeHtml(finding?.strength || "—")}</span>
+                <span>الموثوقية: ${escapeHtml(finding?.reliability || "—")}</span>
+            </div>
+        </div>
+    `;
+}
+
+async function loadMediationAnalysis(dealId) {
+    const panel = document.getElementById("mediationAnalysisPanel");
+    const content = document.getElementById("mediationAnalysisContent");
+    const dealLabel = document.getElementById("mediationAnalysisDeal");
+
+    if (!panel || !content) return;
+
+    panel.classList.remove("hidden");
+    if (dealLabel) dealLabel.textContent = `تحليل أدلة الصفقة #${dealId}`;
+
+    content.innerHTML = `
+        <div class="flex items-center justify-center py-10">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+        </div>
+    `;
+
+    const res = await api("analyze_mediation_dispute", { deal_id: dealId });
+
+    if (!res || res.error) {
+        content.innerHTML = `
+            <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
+                <div class="text-red-400 font-bold mb-1">❌ تعذر تحليل النزاع</div>
+                <div class="text-gray-500 text-xs">${escapeHtml(res?.error || `الصفقة #${dealId}`)}</div>
+            </div>
+        `;
+        return;
+    }
+
+    const analysis = res.analysis || res.assessment || {};
+    const findings = Array.isArray(analysis.findings) ? analysis.findings : [];
+    const limitations = Array.isArray(analysis.limitations) ? analysis.limitations : [];
+    const contradictions = Array.isArray(analysis.contradictions) ? analysis.contradictions : [];
+    const evidenceCoverage = analysis.evidence_coverage || analysis.evidence_summary || {};
+    const adminReview = analysis.admin_review || {};
+    const buyerScore = Number(analysis.buyer_score || 0);
+    const sellerScore = Number(analysis.seller_score || 0);
+    const buyerPercent = Number(analysis.buyer_percentage ?? 50);
+    const sellerPercent = Number(analysis.seller_percentage ?? 50);
+    const confidence = Number(analysis.confidence_percentage || 0);
+    const scorecard = analysis.scorecard || {};
+
+    const directionalFindings = findings.filter(f => f?.side === "buyer" || f?.side === "seller");
+    const neutralFindings = findings.filter(f => f?.side === "neutral");
+
+    const priorityText = adminReview.priority || "مراجعة عادية";
+    const statusText = analysis.status || "غير محدد";
+
+    content.innerHTML = `
+        <div class="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                    <h5 class="text-white font-black text-sm">⚖️ نتيجة التحليل الآلي</h5>
+                    <p class="text-gray-500 text-[10px] mt-1">تحليل مساعد للأدلة فقط — القرار النهائي يبقى للأدمن.</p>
+                </div>
+                <span class="px-3 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[10px] font-bold">
+                    ${escapeHtml(statusText)}
+                </span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                ${mediationAnalysisStat("درجة المشتري", buyerScore, "text-blue-400")}
+                ${mediationAnalysisStat("درجة البائع", sellerScore, "text-purple-400")}
+                ${mediationAnalysisStat("ثقة جودة الأدلة", `${confidence}%`, "text-cyan-400")}
+                ${mediationAnalysisStat("الأولوية", priorityText, "text-yellow-400")}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-blue-500/5 border border-blue-500/15 rounded-2xl p-5">
+                <div class="flex justify-between text-xs mb-2"><span class="text-gray-300">المشتري</span><span class="text-blue-400 font-bold">${buyerPercent}%</span></div>
+                <div class="h-2 rounded-full bg-white/5 overflow-hidden"><div class="h-full bg-blue-500/70" style="width:${Math.max(0, Math.min(100, buyerPercent))}%"></div></div>
+            </div>
+            <div class="bg-purple-500/5 border border-purple-500/15 rounded-2xl p-5">
+                <div class="flex justify-between text-xs mb-2"><span class="text-gray-300">البائع</span><span class="text-purple-400 font-bold">${sellerPercent}%</span></div>
+                <div class="h-2 rounded-full bg-white/5 overflow-hidden"><div class="h-full bg-purple-500/70" style="width:${Math.max(0, Math.min(100, sellerPercent))}%"></div></div>
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">📊 تغطية الأدلة</h5>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                ${mediationAnalysisStat("تغطية المصادر", `${Number(evidenceCoverage.source_coverage_percentage ?? scorecard.source_coverage_percentage ?? 0)}%`)}
+                ${mediationAnalysisStat("التغطية الاتجاهية", `${Number(evidenceCoverage.directional_evidence_coverage ?? scorecard.directional_evidence_coverage ?? 0)}%`)}
+                ${mediationAnalysisStat("قيود", limitations.length)}
+                ${mediationAnalysisStat("تناقضات", contradictions.length, contradictions.length ? "text-orange-400" : "text-green-400")}
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">🔎 الأدلة الاتجاهية</h5>
+            <div class="space-y-3">
+                ${directionalFindings.length ? directionalFindings.map(mediationAnalysisFinding).join("") : `<div class="text-gray-500 text-xs text-center py-5">لا توجد أدلة اتجاهية آلية كافية.</div>`}
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">🧾 القيود والتناقضات</h5>
+            <div class="space-y-3">
+                ${contradictions.length ? contradictions.map(item => `<div class="bg-orange-500/5 border border-orange-500/15 rounded-xl p-4 text-xs text-orange-200">${escapeHtml(item?.detail || item?.explanation || item?.title || JSON.stringify(item))}</div>`).join("") : `<div class="text-green-400 text-xs">لا توجد تناقضات آلية مسجلة.</div>`}
+                ${limitations.length ? limitations.map(item => `<div class="bg-yellow-500/5 border border-yellow-500/15 rounded-xl p-4 text-xs text-gray-300">⚠️ ${escapeHtml(item)}</div>`).join("") : `<div class="text-gray-500 text-xs">لا توجد قيود إضافية مسجلة.</div>`}
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">👮 مراجعة الإدمن</h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
+                <div class="bg-black/20 rounded-xl p-4"><span class="text-gray-500">الأولوية</span><div class="text-yellow-400 font-bold mt-1">${escapeHtml(priorityText)}</div></div>
+                <div class="bg-black/20 rounded-xl p-4"><span class="text-gray-500">القرار</span><div class="text-white font-bold mt-1">مطلوب من الإدمن</div></div>
+                <div class="md:col-span-2 bg-black/20 rounded-xl p-4"><span class="text-gray-500">الخلاصة</span><div class="text-gray-300 leading-6 mt-1">${escapeHtml(analysis.summary || "لا توجد خلاصة إضافية.")}</div></div>
+            </div>
+        </div>
+
+        <div class="bg-black/20 border border-white/5 rounded-xl p-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-gray-400 text-[10px]">${escapeHtml(analysis.methodology || scorecard.version || "evidence_scorecard_v2")}</span>
+                <span class="text-green-400 text-[10px] font-bold">READ-ONLY · القرار النهائي للأدمن</span>
+            </div>
+        </div>
+
+        <details class="bg-black/20 border border-white/5 rounded-xl">
+            <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">⚙️ تفاصيل التحليل الخام</summary>
+            <div class="p-4"><pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[500px] whitespace-pre-wrap">${escapeHtml(JSON.stringify(analysis, null, 2))}</pre></div>
+        </details>
+    `;
 }
 
 function mediationEvidenceStat(label, value) {
@@ -1373,6 +1552,13 @@ document.getElementById("btnCloseMediationEvidence")?.addEventListener(
   "click",
   () => {
     document.getElementById("mediationEvidencePanel")?.classList.add("hidden");
+  }
+);
+
+document.getElementById("btnCloseMediationAnalysis")?.addEventListener(
+  "click",
+  () => {
+    document.getElementById("mediationAnalysisPanel")?.classList.add("hidden");
   }
 );
 
