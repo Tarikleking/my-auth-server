@@ -430,12 +430,26 @@
                                         <th class="p-3">الحالة</th>
                                         <th class="p-3">تاريخ النزاع</th>
                                         <th class="p-3 text-center">الأدلة</th>
+                                        <th class="p-3 text-center">التحليل</th>
                                     </tr>
                                 </thead>
                                 <tbody id="mediationDisputesTable" class="divide-y divide-white/5">
-                                    <tr><td colspan="8" class="p-6 text-center text-gray-500">جاري تحميل النزاعات...</td></tr>
+                                    <tr><td colspan="9" class="p-6 text-center text-gray-500">جاري تحميل النزاعات...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <div id="mediationAnalysisPanel" class="glass-card rounded-2xl border border-white/5 overflow-hidden hidden">
+                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+                            <div>
+                                <h4 class="text-white font-bold text-sm">تحليل أدلة النزاع</h4>
+                                <p id="mediationAnalysisDeal" class="text-gray-500 text-[11px] mt-1"></p>
+                            </div>
+                            <button id="btnCloseMediationAnalysis" class="text-gray-400 hover:text-white text-lg">✕</button>
+                        </div>
+                        <div id="mediationAnalysisContent" class="p-6 space-y-6">
+                            <div class="text-center text-gray-500 py-8">اختر صفقة لتحليل أدلتها</div>
                         </div>
                     </div>
 
