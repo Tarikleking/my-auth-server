@@ -122,27 +122,55 @@ client.auth.onAuthStateChange((event, session) => {
 
 let statsChart = null;
 let deviceChart = null;
-
-// 1. نظام التنقل السلس بين أقسام اللوحة الجانبية
 document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function() {
+    item.addEventListener('click', async function () {
         const targetSection = this.getAttribute('data-target');
         if (!targetSection) return;
 
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(section => section.classList.add('hidden'));
-        
+        document.querySelectorAll('.nav-item').forEach(i => {
+            i.classList.remove('active');
+        });
+
+        document.querySelectorAll('.tab-content').forEach(section => {
+            section.classList.add('hidden');
+        });
+
         this.classList.add('active');
+
         const targetEl = document.getElementById(targetSection);
-        if (targetEl) {
-            targetEl.classList.remove('hidden');
-            if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {
-                refreshDashboard();
-            } else if (targetSection === 'mediation-section') {
-                loadMediationDisputes();
-            } else if (targetSection === 'settings-section') {
-                loadSettings();
-            }
+        if (!targetEl) return;
+
+        targetEl.classList.remove('hidden');
+
+        // =====================================================
+        // MEDIATION DISPUTES
+        // =====================================================
+        if (targetSection === 'mediation-section') {
+            console.log('MEDIATION NAV CLICK');
+
+            // لا تستدعِ refreshDashboard ولا get_all_users هنا
+            await loadMediationDisputes();
+
+            return;
+        }
+
+        // =====================================================
+        // OTHER SECTIONS
+        // =====================================================
+        if (
+            targetSection === 'home-section' ||
+            targetSection === 'keys-section' ||
+            targetSection === 'ban-section' ||
+            targetSection === 'users-section' ||
+            targetSection === 'stats-section'
+        ) {
+            refreshDashboard();
+            return;
+        }
+
+        if (targetSection === 'settings-section') {
+            loadSettings();
+            return;
         }
     });
 });
