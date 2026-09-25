@@ -1154,601 +1154,370 @@ async function loadMediationEvidence(dealId) {
     if (!res || res.error || !res.evidence) {
         content.innerHTML = `
             <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
-                <div class="text-red-400 font-bold mb-1">
-                    ❌ تعذر جلب ملف أدلة الصفقة
-                </div>
-                <div class="text-gray-500 text-xs">
-                    الصفقة #${escapeHtml(String(dealId))}
-                </div>
+                <div class="text-red-400 font-bold mb-1">❌ تعذر جلب ملف أدلة الصفقة</div>
+                <div class="text-gray-500 text-xs">الصفقة #${escapeHtml(String(dealId))}</div>
             </div>
         `;
         return;
     }
 
-    const evidence = res.evidence;
+    const evidence = res.evidence || {};
     const deal = evidence.deal || {};
     const dispute = evidence.dispute || {};
     const certificate = evidence.certificate || {};
     const snapshot = evidence.snapshot || {};
-    const messages = evidence.messages || {};
-    const checks = evidence.checks || {};
     const summary = evidence.summary || {};
-    const events = Array.isArray(evidence.events) ? evidence.events : [];
+    const checks = evidence.checks || {};
+    const conflicts = Array.isArray(evidence.conflicts) ? evidence.conflicts : [];
+    const missingEvidence = Array.isArray(evidence.missing_evidence) ? evidence.missing_evidence : [];
+    const events = Array.isArray(evidence.events)
+        ? evidence.events
+        : Array.isArray(evidence.timeline)
+            ? evidence.timeline
+            : [];
 
-    // ---------------------------------------------------------
-    // helpers
-    // ---------------------------------------------------------
+    const buyer = evidence.buyer || {};
+    const seller = evidence.seller || {};
+    const account = evidence.account || {};
+    const verification = evidence.verification || {};
+    const attachments = Array.isArray(evidence.attachments) ? evidence.attachments : [];
+    const productDetails = evidence.product_details || evidence.product || {};
+    const roleResolution = evidence.role_resolution || {};
+    const messages = evidence.messages || {};
+
+    const rawMessageItems = Array.isArray(messages)
+        ? messages
+        : Array.isArray(messages.items)
+            ? messages.items
+            : Array.isArray(messages.data)
+                ? messages.data
+                : Array.isArray(messages.messages)
+                    ? messages.messages
+                    : Array.isArray(evidence.chat_logs)
+                        ? evidence.chat_logs
+                        : [];
+
+    const messageItems = [...rawMessageItems].sort((a, b) => {
+        const av = new Date(a?.created_at || a?.sent_at || a?.timestamp || a?.createdAt || 0).getTime();
+        const bv = new Date(b?.created_at || b?.sent_at || b?.timestamp || b?.createdAt || 0).getTime();
+        return (Number.isFinite(av) ? av : 0) - (Number.isFinite(bv) ? bv : 0);
+    });
+
+    const messageCount = Number(messages.count ?? messageItems.length ?? 0);
 
     const statusBadge = (status) => {
         const value = String(status || "").toUpperCase();
-
         const map = {
-            PASS: {
-                text: "سليم",
-                cls: "bg-green-500/10 text-green-400 border-green-500/20"
-            },
-            FAIL: {
-                text: "فشل",
-                cls: "bg-red-500/10 text-red-400 border-red-500/20"
-            },
-            MISSING: {
-                text: "مفقود",
-                cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-            },
-            CONFLICT: {
-                text: "تعارض",
-                cls: "bg-orange-500/10 text-orange-400 border-orange-500/20"
-            },
-            NOT_APPLICABLE: {
-                text: "غير مطلوب",
-                cls: "bg-gray-500/10 text-gray-400 border-gray-500/20"
-            }
+            PASS: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
+            PASSED: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
+            OK: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
+            FAIL: { text: "فشل", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+            FAILED: { text: "فشل", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+            MISSING: { text: "مفقود", cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
+            CONFLICT: { text: "تعارض", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
+            NOT_APPLICABLE: { text: "غير مطلوب", cls: "bg-gray-500/10 text-gray-400 border-gray-500/20" },
+            UNKNOWN: { text: "غير معروف", cls: "bg-gray-500/10 text-gray-400 border-gray-500/20" }
         };
-
         const item = map[value] || {
             text: status || "غير معروف",
             cls: "bg-gray-500/10 text-gray-400 border-gray-500/20"
         };
-
-        return `
-            <span class="inline-flex items-center px-2 py-1 rounded-lg border text-[10px] font-bold ${item.cls}">
-                ${item.text}
-            </span>
-        `;
+        return `<span class="inline-flex items-center px-2 py-1 rounded-lg border text-[10px] font-bold ${item.cls}">${escapeHtml(String(item.text))}</span>`;
     };
 
     const valueOrDash = (value) => {
-        if (
-            value === null ||
-            value === undefined ||
-            value === ""
-        ) {
-            return "—";
-        }
-
+        if (value === null || value === undefined || value === "") return "—";
+        if (typeof value === "object") return escapeHtml(JSON.stringify(value));
         return escapeHtml(String(value));
     };
 
-    const boolText = (value) => {
-        if (value === true) {
-            return `<span class="text-green-400 font-bold">نعم</span>`;
-        }
+    const labelForKey = (key) => {
+        const map = {
+            id: "المعرف",
+            deal_id: "رقم الصفقة",
+            dispute_id: "رقم النزاع",
+            buyer_id: "معرف المشتري",
+            seller_id: "معرف البائع",
+            sender_id: "معرف المرسل",
+            actor_user_id: "معرف المنفذ",
+            user_id: "معرف المستخدم",
+            auth_id: "Auth ID",
+            created_at: "تاريخ الإنشاء",
+            updated_at: "آخر تحديث",
+            opened_at: "تاريخ الفتح",
+            escalated_at: "تاريخ التصعيد",
+            captured_at: "وقت الالتقاط",
+            sent_at: "وقت الإرسال",
+            message: "الرسالة",
+            message_type: "نوع الرسالة",
+            status: "الحالة",
+            code: "الكود",
+            reason: "السبب",
+            description: "الوصف",
+            metadata: "البيانات الإضافية",
+            evidence_refs: "مراجع الدليل",
+            source: "المصدر",
+            source_type: "نوع المصدر",
+            amount_usd: "المبلغ بالدولار",
+            platform: "المنصة",
+            account_url: "رابط الحساب",
+            username: "اسم المستخدم",
+            account_username: "اسم الحساب",
+            fingerprint: "البصمة",
+            sha256: "SHA-256",
+            snapshot_sha256: "بصمة Snapshot"
+        };
+        return map[key] || String(key).replaceAll("_", " ");
+    };
 
-        if (value === false) {
-            return `<span class="text-gray-500">لا</span>`;
+    const renderPrimitive = (value, key = "") => {
+        if (value === null || value === undefined || value === "") return "—";
+        if (typeof value === "boolean") return value ? "نعم" : "لا";
+        if (typeof value === "number") return escapeHtml(String(value));
+        if (typeof value === "string") {
+            const lower = key.toLowerCase();
+            if (lower.includes("_at") || lower.endsWith("time") || lower === "timestamp") {
+                const d = new Date(value);
+                if (!Number.isNaN(d.getTime())) return formatMediationDate(value);
+            }
+            return escapeHtml(value);
         }
+        return escapeHtml(JSON.stringify(value));
+    };
 
-        return `<span class="text-gray-500">—</span>`;
+    const renderObjectFields = (obj, options = {}) => {
+        if (!obj || typeof obj !== "object" || Array.isArray(obj)) return "";
+        const entries = Object.entries(obj).filter(([key]) => !options.skip?.includes(key));
+        if (!entries.length) return `<div class="text-gray-500 text-xs text-center py-4">لا توجد بيانات</div>`;
+        return `<div class="grid grid-cols-1 md:grid-cols-2 gap-2">${entries.map(([key, value]) => `
+            <div class="bg-black/20 rounded-xl p-3 border border-white/5 ${typeof value === "object" ? "md:col-span-2" : ""}">
+                <div class="text-gray-500 text-[10px] mb-1">${escapeHtml(labelForKey(key))}</div>
+                <div class="text-gray-200 text-[11px] break-words whitespace-pre-wrap">${renderPrimitive(value, key)}</div>
+            </div>
+        `).join("")}</div>`;
+    };
+
+    const section = (icon, title, subtitle, body) => `
+        <section class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <div class="mb-4">
+                <h5 class="text-white font-black text-sm">${icon} ${escapeHtml(title)}</h5>
+                ${subtitle ? `<p class="text-gray-500 text-[10px] mt-1">${escapeHtml(subtitle)}</p>` : ""}
+            </div>
+            ${body}
+        </section>
+    `;
+
+    const partyCard = (role, profile) => {
+        const side = role === "buyer" ? "المشتري" : "البائع";
+        const roleClass = role === "buyer"
+            ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
+            : "text-purple-400 bg-purple-500/10 border-purple-500/20";
+        const p = {
+            ...(profile || {}),
+            ...((profile && (profile.user_profile || profile.profile)) || {})
+        };
+        return `
+            <div class="bg-black/20 rounded-2xl p-4 border border-white/5">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <div class="text-white font-black text-xs">${role === "buyer" ? "🛒" : "👨‍💼"} ${side}</div>
+                    <span class="px-2 py-1 rounded-lg border text-[10px] ${roleClass}">${side}</span>
+                </div>
+                ${renderObjectFields(p)}
+            </div>
+        `;
     };
 
     const checkRows = Object.entries(checks).map(([key, item]) => {
-        const status =
-            item && typeof item === "object"
-                ? item.status
-                : item;
-
-        const description =
-            item && typeof item === "object"
-                ? (
-                    item.description ||
-                    item.reason ||
-                    item.message ||
-                    ""
-                )
-                : "";
-
+        const obj = item && typeof item === "object" ? item : { status: item };
+        const status = obj.status || obj.result || obj.state;
+        const evidenceRefs = obj.evidence_refs || obj.evidenceRefs || obj.refs;
         return `
-            <div class="flex items-center justify-between gap-4 py-3 border-b border-white/5 last:border-0">
-                <div class="min-w-0">
-                    <div class="text-white text-xs font-bold break-words">
-                        ${escapeHtml(key)}
+            <details class="bg-black/20 rounded-xl border border-white/5 p-3">
+                <summary class="cursor-pointer flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-white text-xs font-bold break-words">${escapeHtml(String(key))}</div>
+                        ${obj.description || obj.reason || obj.message ? `<div class="text-gray-500 text-[10px] mt-1">${escapeHtml(String(obj.description || obj.reason || obj.message))}</div>` : ""}
                     </div>
-
-                    ${
-                        description
-                            ? `
-                                <div class="text-gray-500 text-[10px] mt-1">
-                                    ${escapeHtml(String(description))}
-                                </div>
-                              `
-                            : ""
-                    }
-                </div>
-
-                <div class="shrink-0">
-                    ${statusBadge(status)}
-                </div>
-            </div>
+                    <div class="shrink-0">${statusBadge(status)}</div>
+                </summary>
+                <div class="mt-3">${renderObjectFields(obj, {skip:["status","result","state"]})}</div>
+                ${evidenceRefs ? `<div class="mt-3 bg-[#080b12] rounded-xl p-3"><div class="text-gray-500 text-[10px] mb-2">مراجع الأدلة</div><pre class="text-[10px] text-gray-400 whitespace-pre-wrap overflow-auto">${escapeHtml(JSON.stringify(evidenceRefs, null, 2))}</pre></div>` : ""}
+            </details>
         `;
     }).join("");
 
+    const renderList = (items, emptyText, renderer) => items.length
+        ? `<div class="space-y-2">${items.map(renderer).join("")}</div>`
+        : `<div class="text-gray-500 text-xs text-center py-5">${escapeHtml(emptyText)}</div>`;
+
     const eventRows = events.length
         ? events.map((event, index) => {
-            const eventType = event.event_type || "EVENT";
-            const createdAt = event.created_at;
-            const actor = event.actor_user_id;
-            const amount = event.amount_usd;
-
+            const eventType = event.event_type || event.type || event.action || "EVENT";
+            const time = event.created_at || event.occurred_at || event.timestamp || event.time;
+            const actor = event.actor_user_id ?? event.user_id ?? event.actor_id;
             return `
-                <div class="relative pl-5 pb-5 last:pb-0">
-                    <div class="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-purple-500"></div>
-
-                    ${
-                        index < events.length - 1
-                            ? `
-                                <div class="absolute left-[3px] top-4 bottom-0 w-px bg-white/10"></div>
-                              `
-                            : ""
-                    }
-
-                    <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+                <details class="relative bg-black/20 border border-white/5 rounded-xl p-4">
+                    <summary class="cursor-pointer list-none">
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <span class="text-purple-400 font-bold text-xs">
-                                ${escapeHtml(String(eventType))}
-                            </span>
-
-                            <span class="text-gray-500 text-[10px]">
-                                ${formatMediationDate(createdAt)}
-                            </span>
+                            <span class="text-purple-400 font-bold text-xs">${escapeHtml(String(eventType))}</span>
+                            <span class="text-gray-500 text-[10px]">${formatMediationDate(time)}</span>
                         </div>
-
                         <div class="flex flex-wrap gap-3 mt-2 text-[10px] text-gray-500">
-                            ${
-                                actor !== undefined &&
-                                actor !== null
-                                    ? `<span>👤 Actor: ${escapeHtml(String(actor))}</span>`
-                                    : ""
-                            }
-
-                            ${
-                                amount !== undefined &&
-                                amount !== null
-                                    ? `<span>💰 $${escapeHtml(Number(amount).toFixed(2))}</span>`
-                                    : ""
-                            }
+                            ${actor !== undefined && actor !== null ? `<span>👤 ${escapeHtml(String(actor))}</span>` : ""}
+                            ${event.amount_usd !== undefined && event.amount_usd !== null ? `<span>💰 $${escapeHtml(Number(event.amount_usd).toFixed(2))}</span>` : ""}
                         </div>
-                    </div>
-                </div>
+                    </summary>
+                    <div class="mt-3">${renderObjectFields(event)}</div>
+                </details>
             `;
         }).join("")
-        : `
-            <div class="text-center py-6 text-gray-500 text-xs">
-                لا توجد أحداث مسجلة
-            </div>
-        `;
+        : `<div class="text-gray-500 text-xs text-center py-5">لا توجد أحداث مسجلة</div>`;
 
-    const messageCount = Number(messages.count || 0);
+    const messageRows = messageItems.length
+        ? messageItems.map((message, index) => {
+            const senderId = message.sender_id ?? message.user_id ?? message.actor_user_id;
+            const buyerId = Number(deal.buyer_id ?? roleResolution.buyer_id);
+            const sellerId = Number(deal.seller_id ?? roleResolution.seller_id);
+            const numericSender = Number(senderId);
+            const role = numericSender === buyerId ? "المشتري" : numericSender === sellerId ? "البائع" : "طرف غير محدد";
+            const type = message.message_type || message.type || "text";
+            const time = message.created_at || message.sent_at || message.timestamp || message.createdAt;
+            const body = message.message ?? message.text ?? message.content ?? "";
+            return `
+                <details class="bg-black/20 border border-white/5 rounded-xl p-4" ${index === messageItems.length - 1 ? "open" : ""}>
+                    <summary class="cursor-pointer list-none">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-white font-bold text-xs">${escapeHtml(role)}</span>
+                                <span class="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[10px]">${escapeHtml(String(type))}</span>
+                            </div>
+                            <span class="text-gray-500 text-[10px]">${formatMediationDate(time)}</span>
+                        </div>
+                        <div class="text-gray-300 text-[11px] leading-6 mt-3 whitespace-pre-wrap break-words">${escapeHtml(String(body || "—"))}</div>
+                    </summary>
+                    <div class="mt-3">${renderObjectFields(message, {skip:["message","text","content"]})}</div>
+                </details>
+            `;
+        }).join("")
+        : `<div class="text-gray-500 text-xs text-center py-5">لا توجد رسائل كاملة داخل الاستجابة الحالية</div>`;
 
-    // ---------------------------------------------------------
-    // main UI
-    // ---------------------------------------------------------
+    const temporal = messages.temporal_context || evidence.temporal_context || evidence.temporal || {};
+    const temporalBody = typeof temporal === "object" ? renderObjectFields(temporal) : `<div class="text-gray-300 text-xs">${valueOrDash(temporal)}</div>`;
+
+    const partySection = (buyer && Object.keys(buyer).length) || (seller && Object.keys(seller).length)
+        ? section("👥", "مقارنة أطراف الصفقة", "الهوية والبيانات المرتبطة بالمشتري والبائع كما وصلت من محرك الأدلة.", `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${partyCard("buyer", buyer)}${partyCard("seller", seller)}</div>`)
+        : "";
+
+    const certificateBody = certificate && Object.keys(certificate).length
+        ? renderObjectFields(certificate)
+        : `<div class="text-gray-500 text-xs">لا توجد شهادة محفوظة في هذه الاستجابة.</div>`;
+
+    const snapshotBody = snapshot && Object.keys(snapshot).length
+        ? renderObjectFields(snapshot)
+        : `<div class="text-gray-500 text-xs">لا يوجد Snapshot في هذه الاستجابة.</div>`;
+
+    const conflictBody = renderList(conflicts, "لا توجد تعارضات مسجلة", (item, i) => `
+        <div class="bg-orange-500/5 border border-orange-500/10 rounded-xl p-4">
+            <div class="text-orange-300 font-bold text-xs mb-2">تعارض ${i + 1}</div>
+            ${typeof item === "object" ? renderObjectFields(item) : `<div class="text-gray-300 text-[11px] whitespace-pre-wrap">${escapeHtml(String(item))}</div>`}
+        </div>
+    `);
+
+    const missingBody = renderList(missingEvidence, "لا توجد أدلة مفقودة مسجلة", (item, i) => `
+        <div class="bg-yellow-500/5 border border-yellow-500/10 rounded-xl p-4">
+            <div class="text-yellow-300 font-bold text-xs mb-2">دليل مفقود ${i + 1}</div>
+            ${typeof item === "object" ? renderObjectFields(item) : `<div class="text-gray-300 text-[11px] whitespace-pre-wrap">${escapeHtml(String(item))}</div>`}
+        </div>
+    `);
+
+    const attachmentBody = renderList(attachments, "لا توجد مرفقات مسجلة", (item, i) => `
+        <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+            <div class="text-white text-xs font-bold mb-2">مرفق ${i + 1}</div>
+            ${typeof item === "object" ? renderObjectFields(item) : `<div class="text-gray-300 text-[11px] break-words">${escapeHtml(String(item))}</div>`}
+        </div>
+    `);
+
+    const genericSources = [
+        ["بيانات الحساب", account],
+        ["التحقق", verification],
+        ["تفاصيل المنتج/الحساب", productDetails]
+    ].filter(([, obj]) => obj && typeof obj === "object" && Object.keys(obj).length);
+
+    const technical = JSON.stringify(evidence, null, 2);
 
     content.innerHTML = `
         <div class="space-y-5">
-
-            <!-- ================= SUMMARY ================= -->
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                ${mediationEvidenceStat(
-                    "رقم الصفقة",
-                    `#${deal.id ?? dealId}`
-                )}
-
-                ${mediationEvidenceStat(
-                    "الكود",
-                    deal.code ?? "—"
-                )}
-
-                ${mediationEvidenceStat(
-                    "المبلغ",
-                    `$${Number(deal.amount_usd || 0).toFixed(2)}`
-                )}
-
-                ${mediationEvidenceStat(
-                    "الحالة",
-                    deal.status ?? "—"
-                )}
-
-            </div>
-
-            <!-- ================= EVIDENCE SUMMARY ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h5 class="text-white font-black text-sm">
-                            🛡️ ملخص الأدلة
-                        </h5>
-
-                        <p class="text-gray-500 text-[10px] mt-1">
-                            نتيجة Evidence Engine
-                        </p>
-                    </div>
-
-                    <span class="px-3 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[10px] font-bold">
-                        ${escapeHtml(String(evidence.engine_version || "v2"))}
-                    </span>
-                </div>
-
+            ${section("🧾", "الملخص التنفيذي", "المعلومات الأساسية لملف الأدلة بدون إخفاء التفاصيل الأصلية.", `
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الأحداث
-                        </div>
-                        <div class="text-white font-black text-lg mt-1">
-                            ${events.length}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الرسائل
-                        </div>
-                        <div class="text-white font-black text-lg mt-1">
-                            ${messageCount}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الشهادة
-                        </div>
-                        <div class="mt-2">
-                            ${
-                                certificate &&
-                                Object.keys(certificate).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            Snapshot
-                        </div>
-                        <div class="mt-2">
-                            ${
-                                snapshot &&
-                                Object.keys(snapshot).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-                    </div>
-
+                    ${mediationEvidenceStat("رقم الصفقة", `#${deal.id ?? dealId}`)}
+                    ${mediationEvidenceStat("الكود", deal.code ?? "—")}
+                    ${mediationEvidenceStat("المبلغ", `$${Number(deal.amount_usd || deal.amount || 0).toFixed(2)}`)}
+                    ${mediationEvidenceStat("الحالة", deal.status ?? dispute.status ?? "—")}
+                    ${mediationEvidenceStat("الأحداث", events.length)}
+                    ${mediationEvidenceStat("الرسائل", messageCount)}
+                    ${mediationEvidenceStat("التعارضات", conflicts.length)}
+                    ${mediationEvidenceStat("أدلة مفقودة", missingEvidence.length)}
                 </div>
-            </div>
+                <div class="mt-4">${renderObjectFields(summary)}</div>
+            `)}
 
-            <!-- ================= CHECKS ================= -->
+            ${partySection}
 
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <div class="mb-3">
-                    <h5 class="text-white font-black text-sm">
-                        🔍 فحوصات الأدلة
-                    </h5>
-
-                    <p class="text-gray-500 text-[10px] mt-1">
-                        كل فحص يظهر حالته بشكل مستقل
-                    </p>
-                </div>
-
-                <div>
-                    ${
-                        checkRows ||
-                        `
-                            <div class="text-gray-500 text-xs text-center py-5">
-                                لا توجد فحوصات
-                            </div>
-                        `
-                    }
-                </div>
-
-            </div>
-
-            <!-- ================= DISPUTE ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <h5 class="text-white font-black text-sm mb-4">
-                    ⚖️ معلومات النزاع
-                </h5>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            فتح بواسطة
-                        </div>
-                        <div class="text-white text-sm mt-1">
-                            ${valueOrDash(dispute.opened_by)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الحالة
-                        </div>
-                        <div class="mt-1">
-                            ${statusBadge(dispute.status)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3 md:col-span-2">
-                        <div class="text-gray-500 text-[10px]">
-                            سبب النزاع
-                        </div>
-                        <div class="text-white text-sm mt-1 whitespace-pre-wrap">
-                            ${valueOrDash(dispute.reason)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            موافقة المشتري
-                        </div>
-                        <div class="mt-1">
-                            ${boolText(dispute.buyer_agreed)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            موافقة البائع
-                        </div>
-                        <div class="mt-1">
-                            ${boolText(dispute.seller_agreed)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            تاريخ فتح النزاع
-                        </div>
-                        <div class="text-white text-xs mt-1">
-                            ${formatMediationDate(dispute.opened_at)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            تاريخ التصعيد
-                        </div>
-                        <div class="text-white text-xs mt-1">
-                            ${formatMediationDate(dispute.escalated_at)}
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ================= CERTIFICATE / SNAPSHOT ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <h5 class="text-white font-black text-sm mb-4">
-                    📜 الشهادة و Snapshot
-                </h5>
-
+            ${section("⚖️", "معلومات الصفقة والنزاع", "تفاصيل الصفقة والنزاع كما هي في ملف الأدلة.", `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    <div class="bg-black/20 rounded-xl p-4">
-
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">
-                                الشهادة
-                            </span>
-
-                            ${
-                                certificate &&
-                                Object.keys(certificate).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-
-                        <div class="space-y-2 text-[11px]">
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">ID</span>
-                                <span class="text-gray-300 font-mono break-all">
-                                    ${valueOrDash(certificate.id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">الحالة</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(certificate.status)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Deal ID</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(certificate.deal_id)}
-                                </span>
-                            </div>
-
-                        </div>
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="text-gray-300 font-bold text-xs mb-3">الصفقة</div>
+                        ${renderObjectFields(deal)}
                     </div>
-
-                    <div class="bg-black/20 rounded-xl p-4">
-
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">
-                                Snapshot
-                            </span>
-
-                            ${
-                                snapshot &&
-                                Object.keys(snapshot).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-
-                        <div class="space-y-2 text-[11px]">
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">ID</span>
-                                <span class="text-gray-300 font-mono break-all">
-                                    ${valueOrDash(snapshot.id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Deal ID</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(snapshot.deal_id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Platform</span>
-                                <span class="text-purple-400 font-bold">
-                                    ${valueOrDash(snapshot.platform)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Account</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(snapshot.account_url)}
-                                </span>
-                            </div>
-
-                        </div>
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="text-gray-300 font-bold text-xs mb-3">النزاع</div>
+                        ${renderObjectFields(dispute)}
                     </div>
-
                 </div>
-            </div>
+            `)}
 
-            <!-- ================= TIMELINE ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <div class="mb-4">
-                    <h5 class="text-white font-black text-sm">
-                        🕒 الخط الزمني للصفقة
-                    </h5>
-
-                    <p class="text-gray-500 text-[10px] mt-1">
-                        الأحداث المسجلة بالترتيب
-                    </p>
-                </div>
-
-                <div>
-                    ${eventRows}
-                </div>
-
-            </div>
-
-            <!-- ================= CHAT ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <div class="flex items-center justify-between mb-4">
-
-                    <div>
-                        <h5 class="text-white font-black text-sm">
-                            💬 محادثة الصفقة
-                        </h5>
-
-                        <p class="text-gray-500 text-[10px] mt-1">
-                            ${messageCount} رسالة مسجلة
-                        </p>
+            ${section("📜", "الشهادة و Snapshot", "عرض الحقول الكاملة بدل الاقتصار على ID والحالة.", `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="flex items-center justify-between mb-3"><span class="text-gray-300 font-bold text-xs">الشهادة</span>${statusBadge(Object.keys(certificate).length ? "PASS" : "MISSING")}</div>
+                        ${certificateBody}
                     </div>
-
-                    ${
-                        messages.temporal_context
-                            ? `
-                                <span class="text-[10px] text-gray-500">
-                                    سياق زمني متوفر
-                                </span>
-                              `
-                            : ""
-                    }
-
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="flex items-center justify-between mb-3"><span class="text-gray-300 font-bold text-xs">Snapshot</span>${statusBadge(Object.keys(snapshot).length ? "PASS" : "MISSING")}</div>
+                        ${snapshotBody}
+                    </div>
                 </div>
+            `)}
 
-                ${
-                    messageCount > 0
-                        ? `
-                            <div class="grid grid-cols-2 gap-3">
+            ${genericSources.length ? section("🧩", "المصادر التقنية", "الحساب والتحقق وتفاصيل المنتج/الحساب المتاحة في ملف الأدلة.", genericSources.map(([title, obj]) => `
+                <details class="bg-black/20 rounded-xl border border-white/5 p-4 mb-2 last:mb-0">
+                    <summary class="cursor-pointer text-white text-xs font-bold">${escapeHtml(title)}</summary>
+                    <div class="mt-3">${renderObjectFields(obj)}</div>
+                </details>
+            `).join("")) : ""}
 
-                                <div class="bg-black/20 rounded-xl p-3">
-                                    <div class="text-gray-500 text-[10px]">
-                                        أول رسالة
-                                    </div>
-                                    <div class="text-gray-300 text-xs mt-1">
-                                        ${formatMediationDate(messages.first)}
-                                    </div>
-                                </div>
+            ${section("🔍", "فحوصات الأدلة بالتفصيل", "كل فحص مع حالته والرسالة والمصدر ومراجع الأدلة والحقول الإضافية.", checkRows || `<div class="text-gray-500 text-xs text-center py-5">لا توجد فحوصات</div>`)}
 
-                                <div class="bg-black/20 rounded-xl p-3">
-                                    <div class="text-gray-500 text-[10px]">
-                                        آخر رسالة
-                                    </div>
-                                    <div class="text-gray-300 text-xs mt-1">
-                                        ${formatMediationDate(messages.last)}
-                                    </div>
-                                </div>
+            ${section("⚠️", "التعارضات", "أي إشارات متعارضة يجب أن تبقى مرئية للأدمن.", conflictBody)}
 
-                            </div>
-                          `
-                        : `
-                            <div class="text-gray-500 text-xs text-center py-5">
-                                لا توجد رسائل
-                            </div>
-                          `
-                }
+            ${section("🕳️", "الأدلة المفقودة", "العناصر التي ذكرها محرك الأدلة كبيانات غير متاحة.", missingBody)}
 
-            </div>
+            ${section("🕒", "الخط الزمني الكامل", "كل حدث مع البيانات الوصفية الأصلية عند توفرها.", `<div class="space-y-2">${eventRows}</div>`)}
 
-            <!-- ================= TECHNICAL DETAILS ================= -->
+            ${section("💬", "محادثة الصفقة — جميع الرسائل", `${messageCount} رسالة مسجلة. يتم عرض المرسل والدور والنوع والوقت والنص والحقول الإضافية لكل رسالة.`, `
+                ${messageItems.length ? `<div class="space-y-2 max-h-[900px] overflow-auto pr-1">${messageRows}</div>` : messageRows}
+            `)}
+
+            ${section("⏱️", "السياق الزمني", "السياق الزمني المرتبط بالرسائل أو الأدلة عند توفره.", temporalBody)}
+
+            ${section("📎", "المرفقات", "أي مرفقات أو مراجع ملفات وصلت مع ملف الأدلة.", attachmentBody)}
 
             <details class="bg-black/20 border border-white/5 rounded-xl">
-
-                <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">
-                    ⚙️ التفاصيل التقنية الخام
-                </summary>
-
-                <div class="p-4 space-y-4">
-
-                    <pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[400px] whitespace-pre-wrap">${escapeHtml(JSON.stringify({
-                        summary,
-                        checks
-                    }, null, 2))}</pre>
-
+                <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">⚙️ التفاصيل التقنية الخام — كامل ملف الأدلة</summary>
+                <div class="p-4">
+                    <pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[800px] whitespace-pre-wrap">${escapeHtml(technical)}</pre>
                 </div>
-
             </details>
-
         </div>
     `;
 }
