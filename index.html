@@ -88,6 +88,9 @@
                     <button data-target="deals-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="shopping-bag" class="w-4 h-4"></i> الصفقات
                     </button>
+                    <button data-target="withdrawals-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="banknote" class="w-4 h-4"></i> طلبات سحب الأرباح
+                    </button>
                     <button data-target="settings-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="settings" class="w-4 h-4"></i> الإعدادات
                     </button>
@@ -523,6 +526,57 @@
                         <div id="mediationEvidenceContent" class="p-6 space-y-6">
                             <div class="text-center text-gray-500 py-8">اختر صفقة لعرض الأدلة</div>
                         </div>
+                    </div>
+                </section>
+
+                <!-- قسم الإعدادات -->
+                <!-- قسم طلبات سحب الأرباح -->
+                <section id="withdrawals-section" class="tab-content hidden space-y-6">
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-5 border-b border-white/5">
+                            <div class="flex flex-wrap gap-3 justify-between items-center">
+                                <div>
+                                    <h4 class="text-white font-bold text-sm">💸 طلبات سحب الأرباح</h4>
+                                    <p class="text-gray-500 text-[11px] mt-1">مراجعة وتنفيذ طلبات السحب. كل عملية مالية يتم التحقق منها على السيرفر.</p>
+                                </div>
+                                <button id="btnRefreshWithdrawals" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-white/5">
+                            <div id="withdrawStatTotal" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                            <div id="withdrawStatPending" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                            <div id="withdrawStatPaid" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                            <div id="withdrawStatRejected" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                                    <tr>
+                                        <th class="p-3">الطلب</th><th class="p-3">المستخدم</th><th class="p-3">الاسم</th><th class="p-3">الهاتف</th><th class="p-3">البريد</th><th class="p-3">المبلغ</th><th class="p-3">حساب الدفع</th><th class="p-3">الحالة</th><th class="p-3">التاريخ</th><th class="p-3 text-center">الإجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="withdrawalsTable" class="divide-y divide-white/5">
+                                    <tr><td colspan="10" class="p-6 text-center text-gray-500">جاري تحميل الطلبات...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl border border-white/5 p-5">
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <div><h4 class="text-white font-bold text-sm">⚙️ إعدادات سحب الأرباح</h4><p class="text-gray-500 text-[11px] mt-1">هذه القواعد تطبق على السيرفر، وليس من التطبيق.</p></div>
+                            <button id="btnSaveWithdrawalSettings" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold">💾 حفظ الإعدادات</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <label class="space-y-2"><span class="text-gray-400 text-xs">الحد اليومي للطلبات</span><input id="withdrawDailyLimit" type="number" min="1" max="20" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-sm outline-none" value="2"></label>
+                            <label class="space-y-2"><span class="text-gray-400 text-xs">الحد الأدنى للسحب (دج)</span><input id="withdrawMinAmount" type="number" min="0" step="0.01" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-sm outline-none" value="1000"></label>
+                            <label class="space-y-2"><span class="text-gray-400 text-xs">سعر الصرف (دج لكل 1 USD)</span><input id="withdrawExchangeRate" type="number" min="0.01" step="0.01" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-sm outline-none" value="300"></label>
+                        </div>
+                    </div>
+
+                    <div id="withdrawalDetailsPanel" class="glass-card rounded-2xl border border-white/5 p-5 hidden">
+                        <div class="flex items-center justify-between mb-4"><div><h4 class="text-white font-bold text-sm">🔐 تفاصيل طلب السحب</h4><p id="withdrawalDetailsSubtitle" class="text-gray-500 text-[11px] mt-1"></p></div><button id="btnCloseWithdrawalDetails" class="text-gray-400 hover:text-white text-lg">✕</button></div>
+                        <div id="withdrawalDetailsContent" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
                     </div>
                 </section>
 
