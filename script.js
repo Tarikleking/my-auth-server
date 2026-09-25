@@ -1467,6 +1467,59 @@ async function loadMediationEvidence(dealId) {
         ["تفاصيل المنتج/الحساب", productDetails]
     ].filter(([, obj]) => obj && typeof obj === "object" && Object.keys(obj).length);
 
+    const decisionStatus = String(deal.status || dispute.status || "").toLowerCase();
+    const finalDecisionMade = ["completed", "canceled", "expired"].includes(decisionStatus)
+        || String(dispute.status || "").toLowerCase() === "resolved";
+
+    const decisionSection = `
+        <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                    <h5 class="text-white font-black text-sm">⚖️ القرار النهائي للأدمن</h5>
+                    <p class="text-gray-500 text-[10px] mt-1">
+                        هذا القسم لا يعتمد على نتيجة التحليل الآلي. الضغط على أحد الزرين ينفذ قرارًا ماليًا نهائيًا للصفقة.
+                    </p>
+                </div>
+                <span class="px-3 py-1.5 rounded-lg ${finalDecisionMade ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "bg-amber-500/10 text-amber-300 border border-amber-500/20"} text-[10px] font-bold">
+                    ${finalDecisionMade ? "تم اتخاذ قرار نهائي" : "بانتظار قرار الأدمن"}
+                </span>
+            </div>
+
+            ${finalDecisionMade ? `
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5 text-center">
+                    <div class="text-gray-400 text-xs">حالة الصفقة الحالية</div>
+                    <div class="text-white font-black text-lg mt-1">${escapeHtml(deal.status || dispute.status || "—")}</div>
+                    <div class="text-gray-500 text-[10px] mt-2">لا يمكن تنفيذ قرار مالي آخر على هذه الصفقة.</div>
+                </div>
+            ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                        type="button"
+                        data-mediation-decision="buyer"
+                        data-mediation-decision-deal-id="${escapeHtml(String(dealId))}"
+                        class="w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/15 px-4 py-5 text-right transition">
+                        <div class="text-emerald-300 font-black text-sm">🟢 القرار للمشتري</div>
+                        <div class="text-gray-300 text-xs mt-2 leading-6">إرجاع إجمالي المبلغ المحجوز للمشتري وتسجيل النزاع كقرار نهائي لصالحه.</div>
+                        <div class="text-gray-500 text-[10px] mt-2">المبلغ المتوقع للإرجاع: $${escapeHtml(Number(deal.total_usd ?? deal.amount_usd ?? 0).toFixed(2))}</div>
+                    </button>
+
+                    <button
+                        type="button"
+                        data-mediation-decision="seller"
+                        data-mediation-decision-deal-id="${escapeHtml(String(dealId))}"
+                        class="w-full rounded-2xl border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/15 px-4 py-5 text-right transition">
+                        <div class="text-purple-300 font-black text-sm">🟣 القرار للبائع</div>
+                        <div class="text-gray-300 text-xs mt-2 leading-6">تحرير قيمة البيع للبائع وتسجيل الصفقة كمكتملة بقرار الأدمن.</div>
+                        <div class="text-gray-500 text-[10px] mt-2">المبلغ المتوقع للبائع: $${escapeHtml(Number(deal.amount_usd ?? 0).toFixed(2))}</div>
+                    </button>
+                </div>
+                <div class="mt-3 text-yellow-400/80 text-[10px] leading-5">
+                    ⚠️ القرار نهائي ماليًا ولا يجب الضغط إلا بعد مراجعة الأدلة والمحادثة والـ Snapshot والشهادة.
+                </div>
+            `}
+        </div>
+    `;
+
     const technical = JSON.stringify(evidence, null, 2);
 
     content.innerHTML = `
@@ -1484,6 +1537,8 @@ async function loadMediationEvidence(dealId) {
                 </div>
                 <div class="mt-4">${renderObjectFields(summary)}</div>
             `)}
+
+            ${decisionSection}
 
             ${partySection}
 
@@ -1568,6 +1623,57 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+async function submitMediationDecision(dealId, decision) {
+    const decisionText = decision === "buyer" ? "المشتري" : "البائع";
+    const actionText = decision === "buyer"
+        ? "سيتم إرجاع إجمالي المبلغ للمشتري."
+        : "سيتم تحرير قيمة البيع للبائع وإكمال الصفقة.";
+
+    const confirmed = window.confirm(
+        `⚠️ تأكيد القرار النهائي\n\nالصفقة #${dealId}\nالقرار: ${decisionText}\n\n${actionText}\n\nهذا القرار مالي ونهائي. هل تريد المتابعة؟`
+    );
+
+    if (!confirmed) return;
+
+    const buttons = document.querySelectorAll(`[data-mediation-decision-deal-id="${String(dealId)}"]`);
+    buttons.forEach((button) => {
+        button.disabled = true;
+        button.classList.add("opacity-50", "cursor-not-allowed");
+    });
+
+    const res = await api("resolve_mediation_dispute", {
+        deal_id: dealId,
+        decision,
+    });
+
+    if (!res || res.error) {
+        buttons.forEach((button) => {
+            button.disabled = false;
+            button.classList.remove("opacity-50", "cursor-not-allowed");
+        });
+
+        alert(`❌ تعذر تنفيذ القرار\n\n${res?.error || "خطأ غير معروف"}`);
+        return;
+    }
+
+    showToast?.(`تم تنفيذ القرار النهائي لصالح ${decisionText}`);
+
+    await loadMediationEvidence(dealId);
+    await loadMediationDisputes();
+}
+
+document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-mediation-decision]");
+    if (!button) return;
+
+    const dealId = Number(button.dataset.mediationDecisionDealId);
+    const decision = button.dataset.mediationDecision;
+
+    if (Number.isInteger(dealId) && dealId > 0 && (decision === "buyer" || decision === "seller")) {
+        submitMediationDecision(dealId, decision);
+    }
+});
 
 document.getElementById("btnRefreshMediation")?.addEventListener(
   "click",
