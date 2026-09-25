@@ -662,7 +662,7 @@ function renderAllMediationDeals() {
   });
 
   if (!deals.length) {
-    table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-gray-500">لا توجد صفقات مطابقة.</td></tr>`;
+    table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">لا توجد صفقات مطابقة.</td></tr>`;
     return;
   }
 
@@ -678,6 +678,7 @@ function renderAllMediationDeals() {
     const canOpenEvidence = ["dispute", "resolved"].includes(status.toLowerCase());
 
     return `<tr class="hover:bg-white/[0.02]">
+      <td class="p-3 text-center"><input type="checkbox" class="mediation-deal-checkbox accent-purple-600" data-deal-id="${escapeHtml(String(id))}" aria-label="تحديد الصفقة ${escapeHtml(String(id))}"></td>
       <td class="p-3 text-white font-mono">${escapeHtml(String(id))}</td>
       <td class="p-3 text-purple-400 font-mono">${escapeHtml(String(code))}</td>
       <td class="p-3 text-white">$${escapeHtml(amount.toFixed(2))}</td>
@@ -687,7 +688,10 @@ function renderAllMediationDeals() {
       <td class="p-3">${mediationDealStatusLabel(status)}</td>
       <td class="p-3 text-gray-400">${formatMediationDate(created)}</td>
       <td class="p-3 text-center">
-        ${canOpenEvidence ? `<button class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg" data-all-deal-evidence-id="${escapeHtml(String(id))}">عرض الملف</button>` : `<span class="text-gray-600 text-[10px]">—</span>`}
+        <div class="flex items-center justify-center gap-1.5">
+          ${canOpenEvidence ? `<button class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg" data-all-deal-evidence-id="${escapeHtml(String(id))}">عرض الملف</button>` : ""}
+          <button class="bg-red-500/10 hover:bg-red-500/20 text-red-300 px-2.5 py-1.5 rounded-lg" data-delete-all-deal-id="${escapeHtml(String(id))}">🗑</button>
+        </div>
       </td>
     </tr>`;
   }).join("");
@@ -696,6 +700,14 @@ function renderAllMediationDeals() {
     button.addEventListener("click", () => {
       const id = Number(button.dataset.allDealEvidenceId);
       if (Number.isInteger(id) && id > 0) loadMediationEvidence(id);
+    });
+  });
+
+  table.querySelectorAll("[data-delete-all-deal-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = Number(button.dataset.deleteAllDealId);
+      if (!Number.isInteger(id) || id <= 0) return;
+      await deleteSelectedMediationDeals([id]);
     });
   });
 }
@@ -1802,6 +1814,47 @@ document.addEventListener("click", (event) => {
     if (Number.isInteger(dealId) && dealId > 0 && (decision === "buyer" || decision === "seller")) {
         submitMediationDecision(dealId, decision);
     }
+});
+
+async function deleteSelectedMediationDeals(ids) {
+  const validIds = [...new Set((ids || []).map(Number).filter(id => Number.isInteger(id) && id > 0))];
+  if (!validIds.length) {
+    alert("حدد صفقة واحدة على الأقل.");
+    return;
+  }
+
+  const isBulk = validIds.length > 1;
+  const confirmed = confirm(
+    isBulk
+      ? `⚠️ سيتم حذف ${validIds.length} صفقة نهائيًا من سجل الصفقات.\n\nلا يمكن التراجع عن الحذف. هل تريد المتابعة؟`
+      : `⚠️ سيتم حذف الصفقة رقم ${validIds[0]} نهائيًا من سجل الصفقات.\n\nلا يمكن التراجع عن الحذف. هل تريد المتابعة؟`
+  );
+  if (!confirmed) return;
+
+  const action = isBulk ? "delete_mediation_deals_batch" : "delete_mediation_deal";
+  const payload = isBulk ? { ids: validIds } : { id: validIds[0] };
+  const res = await api(action, payload);
+
+  if (!res || res.error) {
+    alert(`❌ تعذر حذف الصفقة\n\n${res?.error || "خطأ غير معروف"}`);
+    return;
+  }
+
+  showToast?.(`تم حذف ${res.deleted_count || validIds.length} صفقة`);
+  await loadAllMediationDeals();
+}
+
+document.getElementById("btnSelectAllDeals")?.addEventListener("click", () => {
+  const boxes = [...document.querySelectorAll("#allDealsTable .mediation-deal-checkbox")];
+  if (!boxes.length) return;
+  const allChecked = boxes.every(box => box.checked);
+  boxes.forEach(box => { box.checked = !allChecked; });
+});
+
+document.getElementById("btnDeleteSelectedDeals")?.addEventListener("click", async () => {
+  const ids = [...document.querySelectorAll("#allDealsTable .mediation-deal-checkbox:checked")]
+    .map(box => Number(box.dataset.dealId));
+  await deleteSelectedMediationDeals(ids);
 });
 
 document.getElementById("btnRefreshDeals")?.addEventListener("click", loadAllMediationDeals);
