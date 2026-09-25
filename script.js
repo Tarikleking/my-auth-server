@@ -1185,8 +1185,11 @@ async function loadMediationEvidence(dealId) {
     const roleResolution = evidence.role_resolution || {};
     const messages = evidence.messages || {};
 
-    const rawMessageItems = Array.isArray(messages)
-        ? messages
+    // The Evidence RPC returns the canonical full conversation under
+    // messages.timeline. Keep compatibility with the admin-side fallback
+    // items/data/messages/chat_logs as well, but prefer timeline when present.
+    const rawMessageItems = Array.isArray(messages.timeline)
+        ? messages.timeline
         : Array.isArray(messages.items)
             ? messages.items
             : Array.isArray(messages.data)
@@ -1195,7 +1198,9 @@ async function loadMediationEvidence(dealId) {
                     ? messages.messages
                     : Array.isArray(evidence.chat_logs)
                         ? evidence.chat_logs
-                        : [];
+                        : Array.isArray(messages)
+                            ? messages
+                            : [];
 
     const messageItems = [...rawMessageItems].sort((a, b) => {
         const av = new Date(a?.created_at || a?.sent_at || a?.timestamp || a?.createdAt || 0).getTime();
@@ -1204,6 +1209,9 @@ async function loadMediationEvidence(dealId) {
     });
 
     const messageCount = Number(messages.count ?? messageItems.length ?? 0);
+    const messageParticipants = Array.isArray(messages.participants)
+        ? messages.participants.filter(Boolean)
+        : [];
 
     const statusBadge = (status) => {
         const value = String(status || "").toUpperCase();
@@ -1375,11 +1383,16 @@ async function loadMediationEvidence(dealId) {
 
     const messageRows = messageItems.length
         ? messageItems.map((message, index) => {
-            const senderId = message.sender_id ?? message.user_id ?? message.actor_user_id;
+            const senderId = message.sender_id ?? message.sender_user_id ?? message.user_id ?? message.actor_user_id;
             const buyerId = Number(deal.buyer_id ?? roleResolution.buyer_id);
             const sellerId = Number(deal.seller_id ?? roleResolution.seller_id);
             const numericSender = Number(senderId);
-            const role = numericSender === buyerId ? "المشتري" : numericSender === sellerId ? "البائع" : "طرف غير محدد";
+            const rawRole = String(message.sender_role || message.role || "").toLowerCase();
+            const role = rawRole === "buyer" || numericSender === buyerId
+                ? "المشتري"
+                : rawRole === "seller" || numericSender === sellerId
+                    ? "البائع"
+                    : "طرف غير محدد";
             const type = message.message_type || message.type || "text";
             const time = message.created_at || message.sent_at || message.timestamp || message.createdAt;
             const body = message.message ?? message.text ?? message.content ?? "";
@@ -1389,17 +1402,28 @@ async function loadMediationEvidence(dealId) {
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-white font-bold text-xs">${escapeHtml(role)}</span>
+                                <span class="text-gray-500 text-[10px]">User #${escapeHtml(String(senderId ?? "—"))}</span>
                                 <span class="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[10px]">${escapeHtml(String(type))}</span>
                             </div>
                             <span class="text-gray-500 text-[10px]">${formatMediationDate(time)}</span>
                         </div>
-                        <div class="text-gray-300 text-[11px] leading-6 mt-3 whitespace-pre-wrap break-words">${escapeHtml(String(body || "—"))}</div>
+                        <div class="text-gray-200 text-[11px] leading-6 mt-3 whitespace-pre-wrap break-words">${escapeHtml(String(body || "—"))}</div>
                     </summary>
                     <div class="mt-3">${renderObjectFields(message, {skip:["message","text","content"]})}</div>
                 </details>
             `;
         }).join("")
         : `<div class="text-gray-500 text-xs text-center py-5">لا توجد رسائل كاملة داخل الاستجابة الحالية</div>`;
+
+    const participantRows = messageParticipants.length
+        ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">${messageParticipants.map((participant) => `
+            <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+                <div class="text-gray-500 text-[10px]">${escapeHtml(String(participant.role || "طرف"))}</div>
+                <div class="text-white text-xs font-bold mt-1">User #${escapeHtml(String(participant.user_id ?? "—"))}</div>
+                <div class="text-gray-400 text-[10px] mt-1">عدد الرسائل: ${escapeHtml(String(participant.message_count ?? "—"))}</div>
+            </div>
+        `).join("")}</div>`
+        : "";
 
     const temporal = messages.temporal_context || evidence.temporal_context || evidence.temporal || {};
     const temporalBody = typeof temporal === "object" ? renderObjectFields(temporal) : `<div class="text-gray-300 text-xs">${valueOrDash(temporal)}</div>`;
@@ -1504,8 +1528,15 @@ async function loadMediationEvidence(dealId) {
 
             ${section("🕒", "الخط الزمني الكامل", "كل حدث مع البيانات الوصفية الأصلية عند توفرها.", `<div class="space-y-2">${eventRows}</div>`)}
 
-            ${section("💬", "محادثة الصفقة — جميع الرسائل", `${messageCount} رسالة مسجلة. يتم عرض المرسل والدور والنوع والوقت والنص والحقول الإضافية لكل رسالة.`, `
-                ${messageItems.length ? `<div class="space-y-2 max-h-[900px] overflow-auto pr-1">${messageRows}</div>` : messageRows}
+            ${section("💬", "محادثة الصفقة — جميع الرسائل", `${messageCount} رسالة مسجلة. يتم عرض الرسائل الفعلية من messages.timeline، مع المرسل والدور والنوع والوقت والنص والحقول الإضافية.`, `
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    ${mediationEvidenceStat("عدد الرسائل", messageCount)}
+                    ${mediationEvidenceStat("أول رسالة", messages.first_message_at || messages.first || "—")}
+                    ${mediationEvidenceStat("آخر رسالة", messages.last_message_at || messages.last || "—")}
+                    ${mediationEvidenceStat("المشاركون", messageParticipants.length || "—")}
+                </div>
+                ${participantRows}
+                ${messageItems.length ? `<div class="space-y-2 max-h-[1200px] overflow-auto pr-1">${messageRows}</div>` : messageRows}
             `)}
 
             ${section("⏱️", "السياق الزمني", "السياق الزمني المرتبط بالرسائل أو الأدلة عند توفره.", temporalBody)}
