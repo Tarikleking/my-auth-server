@@ -915,22 +915,108 @@ async function loadMediationAnalysis(dealId) {
     }
 
     const analysis = res.analysis || res.assessment || {};
-    const findings = Array.isArray(analysis.findings) ? analysis.findings : [];
-    const limitations = Array.isArray(analysis.limitations) ? analysis.limitations : [];
-    const contradictions = Array.isArray(analysis.contradictions) ? analysis.contradictions : [];
-    const evidenceCoverage = analysis.evidence_coverage || analysis.evidence_summary || {};
+
+    const findings = Array.isArray(analysis.findings)
+        ? analysis.findings
+        : [];
+
+    const limitations = Array.isArray(analysis.limitations)
+        ? analysis.limitations
+        : [];
+
+    const contradictions = Array.isArray(analysis.contradictions)
+        ? analysis.contradictions
+        : [];
+
+    const evidenceCoverage =
+        analysis.evidence_coverage ||
+        analysis.evidence_summary ||
+        {};
+
     const adminReview = analysis.admin_review || {};
+
     const buyerScore = Number(analysis.buyer_score || 0);
     const sellerScore = Number(analysis.seller_score || 0);
-    const buyerPercent = Number(analysis.buyer_percentage ?? 50);
-    const sellerPercent = Number(analysis.seller_percentage ?? 50);
-    const confidence = Number(analysis.confidence_percentage || 0);
+
+    const buyerPercent = Number(
+        analysis.buyer_percentage ?? 50
+    );
+
+    const sellerPercent = Number(
+        analysis.seller_percentage ?? 50
+    );
+
+    const confidence = Number(
+        analysis.confidence_percentage || 0
+    );
+
     const scorecard = analysis.scorecard || {};
-    const partyComparison = analysis.party_comparison || {};
-    const buyerProfile = partyComparison.buyer || {};
-    const sellerProfile = partyComparison.seller || {};
-    const buyerInference = partyComparison.inferences?.buyer || {};
-    const sellerInference = partyComparison.inferences?.seller || {};
+
+    // ============================================================
+    // PARTY COMPARISON
+    // ============================================================
+    // Prefer analysis.party_comparison when available.
+    // Otherwise safely fall back to the original evidence profiles.
+    const partyComparison =
+        analysis.party_comparison ||
+        {};
+
+    const evidence = res.evidence || {};
+
+    const roleResolution =
+        analysis.role_resolution ||
+        evidence.role_resolution ||
+        {};
+
+    const rawBuyer =
+        partyComparison.buyer ||
+        evidence.buyer ||
+        {};
+
+    const rawSeller =
+        partyComparison.seller ||
+        evidence.seller ||
+        {};
+
+    // Normalize buyer identity and force the correct role.
+    const buyerProfile = {
+        ...rawBuyer,
+        side: "buyer",
+        label:
+            rawBuyer.label ||
+            rawBuyer.display_name ||
+            "المشتري",
+        user_id:
+            rawBuyer.user_id ||
+            rawBuyer.id ||
+            roleResolution.buyer_id ||
+            evidence?.deal?.buyer_id ||
+            "غير متاح"
+    };
+
+    // Normalize seller identity and force the correct role.
+    const sellerProfile = {
+        ...rawSeller,
+        side: "seller",
+        label:
+            rawSeller.label ||
+            rawSeller.display_name ||
+            "البائع",
+        user_id:
+            rawSeller.user_id ||
+            rawSeller.id ||
+            roleResolution.seller_id ||
+            evidence?.deal?.seller_id ||
+            "غير متاح"
+    };
+
+    const buyerInference =
+        partyComparison.inferences?.buyer ||
+        {};
+
+    const sellerInference =
+        partyComparison.inferences?.seller ||
+        {};
 
     const directionalFindings = findings.filter(f => f?.side === "buyer" || f?.side === "seller");
     const neutralFindings = findings.filter(f => f?.side === "neutral");
