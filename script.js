@@ -109,6 +109,9 @@ document.querySelectorAll('.nav-item').forEach(item => {
         loadMediationDisputes();  
       } else if (targetSection === 'deals-section') {  
         loadAllMediationDeals();  
+      } else if (targetSection === 'withdrawals-section') {
+        loadWithdrawalRequests();
+        loadWithdrawalSettings();
       } else if (targetSection === 'settings-section') {  
         loadSettings();  
       }  
@@ -742,6 +745,248 @@ async function loadAllMediationDeals() {
   allMediationDealsCache = deals;
   updateAllMediationDealStats(deals);
   renderAllMediationDeals();
+}
+
+// ============================================================
+// EARNINGS WITHDRAWAL REQUESTS — ADMIN
+// ============================================================
+
+let allWithdrawalRequestsCache = [];
+
+function withdrawalStatusLabel(status) {
+  const s = String(status || "").toLowerCase();
+  const map = {
+    pending: ["قيد المراجعة", "bg-yellow-500/10", "text-yellow-300"],
+    paid: ["تم الدفع", "bg-green-500/10", "text-green-300"],
+    rejected: ["مرفوض", "bg-red-500/10", "text-red-300"]
+  };
+  const item = map[s] || [status || "غير معروف", "bg-white/5", "text-gray-300"];
+  return `<span class="px-2 py-1 rounded-lg ${item[1]} ${item[2]} font-bold">${escapeHtml(String(item[0]))}</span>`;
+}
+
+function updateWithdrawalStats(rows) {
+  const total = rows.length;
+  const pending = rows.filter(r => String(r?.status || '').toLowerCase() === 'pending').length;
+  const paid = rows.filter(r => String(r?.status || '').toLowerCase() === 'paid').length;
+  const rejected = rows.filter(r => String(r?.status || '').toLowerCase() === 'rejected').length;
+  const cards = [
+    ['withdrawStatTotal', 'الإجمالي', total, 'text-white'],
+    ['withdrawStatPending', 'قيد المراجعة', pending, 'text-yellow-300'],
+    ['withdrawStatPaid', 'تم الدفع', paid, 'text-green-300'],
+    ['withdrawStatRejected', 'مرفوض', rejected, 'text-red-300']
+  ];
+  cards.forEach(([id, label, value, tone]) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="text-[10px] text-gray-500">${label}</div><div class="text-xl font-black ${tone} mt-1">${value}</div>`;
+  });
+}
+
+function showWithdrawalDetails(request) {
+  const panel = document.getElementById('withdrawalDetailsPanel');
+  const content = document.getElementById('withdrawalDetailsContent');
+  const subtitle = document.getElementById('withdrawalDetailsSubtitle');
+  if (!panel || !content) return;
+
+  const row = (label, value) => `
+    <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+      <div class="text-gray-500 text-[10px]">${escapeHtml(label)}</div>
+      <div class="text-white text-sm font-bold mt-1 break-all">${escapeHtml(String(value ?? '—'))}</div>
+    </div>`;
+
+  if (subtitle) subtitle.textContent = `طلب #${request.id} · ${formatMediationDate(request.created_at)}`;
+  content.innerHTML = [
+    row('المستخدم', `${request.user_id ?? '—'} · ${request.username || '—'}`),
+    row('الاسم الكامل', request.full_name),
+    row('الهاتف', request.phone),
+    row('البريد', request.email),
+    row('المبلغ بالدينار', `${Number(request.amount_dzd || 0).toFixed(2)} دج`),
+    row('المبلغ المحجوز USD', `$${Number(request.amount_usd || 0).toFixed(6)}`),
+    row('حساب الدفع', request.payout_account),
+    row('الحالة', request.status),
+    row('ملاحظات الإدارة', request.admin_note || '—'),
+    row('مرجع الدفع', request.payment_reference || '—')
+  ].join('');
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderWithdrawalRequests(rows) {
+  const table = document.getElementById('withdrawalsTable');
+  if (!table) return;
+
+  if (!rows.length) {
+    table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">لا توجد طلبات سحب.</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = rows.map(request => {
+    const pending = String(request?.status || '').toLowerCase() === 'pending';
+    const amount = Number(request?.amount_dzd || 0);
+    return `<tr class="hover:bg-white/[0.02]">
+      <td class="p-3 text-white font-mono">#${escapeHtml(String(request?.id ?? '—'))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(request?.user_id ?? '—'))}<br><span class="text-gray-500 text-[10px]">${escapeHtml(String(request?.username || '—'))}</span></td>
+      <td class="p-3 text-white">${escapeHtml(String(request?.full_name || '—'))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(request?.phone || '—'))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(request?.email || '—'))}</td>
+      <td class="p-3 text-cyan-300 font-bold">${escapeHtml(amount.toFixed(2))} دج</td>
+      <td class="p-3 text-gray-300 max-w-[220px] break-all">${escapeHtml(String(request?.payout_account || '—'))}</td>
+      <td class="p-3">${withdrawalStatusLabel(request?.status)}</td>
+      <td class="p-3 text-gray-400">${formatMediationDate(request?.created_at || '')}</td>
+      <td class="p-3 text-center">
+        <div class="flex flex-wrap justify-center gap-1.5">
+          <button class="bg-white/5 hover:bg-white/10 text-gray-200 px-2.5 py-1.5 rounded-lg" data-withdraw-details="${escapeHtml(String(request?.id))}">تفاصيل</button>
+          ${pending ? `
+            <button class="bg-green-500/10 hover:bg-green-500/20 text-green-300 px-2.5 py-1.5 rounded-lg" data-withdraw-paid="${escapeHtml(String(request?.id))}">تم الدفع</button>
+            <button class="bg-red-500/10 hover:bg-red-500/20 text-red-300 px-2.5 py-1.5 rounded-lg" data-withdraw-reject="${escapeHtml(String(request?.id))}">رفض</button>
+          ` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  table.querySelectorAll('[data-withdraw-details]').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = Number(button.dataset.withdrawDetails);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) showWithdrawalDetails(request);
+    });
+  });
+
+  table.querySelectorAll('[data-withdraw-paid]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const id = Number(button.dataset.withdrawPaid);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) await confirmAndProcessWithdrawal(request, 'paid');
+    });
+  });
+
+  table.querySelectorAll('[data-withdraw-reject]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const id = Number(button.dataset.withdrawReject);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) await confirmAndProcessWithdrawal(request, 'rejected');
+    });
+  });
+}
+
+async function confirmAndProcessWithdrawal(request, decision) {
+  const amount = Number(request?.amount_dzd || 0).toFixed(2);
+  const account = String(request?.payout_account || '—');
+  const name = String(request?.full_name || '—');
+  const phone = String(request?.phone || '—');
+  const email = String(request?.email || '—');
+
+  if (decision === 'paid') {
+    const ok = confirm(
+      `⚠️ تأكيد تنفيذ الدفع\n\n` +
+      `الطلب: #${request.id}\n` +
+      `الاسم: ${name}\n` +
+      `الهاتف: ${phone}\n` +
+      `البريد: ${email}\n` +
+      `المبلغ: ${amount} دج\n` +
+      `حساب الدفع: ${account}\n\n` +
+      `تأكد من أن الحساب أعلاه صحيح وأنك أرسلت المبلغ فعلاً.\n` +
+      `بعد التأكيد سيصبح الطلب "تم الدفع" ولن يتم خصم المبلغ مرة ثانية.`
+    );
+    if (!ok) return;
+
+    const reference = prompt('أدخل رقم/مرجع عملية التحويل (اختياري):', '');
+    if (reference === null) return;
+    const note = prompt('ملاحظة الإدارة (اختيارية):', '') || '';
+
+    await processWithdrawalRequest(request.id, 'paid', note, reference);
+    return;
+  }
+
+  const ok = confirm(
+    `⚠️ رفض طلب السحب\n\n` +
+    `الطلب: #${request.id}\n` +
+    `الاسم: ${name}\n` +
+    `المبلغ: ${amount} دج\n` +
+    `حساب الدفع: ${account}\n\n` +
+    `عند الرفض سيعيد السيرفر المبلغ المحجوز إلى رصيد المستخدم.`
+  );
+  if (!ok) return;
+
+  const note = prompt('سبب الرفض (اختياري):', '') || '';
+  await processWithdrawalRequest(request.id, 'rejected', note, '');
+}
+
+async function processWithdrawalRequest(requestId, decision, adminNote, paymentReference) {
+  const res = await api('process_withdrawal_request', {
+    request_id: Number(requestId),
+    decision,
+    admin_note: adminNote || '',
+    payment_reference: paymentReference || ''
+  });
+
+  if (!res || res.error || res.success === false) {
+    showToast(`❌ ${res?.error || 'فشل تنفيذ طلب السحب'}`);
+    return;
+  }
+
+  showToast(decision === 'paid' ? '✅ تم تسجيل الدفع بنجاح' : '↩️ تم رفض الطلب وإرجاع المبلغ');
+  await loadWithdrawalRequests();
+}
+
+async function loadWithdrawalRequests() {
+  const table = document.getElementById('withdrawalsTable');
+  if (!table) return;
+  table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">جاري تحميل طلبات السحب...</td></tr>`;
+
+  const res = await api('get_withdrawal_requests');
+  if (!res || res.error) {
+    table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-red-400">تعذر تحميل طلبات السحب: ${escapeHtml(String(res?.error || 'خطأ غير معروف'))}</td></tr>`;
+    return;
+  }
+
+  const rows = Array.isArray(res?.requests) ? res.requests : Array.isArray(res?.data) ? res.data : [];
+  allWithdrawalRequestsCache = rows;
+  updateWithdrawalStats(rows);
+  renderWithdrawalRequests(rows);
+}
+
+async function loadWithdrawalSettings() {
+  const res = await api('get_withdrawal_settings');
+  if (!res || res.error) return;
+  const settings = res.settings || {};
+  if (document.getElementById('withdrawDailyLimit')) document.getElementById('withdrawDailyLimit').value = settings.daily_limit ?? 2;
+  if (document.getElementById('withdrawMinAmount')) document.getElementById('withdrawMinAmount').value = settings.min_amount_dzd ?? 1000;
+  if (document.getElementById('withdrawExchangeRate')) document.getElementById('withdrawExchangeRate').value = settings.exchange_rate_dzd_per_usd ?? 300;
+}
+
+async function saveWithdrawalSettings() {
+  const dailyLimit = Number(document.getElementById('withdrawDailyLimit')?.value);
+  const minAmount = Number(document.getElementById('withdrawMinAmount')?.value);
+  const exchangeRate = Number(document.getElementById('withdrawExchangeRate')?.value);
+
+  const res = await api('update_withdrawal_settings', {
+    daily_limit: dailyLimit,
+    min_amount_dzd: minAmount,
+    exchange_rate_dzd_per_usd: exchangeRate
+  });
+
+  if (!res || res.error) {
+    showToast(`❌ ${res?.error || 'فشل حفظ إعدادات السحب'}`);
+    return;
+  }
+  showToast('✅ تم حفظ إعدادات سحب الأرباح على السيرفر');
+  await loadWithdrawalSettings();
+}
+
+if (document.getElementById('btnRefreshWithdrawals')) {
+  document.getElementById('btnRefreshWithdrawals').addEventListener('click', () => {
+    loadWithdrawalRequests();
+    loadWithdrawalSettings();
+  });
+}
+if (document.getElementById('btnSaveWithdrawalSettings')) {
+  document.getElementById('btnSaveWithdrawalSettings').addEventListener('click', saveWithdrawalSettings);
+}
+if (document.getElementById('btnCloseWithdrawalDetails')) {
+  document.getElementById('btnCloseWithdrawalDetails').addEventListener('click', () => {
+    document.getElementById('withdrawalDetailsPanel')?.classList.add('hidden');
+  });
 }
 
 // ============================================================
