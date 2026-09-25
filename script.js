@@ -1468,8 +1468,21 @@ async function loadMediationEvidence(dealId) {
     ].filter(([, obj]) => obj && typeof obj === "object" && Object.keys(obj).length);
 
     const decisionStatus = String(deal.status || dispute.status || "").toLowerCase();
-    const finalDecisionMade = ["completed", "canceled", "expired"].includes(decisionStatus)
+    const decisionEvents = Array.isArray(events)
+        ? events.filter((event) => ["MEDIATION_DECISION_BUYER", "MEDIATION_DECISION_SELLER"].includes(String(event?.event_type || "").toUpperCase()))
+        : [];
+    const latestDecisionEvent = decisionEvents.length ? decisionEvents[decisionEvents.length - 1] : null;
+    const decisionMeta = latestDecisionEvent?.metadata && typeof latestDecisionEvent.metadata === "object"
+        ? latestDecisionEvent.metadata
+        : {};
+    const finalDecision = String(decisionMeta.decision || "").toLowerCase();
+    const finalDecisionMade = decisionEvents.length > 0
         || String(dispute.status || "").toLowerCase() === "resolved";
+    const finalDecisionLabel = finalDecision === "buyer"
+        ? "🟢 تم الفصل لصالح المشتري"
+        : finalDecision === "seller"
+            ? "🟣 تم الفصل لصالح البائع"
+            : (finalDecisionMade ? "⚖️ تم الفصل في النزاع" : "");
 
     const decisionSection = `
         <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5">
@@ -1487,8 +1500,11 @@ async function loadMediationEvidence(dealId) {
 
             ${finalDecisionMade ? `
                 <div class="bg-black/20 rounded-xl p-4 border border-white/5 text-center">
-                    <div class="text-gray-400 text-xs">حالة الصفقة الحالية</div>
-                    <div class="text-white font-black text-lg mt-1">${escapeHtml(deal.status || dispute.status || "—")}</div>
+                    <div class="text-gray-400 text-xs">النتيجة النهائية</div>
+                    <div class="text-white font-black text-lg mt-1">${escapeHtml(finalDecisionLabel || "⚖️ تم الفصل في النزاع")}</div>
+                    <div class="text-gray-400 text-[11px] mt-2">حالة الصفقة: <span class="text-emerald-300 font-bold">${escapeHtml(deal.status || dispute.status || "—")}</span></div>
+                    ${decisionMeta.refund_usd ? `<div class="text-gray-500 text-[10px] mt-1">المبلغ المرتجع للمشتري: $${escapeHtml(Number(decisionMeta.refund_usd).toFixed(2))}</div>` : ""}
+                    ${decisionMeta.released_usd ? `<div class="text-gray-500 text-[10px] mt-1">المبلغ المحرر للبائع: $${escapeHtml(Number(decisionMeta.released_usd).toFixed(2))}</div>` : ""}
                     <div class="text-gray-500 text-[10px] mt-2">لا يمكن تنفيذ قرار مالي آخر على هذه الصفقة.</div>
                 </div>
             ` : `
