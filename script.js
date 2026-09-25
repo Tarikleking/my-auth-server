@@ -757,6 +757,7 @@ function withdrawalStatusLabel(status) {
   const s = String(status || "").toLowerCase();
   const map = {
     pending: ["قيد المراجعة", "bg-yellow-500/10", "text-yellow-300"],
+    processing: ["قيد التنفيذ", "bg-blue-500/10", "text-blue-300"],
     paid: ["تم الدفع", "bg-green-500/10", "text-green-300"],
     rejected: ["مرفوض", "bg-red-500/10", "text-red-300"]
   };
@@ -767,11 +768,13 @@ function withdrawalStatusLabel(status) {
 function updateWithdrawalStats(rows) {
   const total = rows.length;
   const pending = rows.filter(r => String(r?.status || '').toLowerCase() === 'pending').length;
+  const processing = rows.filter(r => String(r?.status || '').toLowerCase() === 'processing').length;
   const paid = rows.filter(r => String(r?.status || '').toLowerCase() === 'paid').length;
   const rejected = rows.filter(r => String(r?.status || '').toLowerCase() === 'rejected').length;
   const cards = [
     ['withdrawStatTotal', 'الإجمالي', total, 'text-white'],
     ['withdrawStatPending', 'قيد المراجعة', pending, 'text-yellow-300'],
+    ['withdrawStatProcessing', 'قيد التنفيذ', processing, 'text-blue-300'],
     ['withdrawStatPaid', 'تم الدفع', paid, 'text-green-300'],
     ['withdrawStatRejected', 'مرفوض', rejected, 'text-red-300']
   ];
@@ -820,7 +823,9 @@ function renderWithdrawalRequests(rows) {
   }
 
   table.innerHTML = rows.map(request => {
-    const pending = String(request?.status || '').toLowerCase() === 'pending';
+    const status = String(request?.status || '').toLowerCase();
+    const pending = status === 'pending';
+    const processing = status === 'processing';
     const amount = Number(request?.amount_dzd || 0);
     return `<tr class="hover:bg-white/[0.02]">
       <td class="p-3 text-white font-mono">#${escapeHtml(String(request?.id ?? '—'))}</td>
@@ -835,7 +840,8 @@ function renderWithdrawalRequests(rows) {
       <td class="p-3 text-center">
         <div class="flex flex-wrap justify-center gap-1.5">
           <button class="bg-white/5 hover:bg-white/10 text-gray-200 px-2.5 py-1.5 rounded-lg" data-withdraw-details="${escapeHtml(String(request?.id))}">تفاصيل</button>
-          ${pending ? `
+          ${(pending || processing) ? `
+            ${pending ? `<button class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 px-2.5 py-1.5 rounded-lg" data-withdraw-processing="${escapeHtml(String(request?.id))}">بدء التنفيذ</button>` : ''}
             <button class="bg-green-500/10 hover:bg-green-500/20 text-green-300 px-2.5 py-1.5 rounded-lg" data-withdraw-paid="${escapeHtml(String(request?.id))}">تم الدفع</button>
             <button class="bg-red-500/10 hover:bg-red-500/20 text-red-300 px-2.5 py-1.5 rounded-lg" data-withdraw-reject="${escapeHtml(String(request?.id))}">رفض</button>
           ` : ''}
@@ -849,6 +855,14 @@ function renderWithdrawalRequests(rows) {
       const id = Number(button.dataset.withdrawDetails);
       const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
       if (request) showWithdrawalDetails(request);
+    });
+  });
+
+  table.querySelectorAll('[data-withdraw-processing]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const id = Number(button.dataset.withdrawProcessing);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) await confirmAndProcessWithdrawal(request, 'processing');
     });
   });
 
@@ -875,6 +889,21 @@ async function confirmAndProcessWithdrawal(request, decision) {
   const name = String(request?.full_name || '—');
   const phone = String(request?.phone || '—');
   const email = String(request?.email || '—');
+
+  if (decision === 'processing') {
+    const ok = confirm(
+      `🔵 بدء تنفيذ طلب السحب\n\n` +
+      `الطلب: #${request.id}\n` +
+      `الاسم: ${name}\n` +
+      `المبلغ: ${amount} دج\n` +
+      `حساب الدفع: ${account}\n\n` +
+      `سيتم إشعار المستخدم بأن الطلب دخل مرحلة التنفيذ.`
+    );
+    if (!ok) return;
+    const note = prompt('ملاحظة الإدارة (اختيارية):', '') || '';
+    await processWithdrawalRequest(request.id, 'processing', note, '');
+    return;
+  }
 
   if (decision === 'paid') {
     const ok = confirm(
@@ -925,7 +954,7 @@ async function processWithdrawalRequest(requestId, decision, adminNote, paymentR
     return;
   }
 
-  showToast(decision === 'paid' ? '✅ تم تسجيل الدفع بنجاح' : '↩️ تم رفض الطلب وإرجاع المبلغ');
+  showToast(decision === 'processing' ? '🔵 تم تحويل الطلب إلى قيد التنفيذ' : decision === 'paid' ? '✅ تم تسجيل الدفع بنجاح' : '↩️ تم رفض الطلب وإرجاع المبلغ');
   await loadWithdrawalRequests();
 }
 
