@@ -811,6 +811,13 @@ async function loadMediationAnalysis(dealId) {
     const sellerPercent = Number(analysis.seller_percentage ?? 50);
     const confidence = Number(analysis.confidence_percentage || 0);
     const scorecard = analysis.scorecard || {};
+    const roleResolution = analysis.role_resolution || evidenceCoverage.role_resolution || {};
+    const accountIdentity = analysis.account_identity || {};
+    const chatSignalSummary = Array.isArray(evidenceCoverage.chat_signal_summary) ? evidenceCoverage.chat_signal_summary : [];
+    const chronologyIssues = Array.isArray(evidenceCoverage.chronology_issues) ? evidenceCoverage.chronology_issues : [];
+    const corroboration = Array.isArray(analysis.corroboration) ? analysis.corroboration : (Array.isArray(scorecard.corroboration) ? scorecard.corroboration : []);
+    const chatMessagesExtracted = Number(evidenceCoverage.chat_messages_extracted ?? 0);
+    const chatLogsCount = Number(evidenceCoverage.chat_logs_count ?? 0);
 
     const directionalFindings = findings.filter(f => f?.side === "buyer" || f?.side === "seller");
     const neutralFindings = findings.filter(f => f?.side === "neutral");
@@ -885,6 +892,97 @@ async function loadMediationAnalysis(dealId) {
                     }).join("");
                 })()}
             </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">👥 تحديد أطراف الصفقة</h5>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                    <div class="text-gray-500 text-[10px]">المشتري</div>
+                    <div class="text-blue-400 font-bold mt-1">${escapeHtml(String(roleResolution.buyer_id ?? "غير محدد"))}</div>
+                    <div class="text-gray-600 text-[9px] mt-1">المصدر: ${escapeHtml(String(roleResolution.buyer_source ?? "غير محدد"))}</div>
+                </div>
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                    <div class="text-gray-500 text-[10px]">البائع</div>
+                    <div class="text-purple-400 font-bold mt-1">${escapeHtml(String(roleResolution.seller_id ?? "غير محدد"))}</div>
+                    <div class="text-gray-600 text-[9px] mt-1">المصدر: ${escapeHtml(String(roleResolution.seller_source ?? "غير محدد"))}</div>
+                </div>
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                    <div class="text-gray-500 text-[10px]">حالة تحديد الأدوار</div>
+                    <div class="${roleResolution.buyer_seller_same_user ? "text-red-400" : "text-green-400"} font-bold mt-1">${roleResolution.buyer_seller_same_user ? "تعارض: نفس المستخدم" : "تم الفصل بين الطرفين"}</div>
+                    <div class="text-gray-600 text-[9px] mt-1">تعارضات: ${Array.isArray(roleResolution.conflicts) ? roleResolution.conflicts.length : 0}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">🪪 هوية الحساب محل النزاع</h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px]">
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                    <div class="text-gray-500">مالك الحساب حسب الأدلة</div>
+                    <div class="text-white font-bold mt-1">${escapeHtml(String(accountIdentity.owner_side || "محايد / غير محسوم"))}</div>
+                    <div class="text-gray-600 mt-1">الأساس: ${escapeHtml(String(accountIdentity.owner_basis || "غير محدد"))}</div>
+                </div>
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                    <div class="text-gray-500">معرف مالك الحساب</div>
+                    <div class="text-cyan-400 font-bold mt-1">${escapeHtml(String(accountIdentity.owner_user_id ?? "غير متوفر"))}</div>
+                </div>
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                    <div class="text-gray-500">اسم الحساب</div>
+                    <div class="text-gray-300 mt-1">المسجل: ${escapeHtml(String(accountIdentity.claimed_username || "غير متوفر"))}</div>
+                    <div class="text-gray-300 mt-1">الموثق: ${escapeHtml(String(accountIdentity.observed_username || "غير متوفر"))}</div>
+                </div>
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                    <div class="text-gray-500">الرابط</div>
+                    <div class="text-gray-300 mt-1 break-all">المسجل: ${escapeHtml(String(accountIdentity.claimed_url || "غير متوفر"))}</div>
+                    <div class="text-gray-300 mt-1 break-all">الموثق: ${escapeHtml(String(accountIdentity.observed_url || "غير متوفر"))}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h5 class="text-white font-black text-sm">💬 تحليل المحادثة</h5>
+                <span class="text-[10px] text-gray-500">${chatMessagesExtracted} مستخرجة / ${chatLogsCount} مسجلة</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                ${mediationAnalysisStat("الرسائل المستخرجة", chatMessagesExtracted)}
+                ${mediationAnalysisStat("الإشارات الاتجاهية", Number(evidenceCoverage.chat_directional_findings ?? 0))}
+                ${mediationAnalysisStat("غير منسوبة", Number(evidenceCoverage.chat_unattributed_signals ?? 0), Number(evidenceCoverage.chat_unattributed_signals ?? 0) ? "text-yellow-400" : "text-green-400")}
+                ${mediationAnalysisStat("حالة المحتوى", evidenceCoverage.chat_content_available ? "متاح" : "غير متاح", evidenceCoverage.chat_content_available ? "text-green-400" : "text-yellow-400")}
+            </div>
+            <div class="space-y-2">
+                ${chatSignalSummary.length ? chatSignalSummary.map(item => `
+                    <div class="bg-black/20 rounded-xl p-3 border border-white/5 text-[10px]">
+                        <div class="flex flex-wrap justify-between gap-2">
+                            <span class="text-gray-300">رسالة ${escapeHtml(String(item.message_id ?? "غير معروف"))}</span>
+                            <span class="${item.actor_side === "buyer" ? "text-blue-400" : item.actor_side === "seller" ? "text-purple-400" : "text-yellow-400"}">${escapeHtml(item.actor_side === "buyer" ? "المشتري" : item.actor_side === "seller" ? "البائع" : "غير منسوبة")}</span>
+                        </div>
+                        <div class="text-gray-500 mt-2">الإشارات: ${escapeHtml(Array.isArray(item.signal_types) ? item.signal_types.join("، ") : "-")}</div>
+                    </div>
+                `).join("") : `<div class="text-gray-500 text-xs text-center py-4">لا توجد إشارات محادثة قابلة للتتبع في هذه الحالة.</div>`}
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-4">🧩 تقارب الأدلة من مصادر مستقلة</h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${corroboration.length ? corroboration.map(item => `
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300 text-xs font-bold">${escapeHtml(item?.side === "buyer" ? "المشتري" : "البائع")}</span>
+                            <span class="text-cyan-400 font-bold">${escapeHtml(String(item?.independent_source_count ?? 0))} مصادر</span>
+                        </div>
+                        <div class="text-gray-500 text-[10px] mt-2">الفئات: ${escapeHtml(String(item?.category_count ?? 0))} · الأدلة: ${escapeHtml(String(item?.finding_count ?? 0))}</div>
+                        <div class="text-gray-600 text-[9px] mt-1">${escapeHtml(Array.isArray(item?.sources) ? item.sources.join("، ") : "-")}</div>
+                    </div>
+                `).join("") : `<div class="text-gray-500 text-xs md:col-span-2">لا يوجد تلخيص لمصادر مستقلة.</div>`}
+            </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <h5 class="text-white font-black text-sm mb-3">🕒 الاتساق الزمني بين الأدلة</h5>
+            ${chronologyIssues.length ? chronologyIssues.map(item => `<div class="bg-orange-500/5 border border-orange-500/15 rounded-xl p-3 text-xs text-orange-200">⚠️ ${escapeHtml(String(item.code || "تعارض زمني"))}</div>`).join("") : `<div class="text-green-400 text-xs">لا توجد مشكلة زمنية آلية مسجلة بين المصادر المتاحة.</div>`}
         </div>
 
         <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
