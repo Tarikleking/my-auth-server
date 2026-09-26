@@ -4,9 +4,100 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 let liveClock = null;
 
+// ============================================================
+// 🔐 KINGDZ ADMIN SECURITY PIN
+// ============================================================
+
+const KINGDZ_SENSITIVE_ACTIONS = new Set([
+  "update_balances",
+  "update_user",
+  "set_user_balance",
+  "modify_user_balance",
+  "zero_user_balance",
+  "reset_user_balance",
+
+  "admin_process_withdrawal_request",
+  "process_withdrawal_request",
+  "confirm_withdrawal_payment",
+  "pay_withdrawal",
+
+  "resolve_mediation_dispute",
+  "refund_mediation",
+  "release_mediation"
+]);
+
+async function requestKingdzSecurityPin(actionName) {
+  const pin = window.prompt(
+    "🔐 عملية حساسة\n\n" +
+    "العملية: " + actionName + "\n\n" +
+    "أدخل رمز الأمان الخاص بالإدمن للمتابعة:"
+  );
+
+  if (pin === null) return null;
+
+  const value = String(pin).trim();
+
+  if (!value) {
+    showToast("يجب إدخال رمز الأمان");
+    return null;
+  }
+
+  if (value.length < 4 || value.length > 128) {
+    showToast("رمز الأمان غير صالح");
+    return null;
+  }
+
+  return value;
+}
 // 🔐 دالة الـ api الجديدة والمحدثة
 async function api(action, data = {}) {
   const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
+
+// ============================================================
+// 🔐 KINGDZ ADMIN SECURITY PIN
+// ============================================================
+
+const KINGDZ_SENSITIVE_ACTIONS = new Set([
+  "update_balances",
+  "update_user",
+  "set_user_balance",
+  "modify_user_balance",
+  "zero_user_balance",
+  "reset_user_balance",
+
+  "admin_process_withdrawal_request",
+  "process_withdrawal_request",
+  "confirm_withdrawal_payment",
+  "pay_withdrawal",
+
+  "resolve_mediation_dispute",
+  "refund_mediation",
+  "release_mediation"
+]);
+
+async function requestKingdzSecurityPin(actionName) {
+  const pin = window.prompt(
+    "🔐 عملية حساسة\n\n" +
+    "العملية: " + actionName + "\n\n" +
+    "أدخل رمز الأمان الخاص بالإدمن للمتابعة:"
+  );
+
+  if (pin === null) return null;
+
+  const value = String(pin).trim();
+
+  if (!value) {
+    showToast("يجب إدخال رمز الأمان");
+    return null;
+  }
+
+  if (value.length < 4 || value.length > 128) {
+    showToast("رمز الأمان غير صالح");
+    return null;
+  }
+
+  return value;
+}
 
   if (!currentToken) {
     console.warn("No admin token found. Please login.");
@@ -21,9 +112,9 @@ async function api(action, data = {}) {
         "Authorization": "Bearer " + currentToken
       },
       body: JSON.stringify({
-        action,
-        ...data
-      })
+    action,
+    ...secureData
+})
     });
 
     if (res.status === 401) {  
