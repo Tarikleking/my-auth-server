@@ -109,6 +109,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
       targetEl.classList.remove('hidden');  
       if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {  
         refreshDashboard();  
+      } else if (targetSection === 'balance-section') {
+        loadBalanceManagement();
       } else if (targetSection === 'mediation-section') {  
         loadMediationDisputes();  
       } else if (targetSection === 'deals-section') {  
@@ -627,6 +629,145 @@ if (document.getElementById("btnRevokeVip")) {
     }
   };
 }
+
+
+
+// ============================================================
+// BALANCES & FINANCIAL TRANSACTIONS — ADMIN
+// ============================================================
+let balanceUsersCache = [];
+let selectedBalanceUser = null;
+let balanceTransactionsCache = [];
+
+function balanceEscape(value) {
+  return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+function balanceMoney(value, currency = "USD") {
+  const n = Number(value || 0);
+  return currency === "DZD" ? `${n.toLocaleString("fr-DZ", {maximumFractionDigits:2})} DA` : `$${n.toFixed(2)}`;
+}
+
+function balanceTypeLabel(type) {
+  const map = {
+    deposit: "شحن رصيد", topup_purchase: "شراء تعبئة", withdrawal: "سحب",
+    admin_adjustment: "تعديل إداري", refund: "استرجاع", fee: "رسوم"
+  };
+  return map[String(type || "").toLowerCase()] || String(type || "غير معروف");
+}
+
+async function loadBalanceUsers() {
+  const res = await api("get_all_users");
+  const data = (res && (res.data || res.users || res)) || [];
+  balanceUsersCache = Array.isArray(data) ? data : [];
+  renderBalanceUsers();
+  updateBalanceStats();
+}
+
+function renderBalanceUsers() {
+  const box = document.getElementById("balanceUsersList");
+  if (!box) return;
+  const q = String(document.getElementById("balanceUserSearch")?.value || "").trim().toLowerCase();
+  const rows = balanceUsersCache.filter(u => {
+    const hay = [u.username,u.email,u.device_id,u.id,u.uuid].filter(Boolean).join(" ").toLowerCase();
+    return !q || hay.includes(q);
+  }).slice(0, 80);
+  box.innerHTML = rows.length ? rows.map((u,i) => {
+    const uid = u.id ?? u.user_id ?? u.device_id ?? u.uuid ?? "";
+    return `<button type="button" class="w-full text-right bg-white/5 hover:bg-purple-500/10 border border-white/5 rounded-xl p-3" data-balance-user-index="${balanceUsersCache.indexOf(u)}">
+      <div class="flex justify-between gap-2"><span class="text-white font-bold text-xs">${balanceEscape(u.username || u.email || "مستخدم")}</span><span class="text-green-400 text-[10px]">$${Number(u.balance_usd||0).toFixed(2)}</span></div>
+      <div class="text-gray-500 text-[9px] mt-1 break-all">${balanceEscape(u.device_id || uid)}</div>
+    </button>`;
+  }).join("") : `<div class="text-center text-gray-500 text-[10px] py-5">لا توجد نتائج</div>`;
+  box.querySelectorAll("[data-balance-user-index]").forEach(btn => btn.onclick = () => selectBalanceUser(balanceUsersCache[Number(btn.dataset.balanceUserIndex)]));
+}
+
+function selectBalanceUser(user) {
+  selectedBalanceUser = user || null;
+  const panel = document.getElementById("selectedBalanceUser");
+  const adminPanel = document.getElementById("balanceAdminPanel");
+  if (!panel || !adminPanel || !selectedBalanceUser) return;
+  panel.classList.remove("hidden");
+  adminPanel.classList.remove("hidden");
+  panel.innerHTML = `<div class="flex justify-between gap-3"><div><div class="text-white font-bold text-xs">${balanceEscape(selectedBalanceUser.username || selectedBalanceUser.email || "مستخدم")}</div><div class="text-gray-500 text-[9px] break-all">${balanceEscape(selectedBalanceUser.device_id || selectedBalanceUser.id || selectedBalanceUser.uuid || "")}</div></div><button id="btnClearBalanceUser" class="text-gray-500 hover:text-white">✕</button></div><div class="grid grid-cols-2 gap-2 mt-3"><div class="bg-black/20 rounded-lg p-2"><div class="text-gray-500 text-[9px]">USD</div><div class="text-green-400 font-bold">${balanceMoney(selectedBalanceUser.balance_usd)}</div></div><div class="bg-black/20 rounded-lg p-2"><div class="text-gray-500 text-[9px]">DZD</div><div class="text-yellow-400 font-bold">${balanceMoney(selectedBalanceUser.balance_dzd,"DZD")}</div></div></div>`;
+  document.getElementById("btnClearBalanceUser")?.addEventListener("click", () => { selectedBalanceUser=null; panel.classList.add("hidden"); adminPanel.classList.add("hidden"); loadBalanceTransactions(); });
+  loadBalanceTransactions(selectedBalanceUser);
+}
+
+async function fetchBalanceTransactions(user = null) {
+  const params = user ? `&user_id=eq.${encodeURIComponent(user.id || user.user_id || user.device_id || user.uuid)}` : "";
+  try {
+    const token = localStorage.getItem("admin_token") || ADMIN_TOKEN;
+    const url = `${SUPABASE_URL}/rest/v1/balance_transactions?select=*&order=created_at.desc&limit=200${params}`;
+    const r = await fetch(url, {headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+token,Accept:"application/json"}});
+    if (r.ok) return await r.json();
+  } catch(e) { console.warn("balance_transactions REST failed",e); }
+  const apiRes = await api("get_balance_transactions", user ? {user_id:user.id || user.user_id || user.device_id || user.uuid, limit:200} : {limit:200});
+  return (apiRes && (apiRes.data || apiRes.transactions || apiRes)) || [];
+}
+
+async function loadBalanceTransactions(user = null) {
+  const table = document.getElementById("balanceTransactionsTable");
+  if (!table) return;
+  table.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">جاري تحميل الحركات...</td></tr>`;
+  const data = await fetchBalanceTransactions(user);
+  balanceTransactionsCache = Array.isArray(data) ? data : [];
+  renderBalanceTransactions();
+  updateBalanceStats();
+  const sub = document.getElementById("balanceTransactionsSubtitle");
+  if (sub) sub.textContent = user ? `حركات: ${user.username || user.email || user.id || user.device_id}` : "آخر الحركات المالية لجميع المستخدمين";
+}
+
+function renderBalanceTransactions() {
+  const table = document.getElementById("balanceTransactionsTable");
+  if (!table) return;
+  const filter = document.getElementById("balanceTypeFilter")?.value || "all";
+  const rows = balanceTransactionsCache.filter(x => filter === "all" || String(x.type||"").toLowerCase() === filter).slice(0,200);
+  table.innerHTML = rows.length ? rows.map(x => {
+    const amount = Number(x.amount || 0);
+    const currency = String(x.currency || "USD").toUpperCase();
+    const cls = amount >= 0 ? "text-green-400" : "text-red-400";
+    return `<tr class="hover:bg-white/[0.02]"><td class="p-3 text-gray-500 whitespace-nowrap">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</td><td class="p-3 text-gray-300 break-all">${balanceEscape(x.username || x.user_id || "—")}</td><td class="p-3 text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</td><td class="p-3 ${cls} font-bold">${amount>0?"+":""}${balanceEscape(balanceMoney(amount,currency))}</td><td class="p-3 text-gray-400">${balanceEscape(balanceMoney(x.balance_before,currency))}</td><td class="p-3 text-white">${balanceEscape(balanceMoney(x.balance_after,currency))}</td><td class="p-3 text-gray-500 break-all">${balanceEscape(x.reference || x.tx_hash || "—")}</td></tr>`;
+  }).join("") : `<tr><td colspan="7" class="p-8 text-center text-gray-500">لا توجد حركات مالية مسجلة</td></tr>`;
+}
+
+function updateBalanceStats() {
+  const users = balanceUsersCache;
+  const usd = users.reduce((a,u)=>a+Number(u.balance_usd||0),0);
+  const dzd = users.reduce((a,u)=>a+Number(u.balance_dzd||0),0);
+  document.getElementById("balanceStatUsers")?.replaceChildren(document.createTextNode(users.length.toLocaleString()));
+  document.getElementById("balanceStatUsd")?.replaceChildren(document.createTextNode(balanceMoney(usd)));
+  document.getElementById("balanceStatDzd")?.replaceChildren(document.createTextNode(balanceMoney(dzd,"DZD")));
+  document.getElementById("balanceStatTransactions")?.replaceChildren(document.createTextNode(balanceTransactionsCache.length.toLocaleString()));
+}
+
+async function applyBalanceAdjustment() {
+  if (!selectedBalanceUser) { showToast("اختر مستخدمًا أولاً"); return; }
+  const amount = Number(document.getElementById("balanceAdjustAmount")?.value || 0);
+  const currency = document.getElementById("balanceAdjustCurrency")?.value || "usd";
+  const reason = String(document.getElementById("balanceAdjustReason")?.value || "تعديل إداري").trim();
+  if (!Number.isFinite(amount) || amount === 0) { showToast("أدخل مبلغًا صحيحًا غير صفري"); return; }
+  const payload = { user_id:selectedBalanceUser.id || selectedBalanceUser.user_id, device_id:selectedBalanceUser.device_id, amount, currency, reason, reference:reason, type:"admin_adjustment" };
+  const res = await api("modify_user_balance", payload);
+  if (res && !res.error) {
+    showToast("تم تعديل الرصيد وتسجيل الحركة");
+    document.getElementById("balanceAdjustAmount").value="";
+    document.getElementById("balanceAdjustReason").value="";
+    await loadBalanceUsers();
+    const fresh = balanceUsersCache.find(u => String(u.id||u.user_id||u.device_id||u.uuid) === String(selectedBalanceUser.id||selectedBalanceUser.user_id||selectedBalanceUser.device_id||selectedBalanceUser.uuid)) || selectedBalanceUser;
+    selectBalanceUser(fresh);
+  }
+}
+
+async function loadBalanceManagement() {
+  await loadBalanceUsers();
+  await loadBalanceTransactions();
+}
+
+document.getElementById("btnRefreshBalances")?.addEventListener("click", loadBalanceManagement);
+document.getElementById("balanceUserSearch")?.addEventListener("input", renderBalanceUsers);
+document.getElementById("balanceTypeFilter")?.addEventListener("change", renderBalanceTransactions);
+document.getElementById("btnApplyBalanceAdjustment")?.addEventListener("click", applyBalanceAdjustment);
 
 // ============================================================
 // ALL MEDIATION DEALS — ADMIN HISTORY
