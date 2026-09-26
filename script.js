@@ -4,18 +4,11 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 let ADMIN_TOKEN = localStorage.getItem("admin_token");
 let liveClock = null;
 
-
-// ============================================================
-// 🔐 KINGDZ ADMIN SECURITY PIN — SENSITIVE ACTION GATE
-// PIN is NEVER stored in localStorage/sessionStorage.
-// The backend MUST validate security_pin against its bcrypt hash.
-// ============================================================
-
 const KINGDZ_SENSITIVE_ACTIONS = new Set([
-  "update_balances",
-  "update_user",
-  "process_withdrawal_request",
-  "resolve_mediation_dispute",
+  "update_balances", "update_user", "set_user_balance", "modify_user_balance",
+  "zero_user_balance", "reset_user_balance", "admin_process_withdrawal_request",
+  "process_withdrawal_request", "confirm_withdrawal_payment", "pay_withdrawal",
+  "resolve_mediation_dispute", "refund_mediation", "release_mediation",
   "complete_mediation_withdrawal"
 ]);
 
@@ -23,94 +16,38 @@ let kingdzSecurityPinBusy = false;
 
 async function requestKingdzSecurityPin(actionName) {
   if (kingdzSecurityPinBusy) return null;
-
   kingdzSecurityPinBusy = true;
-
   try {
-    const pin = window.prompt(
-      "🔐 عملية حساسة\n\n" +
-      "العملية: " + actionName + "\n\n" +
-      "أدخل رمز الأمان الخاص بالإدمن للمتابعة:"
-    );
-
+    const pin = window.prompt("🔐 عملية حساسة\n\n" + "العملية: " + actionName + "\n\n" + "أدخل رمز الأمان الخاص بالإدمن للمتابعة:");
     if (pin === null) return null;
-
     const value = String(pin).trim();
-
-    if (!value) {
-      showToast("يجب إدخال رمز الأمان");
-      return null;
-    }
-
-    if (value.length < 4 || value.length > 128) {
-      showToast("رمز الأمان غير صالح");
-      return null;
-    }
-
+    if (!value) { showToast?.("يجب إدخال رمز الأمان"); return null; }
+    if (value.length < 4 || value.length > 128) { showToast?.("رمز الأمان غير صالح"); return null; }
     return value;
-  } finally {
-    kingdzSecurityPinBusy = false;
-  }
+  } finally { kingdzSecurityPinBusy = false; }
 }
 
-// 🔐 دالة الـ api الجديدة والمحدثة
 async function api(action, data = {}) {
   const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
-
-  // 🔐 كل عملية مالية/حساسة تمر أولاً عبر PIN إضافي.
-  // لا يتم حفظ الـPIN في المتصفح.
+  if (!currentToken) { console.warn("No admin token found. Please login."); return null; }
   let secureData = { ...data };
-
   if (KINGDZ_SENSITIVE_ACTIONS.has(action)) {
     const securityPin = await requestKingdzSecurityPin(action);
-
-    if (!securityPin) {
-      return {
-        error: true,
-        security_pin_required: true,
-        canceled: true
-      };
-    }
-
+    if (!securityPin) return { error: true, security_pin_required: true, canceled: true };
     secureData.security_pin = securityPin;
   }
-
-  if (!currentToken) {
-    console.warn("No admin token found. Please login.");
-    return null;
-  }
-
   try {
     const res = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + currentToken
-      },
-      body: JSON.stringify({
-        action,
-        ...secureData
-      })
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + currentToken },
+      body: JSON.stringify({ action, ...secureData, timestamp: Date.now() })
     });
-
-    if (res.status === 401) {  
-      console.warn("Unauthorized request, check session.");  
-      localStorage.removeItem("admin_token");  
-      location.reload();  
-      return null;  
-    }  
-
-    if (!res.ok) {  
-      console.error("API ERROR:", res.status);  
-      return null;  
-    }  
-
+    if (res.status === 401) {
+      localStorage.removeItem("admin_token"); ADMIN_TOKEN = null; location.reload(); return null;
+    }
+    if (!res.ok) { console.error("API ERROR:", res.status); return null; }
     return await res.json();
-
-  } catch (err) {
-    console.error("NETWORK ERROR:", err);
-    return null;
-  }
+  } catch (err) { console.error("NETWORK ERROR:", err); return null; }
 }
 
 // 🔥 يمنع التلاعب بالـ console (basic)
@@ -174,6 +111,11 @@ document.querySelectorAll('.nav-item').forEach(item => {
         refreshDashboard();  
       } else if (targetSection === 'mediation-section') {  
         loadMediationDisputes();  
+      } else if (targetSection === 'deals-section') {  
+        loadAllMediationDeals();  
+      } else if (targetSection === 'withdrawals-section') {
+        loadWithdrawalRequests();
+        loadWithdrawalSettings();
       } else if (targetSection === 'settings-section') {  
         loadSettings();  
       }  
@@ -687,6 +629,400 @@ if (document.getElementById("btnRevokeVip")) {
 }
 
 // ============================================================
+// ALL MEDIATION DEALS — ADMIN HISTORY
+// ============================================================
+
+let allMediationDealsCache = [];
+
+function mediationDealStatusLabel(status) {
+  const s = String(status || "unknown").toLowerCase();
+  const map = {
+    completed: ["مكتملة", "bg-green-500/10", "text-green-400"],
+    pending: ["معلقة", "bg-yellow-500/10", "text-yellow-400"],
+    active: ["نشطة", "bg-blue-500/10", "text-blue-400"],
+    dispute: ["قيد النزاع", "bg-orange-500/10", "text-orange-400"],
+    canceled: ["ملغاة", "bg-red-500/10", "text-red-400"],
+    expired: ["منتهية", "bg-gray-500/10", "text-gray-400"],
+    resolved: ["تم الفصل", "bg-purple-500/10", "text-purple-400"]
+  };
+  const item = map[s] || [status || "غير معروف", "bg-white/5", "text-gray-300"];
+  return `<span class="px-2 py-1 rounded-lg ${item[1]} ${item[2]} font-bold">${escapeHtml(String(item[0]))}</span>`;
+}
+
+function renderAllMediationDeals() {
+  const table = document.getElementById("allDealsTable");
+  if (!table) return;
+
+  const statusFilter = String(document.getElementById("dealsStatusFilter")?.value || "all").toLowerCase();
+  const query = String(document.getElementById("dealsSearchInput")?.value || "").trim().toLowerCase();
+
+  const deals = allMediationDealsCache.filter((deal) => {
+    const status = String(deal?.status || "").toLowerCase();
+    if (statusFilter !== "all" && status !== statusFilter) return false;
+    if (!query) return true;
+    const haystack = [
+      deal?.id, deal?.deal_id, deal?.code, deal?.deal_code,
+      deal?.buyer_id, deal?.seller_id,
+      deal?.buyer_username, deal?.seller_username
+    ].map(v => String(v ?? "")).join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+
+  if (!deals.length) {
+    table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">لا توجد صفقات مطابقة.</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = deals.map((deal) => {
+    const id = deal?.id ?? deal?.deal_id ?? "—";
+    const code = deal?.code ?? deal?.deal_code ?? "—";
+    const amount = Number(deal?.amount_usd ?? deal?.amount ?? 0);
+    const total = Number(deal?.total_usd ?? amount);
+    const buyer = deal?.buyer_username ? `${deal.buyer_id ?? "—"} · ${deal.buyer_username}` : (deal?.buyer_id ?? "—");
+    const seller = deal?.seller_username ? `${deal.seller_id ?? "—"} · ${deal.seller_username}` : (deal?.seller_id ?? "—");
+    const status = String(deal?.status || "unknown");
+    const created = deal?.created_at || deal?.updated_at || "";
+    const canOpenEvidence = ["dispute", "resolved"].includes(status.toLowerCase());
+
+    return `<tr class="hover:bg-white/[0.02]">
+      <td class="p-3 text-center"><input type="checkbox" class="mediation-deal-checkbox accent-purple-600" data-deal-id="${escapeHtml(String(id))}" aria-label="تحديد الصفقة ${escapeHtml(String(id))}"></td>
+      <td class="p-3 text-white font-mono">${escapeHtml(String(id))}</td>
+      <td class="p-3 text-purple-400 font-mono">${escapeHtml(String(code))}</td>
+      <td class="p-3 text-white">$${escapeHtml(amount.toFixed(2))}</td>
+      <td class="p-3 text-cyan-300">$${escapeHtml(total.toFixed(2))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(buyer))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(seller))}</td>
+      <td class="p-3">${mediationDealStatusLabel(status)}</td>
+      <td class="p-3 text-gray-400">${formatMediationDate(created)}</td>
+      <td class="p-3 text-center">
+        <div class="flex items-center justify-center gap-1.5">
+          ${canOpenEvidence ? `<button class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg" data-all-deal-evidence-id="${escapeHtml(String(id))}">عرض الملف</button>` : ""}
+          <button class="bg-red-500/10 hover:bg-red-500/20 text-red-300 px-2.5 py-1.5 rounded-lg" data-delete-all-deal-id="${escapeHtml(String(id))}">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  table.querySelectorAll("[data-all-deal-evidence-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = Number(button.dataset.allDealEvidenceId);
+      if (Number.isInteger(id) && id > 0) loadMediationEvidence(id);
+    });
+  });
+
+  table.querySelectorAll("[data-delete-all-deal-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = Number(button.dataset.deleteAllDealId);
+      if (!Number.isInteger(id) || id <= 0) return;
+      await deleteSelectedMediationDeals([id]);
+    });
+  });
+}
+
+function updateAllMediationDealStats(deals) {
+  const count = (status) => deals.filter(d => String(d?.status || "").toLowerCase() === status).length;
+  const cards = [
+    ["dealsStatTotal", "إجمالي الصفقات", deals.length, "text-white"],
+    ["dealsStatCompleted", "مكتملة", count("completed"), "text-green-400"],
+    ["dealsStatPending", "معلقة", count("pending") + count("active"), "text-yellow-400"],
+    ["dealsStatDispute", "قيد النزاع", count("dispute"), "text-orange-400"],
+    ["dealsStatCanceled", "ملغاة", count("canceled") + count("expired"), "text-red-400"]
+  ];
+  cards.forEach(([id, label, value, tone]) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="text-[10px] text-gray-500">${label}</div><div class="text-xl font-black ${tone} mt-1">${value}</div>`;
+  });
+}
+
+async function loadAllMediationDeals() {
+  const table = document.getElementById("allDealsTable");
+  if (!table) return;
+  table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-gray-500">جاري تحميل جميع الصفقات...</td></tr>`;
+
+  const res = await api("get_all_mediation_deals");
+  if (!res || res.error) {
+    table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-red-400">تعذر تحميل سجل الصفقات: ${escapeHtml(String(res?.error || "خطأ غير معروف"))}</td></tr>`;
+    return;
+  }
+
+  const deals = Array.isArray(res?.data) ? res.data : Array.isArray(res?.deals) ? res.deals : Array.isArray(res) ? res : [];
+  allMediationDealsCache = deals;
+  updateAllMediationDealStats(deals);
+  renderAllMediationDeals();
+}
+
+// ============================================================
+// EARNINGS WITHDRAWAL REQUESTS — ADMIN
+// ============================================================
+
+let allWithdrawalRequestsCache = [];
+
+function withdrawalStatusLabel(status) {
+  const s = String(status || "").toLowerCase();
+  const map = {
+    pending: ["قيد المراجعة", "bg-yellow-500/10", "text-yellow-300"],
+    processing: ["قيد التنفيذ", "bg-blue-500/10", "text-blue-300"],
+    paid: ["تم الدفع", "bg-green-500/10", "text-green-300"],
+    rejected: ["مرفوض", "bg-red-500/10", "text-red-300"]
+  };
+  const item = map[s] || [status || "غير معروف", "bg-white/5", "text-gray-300"];
+  return `<span class="px-2 py-1 rounded-lg ${item[1]} ${item[2]} font-bold">${escapeHtml(String(item[0]))}</span>`;
+}
+
+function updateWithdrawalStats(rows) {
+  const total = rows.length;
+  const pending = rows.filter(r => String(r?.status || '').toLowerCase() === 'pending').length;
+  const processing = rows.filter(r => String(r?.status || '').toLowerCase() === 'processing').length;
+  const paid = rows.filter(r => String(r?.status || '').toLowerCase() === 'paid').length;
+  const rejected = rows.filter(r => String(r?.status || '').toLowerCase() === 'rejected').length;
+  const cards = [
+    ['withdrawStatTotal', 'الإجمالي', total, 'text-white'],
+    ['withdrawStatPending', 'قيد المراجعة', pending, 'text-yellow-300'],
+    ['withdrawStatProcessing', 'قيد التنفيذ', processing, 'text-blue-300'],
+    ['withdrawStatPaid', 'تم الدفع', paid, 'text-green-300'],
+    ['withdrawStatRejected', 'مرفوض', rejected, 'text-red-300']
+  ];
+  cards.forEach(([id, label, value, tone]) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="text-[10px] text-gray-500">${label}</div><div class="text-xl font-black ${tone} mt-1">${value}</div>`;
+  });
+}
+
+function showWithdrawalDetails(request) {
+  const panel = document.getElementById('withdrawalDetailsPanel');
+  const content = document.getElementById('withdrawalDetailsContent');
+  const subtitle = document.getElementById('withdrawalDetailsSubtitle');
+  if (!panel || !content) return;
+
+  const row = (label, value) => `
+    <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+      <div class="text-gray-500 text-[10px]">${escapeHtml(label)}</div>
+      <div class="text-white text-sm font-bold mt-1 break-all">${escapeHtml(String(value ?? '—'))}</div>
+    </div>`;
+
+  if (subtitle) subtitle.textContent = `طلب #${request.id} · ${formatMediationDate(request.created_at)}`;
+  content.innerHTML = [
+    row('المستخدم', `${request.user_id ?? '—'} · ${request.username || '—'}`),
+    row('الاسم الكامل', request.full_name),
+    row('الهاتف', request.phone),
+    row('البريد', request.email),
+    row('المبلغ بالدينار', `${Number(request.amount_dzd || 0).toFixed(2)} دج`),
+    row('المبلغ المحجوز USD', `$${Number(request.amount_usd || 0).toFixed(6)}`),
+    row('حساب الدفع', request.payout_account),
+    row('الحالة', request.status),
+    row('ملاحظات الإدارة', request.admin_note || '—'),
+    row('مرجع الدفع', request.payment_reference || '—')
+  ].join('');
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderWithdrawalRequests(rows) {
+  const table = document.getElementById('withdrawalsTable');
+  if (!table) return;
+
+  if (!rows.length) {
+    table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">لا توجد طلبات سحب.</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = rows.map(request => {
+    const status = String(request?.status || '').toLowerCase();
+    const pending = status === 'pending';
+    const processing = status === 'processing';
+    const amount = Number(request?.amount_dzd || 0);
+    return `<tr class="hover:bg-white/[0.02]">
+      <td class="p-3 text-white font-mono">#${escapeHtml(String(request?.id ?? '—'))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(request?.user_id ?? '—'))}<br><span class="text-gray-500 text-[10px]">${escapeHtml(String(request?.username || '—'))}</span></td>
+      <td class="p-3 text-white">${escapeHtml(String(request?.full_name || '—'))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(request?.phone || '—'))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(request?.email || '—'))}</td>
+      <td class="p-3 text-cyan-300 font-bold">${escapeHtml(amount.toFixed(2))} دج</td>
+      <td class="p-3 text-gray-300 max-w-[220px] break-all">${escapeHtml(String(request?.payout_account || '—'))}</td>
+      <td class="p-3">${withdrawalStatusLabel(request?.status)}</td>
+      <td class="p-3 text-gray-400">${formatMediationDate(request?.created_at || '')}</td>
+      <td class="p-3 text-center">
+        <div class="flex flex-wrap justify-center gap-1.5">
+          <button class="bg-white/5 hover:bg-white/10 text-gray-200 px-2.5 py-1.5 rounded-lg" data-withdraw-details="${escapeHtml(String(request?.id))}">تفاصيل</button>
+          ${(pending || processing) ? `
+            ${pending ? `<button class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 px-2.5 py-1.5 rounded-lg" data-withdraw-processing="${escapeHtml(String(request?.id))}">بدء التنفيذ</button>` : ''}
+            <button class="bg-green-500/10 hover:bg-green-500/20 text-green-300 px-2.5 py-1.5 rounded-lg" data-withdraw-paid="${escapeHtml(String(request?.id))}">تم الدفع</button>
+            <button class="bg-red-500/10 hover:bg-red-500/20 text-red-300 px-2.5 py-1.5 rounded-lg" data-withdraw-reject="${escapeHtml(String(request?.id))}">رفض</button>
+          ` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  table.querySelectorAll('[data-withdraw-details]').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = Number(button.dataset.withdrawDetails);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) showWithdrawalDetails(request);
+    });
+  });
+
+  table.querySelectorAll('[data-withdraw-processing]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const id = Number(button.dataset.withdrawProcessing);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) await confirmAndProcessWithdrawal(request, 'processing');
+    });
+  });
+
+  table.querySelectorAll('[data-withdraw-paid]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const id = Number(button.dataset.withdrawPaid);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) await confirmAndProcessWithdrawal(request, 'paid');
+    });
+  });
+
+  table.querySelectorAll('[data-withdraw-reject]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const id = Number(button.dataset.withdrawReject);
+      const request = allWithdrawalRequestsCache.find(r => Number(r?.id) === id);
+      if (request) await confirmAndProcessWithdrawal(request, 'rejected');
+    });
+  });
+}
+
+async function confirmAndProcessWithdrawal(request, decision) {
+  const amount = Number(request?.amount_dzd || 0).toFixed(2);
+  const account = String(request?.payout_account || '—');
+  const name = String(request?.full_name || '—');
+  const phone = String(request?.phone || '—');
+  const email = String(request?.email || '—');
+
+  if (decision === 'processing') {
+    const ok = confirm(
+      `🔵 بدء تنفيذ طلب السحب\n\n` +
+      `الطلب: #${request.id}\n` +
+      `الاسم: ${name}\n` +
+      `المبلغ: ${amount} دج\n` +
+      `حساب الدفع: ${account}\n\n` +
+      `سيتم إشعار المستخدم بأن الطلب دخل مرحلة التنفيذ.`
+    );
+    if (!ok) return;
+    const note = prompt('ملاحظة الإدارة (اختيارية):', '') || '';
+    await processWithdrawalRequest(request.id, 'processing', note, '');
+    return;
+  }
+
+  if (decision === 'paid') {
+    const ok = confirm(
+      `⚠️ تأكيد تنفيذ الدفع\n\n` +
+      `الطلب: #${request.id}\n` +
+      `الاسم: ${name}\n` +
+      `الهاتف: ${phone}\n` +
+      `البريد: ${email}\n` +
+      `المبلغ: ${amount} دج\n` +
+      `حساب الدفع: ${account}\n\n` +
+      `تأكد من أن الحساب أعلاه صحيح وأنك أرسلت المبلغ فعلاً.\n` +
+      `بعد التأكيد سيصبح الطلب "تم الدفع" ولن يتم خصم المبلغ مرة ثانية.`
+    );
+    if (!ok) return;
+
+    const reference = prompt('أدخل رقم/مرجع عملية التحويل (اختياري):', '');
+    if (reference === null) return;
+    const note = prompt('ملاحظة الإدارة (اختيارية):', '') || '';
+
+    await processWithdrawalRequest(request.id, 'paid', note, reference);
+    return;
+  }
+
+  const ok = confirm(
+    `⚠️ رفض طلب السحب\n\n` +
+    `الطلب: #${request.id}\n` +
+    `الاسم: ${name}\n` +
+    `المبلغ: ${amount} دج\n` +
+    `حساب الدفع: ${account}\n\n` +
+    `عند الرفض سيعيد السيرفر المبلغ المحجوز إلى رصيد المستخدم.`
+  );
+  if (!ok) return;
+
+  const note = prompt('سبب الرفض (اختياري):', '') || '';
+  await processWithdrawalRequest(request.id, 'rejected', note, '');
+}
+
+async function processWithdrawalRequest(requestId, decision, adminNote, paymentReference) {
+  const res = await api('process_withdrawal_request', {
+    request_id: Number(requestId),
+    decision,
+    admin_note: adminNote || '',
+    payment_reference: paymentReference || ''
+  });
+
+  if (!res || res.error || res.success === false) {
+    showToast(`❌ ${res?.error || 'فشل تنفيذ طلب السحب'}`);
+    return;
+  }
+
+  showToast(decision === 'processing' ? '🔵 تم تحويل الطلب إلى قيد التنفيذ' : decision === 'paid' ? '✅ تم تسجيل الدفع بنجاح' : '↩️ تم رفض الطلب وإرجاع المبلغ');
+  await loadWithdrawalRequests();
+}
+
+async function loadWithdrawalRequests() {
+  const table = document.getElementById('withdrawalsTable');
+  if (!table) return;
+  table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">جاري تحميل طلبات السحب...</td></tr>`;
+
+  const res = await api('get_withdrawal_requests');
+  if (!res || res.error) {
+    table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-red-400">تعذر تحميل طلبات السحب: ${escapeHtml(String(res?.error || 'خطأ غير معروف'))}</td></tr>`;
+    return;
+  }
+
+  const rows = Array.isArray(res?.requests) ? res.requests : Array.isArray(res?.data) ? res.data : [];
+  allWithdrawalRequestsCache = rows;
+  updateWithdrawalStats(rows);
+  renderWithdrawalRequests(rows);
+}
+
+async function loadWithdrawalSettings() {
+  const res = await api('get_withdrawal_settings');
+  if (!res || res.error) return;
+  const settings = res.settings || {};
+  if (document.getElementById('withdrawDailyLimit')) document.getElementById('withdrawDailyLimit').value = settings.daily_limit ?? 2;
+  if (document.getElementById('withdrawMinAmount')) document.getElementById('withdrawMinAmount').value = settings.min_amount_dzd ?? 1000;
+  if (document.getElementById('withdrawExchangeRate')) document.getElementById('withdrawExchangeRate').value = settings.exchange_rate_dzd_per_usd ?? 300;
+}
+
+async function saveWithdrawalSettings() {
+  const dailyLimit = Number(document.getElementById('withdrawDailyLimit')?.value);
+  const minAmount = Number(document.getElementById('withdrawMinAmount')?.value);
+  const exchangeRate = Number(document.getElementById('withdrawExchangeRate')?.value);
+
+  const res = await api('update_withdrawal_settings', {
+    daily_limit: dailyLimit,
+    min_amount_dzd: minAmount,
+    exchange_rate_dzd_per_usd: exchangeRate
+  });
+
+  if (!res || res.error) {
+    showToast(`❌ ${res?.error || 'فشل حفظ إعدادات السحب'}`);
+    return;
+  }
+  showToast('✅ تم حفظ إعدادات سحب الأرباح على السيرفر');
+  await loadWithdrawalSettings();
+}
+
+if (document.getElementById('btnRefreshWithdrawals')) {
+  document.getElementById('btnRefreshWithdrawals').addEventListener('click', () => {
+    loadWithdrawalRequests();
+    loadWithdrawalSettings();
+  });
+}
+if (document.getElementById('btnSaveWithdrawalSettings')) {
+  document.getElementById('btnSaveWithdrawalSettings').addEventListener('click', saveWithdrawalSettings);
+}
+if (document.getElementById('btnCloseWithdrawalDetails')) {
+  document.getElementById('btnCloseWithdrawalDetails').addEventListener('click', () => {
+    document.getElementById('withdrawalDetailsPanel')?.classList.add('hidden');
+  });
+}
+
+// ============================================================
 // MEDIATION DISPUTES
 // ============================================================
 
@@ -982,22 +1318,108 @@ async function loadMediationAnalysis(dealId) {
     }
 
     const analysis = res.analysis || res.assessment || {};
-    const findings = Array.isArray(analysis.findings) ? analysis.findings : [];
-    const limitations = Array.isArray(analysis.limitations) ? analysis.limitations : [];
-    const contradictions = Array.isArray(analysis.contradictions) ? analysis.contradictions : [];
-    const evidenceCoverage = analysis.evidence_coverage || analysis.evidence_summary || {};
+
+    const findings = Array.isArray(analysis.findings)
+        ? analysis.findings
+        : [];
+
+    const limitations = Array.isArray(analysis.limitations)
+        ? analysis.limitations
+        : [];
+
+    const contradictions = Array.isArray(analysis.contradictions)
+        ? analysis.contradictions
+        : [];
+
+    const evidenceCoverage =
+        analysis.evidence_coverage ||
+        analysis.evidence_summary ||
+        {};
+
     const adminReview = analysis.admin_review || {};
+
     const buyerScore = Number(analysis.buyer_score || 0);
     const sellerScore = Number(analysis.seller_score || 0);
-    const buyerPercent = Number(analysis.buyer_percentage ?? 50);
-    const sellerPercent = Number(analysis.seller_percentage ?? 50);
-    const confidence = Number(analysis.confidence_percentage || 0);
+
+    const buyerPercent = Number(
+        analysis.buyer_percentage ?? 50
+    );
+
+    const sellerPercent = Number(
+        analysis.seller_percentage ?? 50
+    );
+
+    const confidence = Number(
+        analysis.confidence_percentage || 0
+    );
+
     const scorecard = analysis.scorecard || {};
-    const partyComparison = analysis.party_comparison || {};
-    const buyerProfile = partyComparison.buyer || {};
-    const sellerProfile = partyComparison.seller || {};
-    const buyerInference = partyComparison.inferences?.buyer || {};
-    const sellerInference = partyComparison.inferences?.seller || {};
+
+    // ============================================================
+    // PARTY COMPARISON
+    // ============================================================
+    // Prefer analysis.party_comparison when available.
+    // Otherwise safely fall back to the original evidence profiles.
+    const partyComparison =
+        analysis.party_comparison ||
+        {};
+
+    const evidence = res.evidence || {};
+
+    const roleResolution =
+        analysis.role_resolution ||
+        evidence.role_resolution ||
+        {};
+
+    const rawBuyer =
+        partyComparison.buyer ||
+        evidence.buyer ||
+        {};
+
+    const rawSeller =
+        partyComparison.seller ||
+        evidence.seller ||
+        {};
+
+    // Normalize buyer identity and force the correct role.
+    const buyerProfile = {
+        ...rawBuyer,
+        side: "buyer",
+        label:
+            rawBuyer.label ||
+            rawBuyer.display_name ||
+            "المشتري",
+        user_id:
+            rawBuyer.user_id ||
+            rawBuyer.id ||
+            roleResolution.buyer_id ||
+            evidence?.deal?.buyer_id ||
+            "غير متاح"
+    };
+
+    // Normalize seller identity and force the correct role.
+    const sellerProfile = {
+        ...rawSeller,
+        side: "seller",
+        label:
+            rawSeller.label ||
+            rawSeller.display_name ||
+            "البائع",
+        user_id:
+            rawSeller.user_id ||
+            rawSeller.id ||
+            roleResolution.seller_id ||
+            evidence?.deal?.seller_id ||
+            "غير متاح"
+    };
+
+    const buyerInference =
+        partyComparison.inferences?.buyer ||
+        {};
+
+    const sellerInference =
+        partyComparison.inferences?.seller ||
+        {};
 
     const directionalFindings = findings.filter(f => f?.side === "buyer" || f?.side === "seller");
     const neutralFindings = findings.filter(f => f?.side === "neutral");
@@ -1135,601 +1557,472 @@ async function loadMediationEvidence(dealId) {
     if (!res || res.error || !res.evidence) {
         content.innerHTML = `
             <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
-                <div class="text-red-400 font-bold mb-1">
-                    ❌ تعذر جلب ملف أدلة الصفقة
-                </div>
-                <div class="text-gray-500 text-xs">
-                    الصفقة #${escapeHtml(String(dealId))}
-                </div>
+                <div class="text-red-400 font-bold mb-1">❌ تعذر جلب ملف أدلة الصفقة</div>
+                <div class="text-gray-500 text-xs">الصفقة #${escapeHtml(String(dealId))}</div>
             </div>
         `;
         return;
     }
 
-    const evidence = res.evidence;
+    const evidence = res.evidence || {};
     const deal = evidence.deal || {};
     const dispute = evidence.dispute || {};
     const certificate = evidence.certificate || {};
     const snapshot = evidence.snapshot || {};
-    const messages = evidence.messages || {};
-    const checks = evidence.checks || {};
     const summary = evidence.summary || {};
-    const events = Array.isArray(evidence.events) ? evidence.events : [];
+    const checks = evidence.checks || {};
+    const conflicts = Array.isArray(evidence.conflicts) ? evidence.conflicts : [];
+    const missingEvidence = Array.isArray(evidence.missing_evidence) ? evidence.missing_evidence : [];
+    const events = Array.isArray(evidence.events)
+        ? evidence.events
+        : Array.isArray(evidence.timeline)
+            ? evidence.timeline
+            : [];
 
-    // ---------------------------------------------------------
-    // helpers
-    // ---------------------------------------------------------
+    const buyer = evidence.buyer || {};
+    const seller = evidence.seller || {};
+    const account = evidence.account || {};
+    const verification = evidence.verification || {};
+    const attachments = Array.isArray(evidence.attachments) ? evidence.attachments : [];
+    const productDetails = evidence.product_details || evidence.product || {};
+    const roleResolution = evidence.role_resolution || {};
+    const messages = evidence.messages || {};
+
+    // The Evidence RPC returns the canonical full conversation under
+    // messages.timeline. Keep compatibility with the admin-side fallback
+    // items/data/messages/chat_logs as well, but prefer timeline when present.
+    const rawMessageItems = Array.isArray(messages.timeline)
+        ? messages.timeline
+        : Array.isArray(messages.items)
+            ? messages.items
+            : Array.isArray(messages.data)
+                ? messages.data
+                : Array.isArray(messages.messages)
+                    ? messages.messages
+                    : Array.isArray(evidence.chat_logs)
+                        ? evidence.chat_logs
+                        : Array.isArray(messages)
+                            ? messages
+                            : [];
+
+    const messageItems = [...rawMessageItems].sort((a, b) => {
+        const av = new Date(a?.created_at || a?.sent_at || a?.timestamp || a?.createdAt || 0).getTime();
+        const bv = new Date(b?.created_at || b?.sent_at || b?.timestamp || b?.createdAt || 0).getTime();
+        return (Number.isFinite(av) ? av : 0) - (Number.isFinite(bv) ? bv : 0);
+    });
+
+    const messageCount = Number(messages.count ?? messageItems.length ?? 0);
+    const messageParticipants = Array.isArray(messages.participants)
+        ? messages.participants.filter(Boolean)
+        : [];
 
     const statusBadge = (status) => {
         const value = String(status || "").toUpperCase();
-
         const map = {
-            PASS: {
-                text: "سليم",
-                cls: "bg-green-500/10 text-green-400 border-green-500/20"
-            },
-            FAIL: {
-                text: "فشل",
-                cls: "bg-red-500/10 text-red-400 border-red-500/20"
-            },
-            MISSING: {
-                text: "مفقود",
-                cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-            },
-            CONFLICT: {
-                text: "تعارض",
-                cls: "bg-orange-500/10 text-orange-400 border-orange-500/20"
-            },
-            NOT_APPLICABLE: {
-                text: "غير مطلوب",
-                cls: "bg-gray-500/10 text-gray-400 border-gray-500/20"
-            }
+            PASS: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
+            PASSED: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
+            OK: { text: "سليم", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
+            FAIL: { text: "فشل", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+            FAILED: { text: "فشل", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+            MISSING: { text: "مفقود", cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
+            CONFLICT: { text: "تعارض", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
+            NOT_APPLICABLE: { text: "غير مطلوب", cls: "bg-gray-500/10 text-gray-400 border-gray-500/20" },
+            UNKNOWN: { text: "غير معروف", cls: "bg-gray-500/10 text-gray-400 border-gray-500/20" }
         };
-
         const item = map[value] || {
             text: status || "غير معروف",
             cls: "bg-gray-500/10 text-gray-400 border-gray-500/20"
         };
-
-        return `
-            <span class="inline-flex items-center px-2 py-1 rounded-lg border text-[10px] font-bold ${item.cls}">
-                ${item.text}
-            </span>
-        `;
+        return `<span class="inline-flex items-center px-2 py-1 rounded-lg border text-[10px] font-bold ${item.cls}">${escapeHtml(String(item.text))}</span>`;
     };
 
     const valueOrDash = (value) => {
-        if (
-            value === null ||
-            value === undefined ||
-            value === ""
-        ) {
-            return "—";
-        }
-
+        if (value === null || value === undefined || value === "") return "—";
+        if (typeof value === "object") return escapeHtml(JSON.stringify(value));
         return escapeHtml(String(value));
     };
 
-    const boolText = (value) => {
-        if (value === true) {
-            return `<span class="text-green-400 font-bold">نعم</span>`;
-        }
+    const labelForKey = (key) => {
+        const map = {
+            id: "المعرف",
+            deal_id: "رقم الصفقة",
+            dispute_id: "رقم النزاع",
+            buyer_id: "معرف المشتري",
+            seller_id: "معرف البائع",
+            sender_id: "معرف المرسل",
+            actor_user_id: "معرف المنفذ",
+            user_id: "معرف المستخدم",
+            auth_id: "Auth ID",
+            created_at: "تاريخ الإنشاء",
+            updated_at: "آخر تحديث",
+            opened_at: "تاريخ الفتح",
+            escalated_at: "تاريخ التصعيد",
+            captured_at: "وقت الالتقاط",
+            sent_at: "وقت الإرسال",
+            message: "الرسالة",
+            message_type: "نوع الرسالة",
+            status: "الحالة",
+            code: "الكود",
+            reason: "السبب",
+            description: "الوصف",
+            metadata: "البيانات الإضافية",
+            evidence_refs: "مراجع الدليل",
+            source: "المصدر",
+            source_type: "نوع المصدر",
+            amount_usd: "المبلغ بالدولار",
+            platform: "المنصة",
+            account_url: "رابط الحساب",
+            username: "اسم المستخدم",
+            account_username: "اسم الحساب",
+            fingerprint: "البصمة",
+            sha256: "SHA-256",
+            snapshot_sha256: "بصمة Snapshot"
+        };
+        return map[key] || String(key).replaceAll("_", " ");
+    };
 
-        if (value === false) {
-            return `<span class="text-gray-500">لا</span>`;
+    const renderPrimitive = (value, key = "") => {
+        if (value === null || value === undefined || value === "") return "—";
+        if (typeof value === "boolean") return value ? "نعم" : "لا";
+        if (typeof value === "number") return escapeHtml(String(value));
+        if (typeof value === "string") {
+            const lower = key.toLowerCase();
+            if (lower.includes("_at") || lower.endsWith("time") || lower === "timestamp") {
+                const d = new Date(value);
+                if (!Number.isNaN(d.getTime())) return formatMediationDate(value);
+            }
+            return escapeHtml(value);
         }
+        return escapeHtml(JSON.stringify(value));
+    };
 
-        return `<span class="text-gray-500">—</span>`;
+    const renderObjectFields = (obj, options = {}) => {
+        if (!obj || typeof obj !== "object" || Array.isArray(obj)) return "";
+        const entries = Object.entries(obj).filter(([key]) => !options.skip?.includes(key));
+        if (!entries.length) return `<div class="text-gray-500 text-xs text-center py-4">لا توجد بيانات</div>`;
+        return `<div class="grid grid-cols-1 md:grid-cols-2 gap-2">${entries.map(([key, value]) => `
+            <div class="bg-black/20 rounded-xl p-3 border border-white/5 ${typeof value === "object" ? "md:col-span-2" : ""}">
+                <div class="text-gray-500 text-[10px] mb-1">${escapeHtml(labelForKey(key))}</div>
+                <div class="text-gray-200 text-[11px] break-words whitespace-pre-wrap">${renderPrimitive(value, key)}</div>
+            </div>
+        `).join("")}</div>`;
+    };
+
+    const section = (icon, title, subtitle, body) => `
+        <section class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            <div class="mb-4">
+                <h5 class="text-white font-black text-sm">${icon} ${escapeHtml(title)}</h5>
+                ${subtitle ? `<p class="text-gray-500 text-[10px] mt-1">${escapeHtml(subtitle)}</p>` : ""}
+            </div>
+            ${body}
+        </section>
+    `;
+
+    const partyCard = (role, profile) => {
+        const side = role === "buyer" ? "المشتري" : "البائع";
+        const roleClass = role === "buyer"
+            ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
+            : "text-purple-400 bg-purple-500/10 border-purple-500/20";
+        const p = {
+            ...(profile || {}),
+            ...((profile && (profile.user_profile || profile.profile)) || {})
+        };
+        return `
+            <div class="bg-black/20 rounded-2xl p-4 border border-white/5">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <div class="text-white font-black text-xs">${role === "buyer" ? "🛒" : "👨‍💼"} ${side}</div>
+                    <span class="px-2 py-1 rounded-lg border text-[10px] ${roleClass}">${side}</span>
+                </div>
+                ${renderObjectFields(p)}
+            </div>
+        `;
     };
 
     const checkRows = Object.entries(checks).map(([key, item]) => {
-        const status =
-            item && typeof item === "object"
-                ? item.status
-                : item;
-
-        const description =
-            item && typeof item === "object"
-                ? (
-                    item.description ||
-                    item.reason ||
-                    item.message ||
-                    ""
-                )
-                : "";
-
+        const obj = item && typeof item === "object" ? item : { status: item };
+        const status = obj.status || obj.result || obj.state;
+        const evidenceRefs = obj.evidence_refs || obj.evidenceRefs || obj.refs;
         return `
-            <div class="flex items-center justify-between gap-4 py-3 border-b border-white/5 last:border-0">
-                <div class="min-w-0">
-                    <div class="text-white text-xs font-bold break-words">
-                        ${escapeHtml(key)}
+            <details class="bg-black/20 rounded-xl border border-white/5 p-3">
+                <summary class="cursor-pointer flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-white text-xs font-bold break-words">${escapeHtml(String(key))}</div>
+                        ${obj.description || obj.reason || obj.message ? `<div class="text-gray-500 text-[10px] mt-1">${escapeHtml(String(obj.description || obj.reason || obj.message))}</div>` : ""}
                     </div>
-
-                    ${
-                        description
-                            ? `
-                                <div class="text-gray-500 text-[10px] mt-1">
-                                    ${escapeHtml(String(description))}
-                                </div>
-                              `
-                            : ""
-                    }
-                </div>
-
-                <div class="shrink-0">
-                    ${statusBadge(status)}
-                </div>
-            </div>
+                    <div class="shrink-0">${statusBadge(status)}</div>
+                </summary>
+                <div class="mt-3">${renderObjectFields(obj, {skip:["status","result","state"]})}</div>
+                ${evidenceRefs ? `<div class="mt-3 bg-[#080b12] rounded-xl p-3"><div class="text-gray-500 text-[10px] mb-2">مراجع الأدلة</div><pre class="text-[10px] text-gray-400 whitespace-pre-wrap overflow-auto">${escapeHtml(JSON.stringify(evidenceRefs, null, 2))}</pre></div>` : ""}
+            </details>
         `;
     }).join("");
 
+    const renderList = (items, emptyText, renderer) => items.length
+        ? `<div class="space-y-2">${items.map(renderer).join("")}</div>`
+        : `<div class="text-gray-500 text-xs text-center py-5">${escapeHtml(emptyText)}</div>`;
+
     const eventRows = events.length
         ? events.map((event, index) => {
-            const eventType = event.event_type || "EVENT";
-            const createdAt = event.created_at;
-            const actor = event.actor_user_id;
-            const amount = event.amount_usd;
-
+            const eventType = event.event_type || event.type || event.action || "EVENT";
+            const time = event.created_at || event.occurred_at || event.timestamp || event.time;
+            const actor = event.actor_user_id ?? event.user_id ?? event.actor_id;
             return `
-                <div class="relative pl-5 pb-5 last:pb-0">
-                    <div class="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-purple-500"></div>
-
-                    ${
-                        index < events.length - 1
-                            ? `
-                                <div class="absolute left-[3px] top-4 bottom-0 w-px bg-white/10"></div>
-                              `
-                            : ""
-                    }
-
-                    <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+                <details class="relative bg-black/20 border border-white/5 rounded-xl p-4">
+                    <summary class="cursor-pointer list-none">
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <span class="text-purple-400 font-bold text-xs">
-                                ${escapeHtml(String(eventType))}
-                            </span>
-
-                            <span class="text-gray-500 text-[10px]">
-                                ${formatMediationDate(createdAt)}
-                            </span>
+                            <span class="text-purple-400 font-bold text-xs">${escapeHtml(String(eventType))}</span>
+                            <span class="text-gray-500 text-[10px]">${formatMediationDate(time)}</span>
                         </div>
-
                         <div class="flex flex-wrap gap-3 mt-2 text-[10px] text-gray-500">
-                            ${
-                                actor !== undefined &&
-                                actor !== null
-                                    ? `<span>👤 Actor: ${escapeHtml(String(actor))}</span>`
-                                    : ""
-                            }
-
-                            ${
-                                amount !== undefined &&
-                                amount !== null
-                                    ? `<span>💰 $${escapeHtml(Number(amount).toFixed(2))}</span>`
-                                    : ""
-                            }
+                            ${actor !== undefined && actor !== null ? `<span>👤 ${escapeHtml(String(actor))}</span>` : ""}
+                            ${event.amount_usd !== undefined && event.amount_usd !== null ? `<span>💰 $${escapeHtml(Number(event.amount_usd).toFixed(2))}</span>` : ""}
                         </div>
-                    </div>
-                </div>
+                    </summary>
+                    <div class="mt-3">${renderObjectFields(event)}</div>
+                </details>
             `;
         }).join("")
-        : `
-            <div class="text-center py-6 text-gray-500 text-xs">
-                لا توجد أحداث مسجلة
+        : `<div class="text-gray-500 text-xs text-center py-5">لا توجد أحداث مسجلة</div>`;
+
+    const messageRows = messageItems.length
+        ? messageItems.map((message, index) => {
+            const senderId = message.sender_id ?? message.sender_user_id ?? message.user_id ?? message.actor_user_id;
+            const buyerId = Number(deal.buyer_id ?? roleResolution.buyer_id);
+            const sellerId = Number(deal.seller_id ?? roleResolution.seller_id);
+            const numericSender = Number(senderId);
+            const rawRole = String(message.sender_role || message.role || "").toLowerCase();
+            const role = rawRole === "buyer" || numericSender === buyerId
+                ? "المشتري"
+                : rawRole === "seller" || numericSender === sellerId
+                    ? "البائع"
+                    : "طرف غير محدد";
+            const type = message.message_type || message.type || "text";
+            const time = message.created_at || message.sent_at || message.timestamp || message.createdAt;
+            const body = message.message ?? message.text ?? message.content ?? "";
+            return `
+                <details class="bg-black/20 border border-white/5 rounded-xl p-4" ${index === messageItems.length - 1 ? "open" : ""}>
+                    <summary class="cursor-pointer list-none">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-white font-bold text-xs">${escapeHtml(role)}</span>
+                                <span class="text-gray-500 text-[10px]">User #${escapeHtml(String(senderId ?? "—"))}</span>
+                                <span class="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[10px]">${escapeHtml(String(type))}</span>
+                            </div>
+                            <span class="text-gray-500 text-[10px]">${formatMediationDate(time)}</span>
+                        </div>
+                        <div class="text-gray-200 text-[11px] leading-6 mt-3 whitespace-pre-wrap break-words">${escapeHtml(String(body || "—"))}</div>
+                    </summary>
+                    <div class="mt-3">${renderObjectFields(message, {skip:["message","text","content"]})}</div>
+                </details>
+            `;
+        }).join("")
+        : `<div class="text-gray-500 text-xs text-center py-5">لا توجد رسائل كاملة داخل الاستجابة الحالية</div>`;
+
+    const participantRows = messageParticipants.length
+        ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">${messageParticipants.map((participant) => `
+            <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+                <div class="text-gray-500 text-[10px]">${escapeHtml(String(participant.role || "طرف"))}</div>
+                <div class="text-white text-xs font-bold mt-1">User #${escapeHtml(String(participant.user_id ?? "—"))}</div>
+                <div class="text-gray-400 text-[10px] mt-1">عدد الرسائل: ${escapeHtml(String(participant.message_count ?? "—"))}</div>
             </div>
-        `;
+        `).join("")}</div>`
+        : "";
 
-    const messageCount = Number(messages.count || 0);
+    const temporal = messages.temporal_context || evidence.temporal_context || evidence.temporal || {};
+    const temporalBody = typeof temporal === "object" ? renderObjectFields(temporal) : `<div class="text-gray-300 text-xs">${valueOrDash(temporal)}</div>`;
 
-    // ---------------------------------------------------------
-    // main UI
-    // ---------------------------------------------------------
+    const partySection = (buyer && Object.keys(buyer).length) || (seller && Object.keys(seller).length)
+        ? section("👥", "مقارنة أطراف الصفقة", "الهوية والبيانات المرتبطة بالمشتري والبائع كما وصلت من محرك الأدلة.", `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${partyCard("buyer", buyer)}${partyCard("seller", seller)}</div>`)
+        : "";
+
+    const certificateBody = certificate && Object.keys(certificate).length
+        ? renderObjectFields(certificate)
+        : `<div class="text-gray-500 text-xs">لا توجد شهادة محفوظة في هذه الاستجابة.</div>`;
+
+    const snapshotBody = snapshot && Object.keys(snapshot).length
+        ? renderObjectFields(snapshot)
+        : `<div class="text-gray-500 text-xs">لا يوجد Snapshot في هذه الاستجابة.</div>`;
+
+    const conflictBody = renderList(conflicts, "لا توجد تعارضات مسجلة", (item, i) => `
+        <div class="bg-orange-500/5 border border-orange-500/10 rounded-xl p-4">
+            <div class="text-orange-300 font-bold text-xs mb-2">تعارض ${i + 1}</div>
+            ${typeof item === "object" ? renderObjectFields(item) : `<div class="text-gray-300 text-[11px] whitespace-pre-wrap">${escapeHtml(String(item))}</div>`}
+        </div>
+    `);
+
+    const missingBody = renderList(missingEvidence, "لا توجد أدلة مفقودة مسجلة", (item, i) => `
+        <div class="bg-yellow-500/5 border border-yellow-500/10 rounded-xl p-4">
+            <div class="text-yellow-300 font-bold text-xs mb-2">دليل مفقود ${i + 1}</div>
+            ${typeof item === "object" ? renderObjectFields(item) : `<div class="text-gray-300 text-[11px] whitespace-pre-wrap">${escapeHtml(String(item))}</div>`}
+        </div>
+    `);
+
+    const attachmentBody = renderList(attachments, "لا توجد مرفقات مسجلة", (item, i) => `
+        <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+            <div class="text-white text-xs font-bold mb-2">مرفق ${i + 1}</div>
+            ${typeof item === "object" ? renderObjectFields(item) : `<div class="text-gray-300 text-[11px] break-words">${escapeHtml(String(item))}</div>`}
+        </div>
+    `);
+
+    const genericSources = [
+        ["بيانات الحساب", account],
+        ["التحقق", verification],
+        ["تفاصيل المنتج/الحساب", productDetails]
+    ].filter(([, obj]) => obj && typeof obj === "object" && Object.keys(obj).length);
+
+    const decisionStatus = String(deal.status || dispute.status || "").toLowerCase();
+    const decisionEvents = Array.isArray(events)
+        ? events.filter((event) => ["MEDIATION_DECISION_BUYER", "MEDIATION_DECISION_SELLER"].includes(String(event?.event_type || "").toUpperCase()))
+        : [];
+    const latestDecisionEvent = decisionEvents.length ? decisionEvents[decisionEvents.length - 1] : null;
+    const decisionMeta = latestDecisionEvent?.metadata && typeof latestDecisionEvent.metadata === "object"
+        ? latestDecisionEvent.metadata
+        : {};
+    const finalDecision = String(decisionMeta.decision || "").toLowerCase();
+    const finalDecisionMade = decisionEvents.length > 0
+        || String(dispute.status || "").toLowerCase() === "resolved";
+    const finalDecisionLabel = finalDecision === "buyer"
+        ? "🟢 تم الفصل لصالح المشتري"
+        : finalDecision === "seller"
+            ? "🟣 تم الفصل لصالح البائع"
+            : (finalDecisionMade ? "⚖️ تم الفصل في النزاع" : "");
+
+    const decisionSection = `
+        <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                    <h5 class="text-white font-black text-sm">⚖️ القرار النهائي للأدمن</h5>
+                    <p class="text-gray-500 text-[10px] mt-1">
+                        هذا القسم لا يعتمد على نتيجة التحليل الآلي. الضغط على أحد الزرين ينفذ قرارًا ماليًا نهائيًا للصفقة.
+                    </p>
+                </div>
+                <span class="px-3 py-1.5 rounded-lg ${finalDecisionMade ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "bg-amber-500/10 text-amber-300 border border-amber-500/20"} text-[10px] font-bold">
+                    ${finalDecisionMade ? "تم اتخاذ قرار نهائي" : "بانتظار قرار الأدمن"}
+                </span>
+            </div>
+
+            ${finalDecisionMade ? `
+                <div class="bg-black/20 rounded-xl p-4 border border-white/5 text-center">
+                    <div class="text-gray-400 text-xs">النتيجة النهائية</div>
+                    <div class="text-white font-black text-lg mt-1">${escapeHtml(finalDecisionLabel || "⚖️ تم الفصل في النزاع")}</div>
+                    <div class="text-gray-400 text-[11px] mt-2">حالة الصفقة: <span class="text-emerald-300 font-bold">${escapeHtml(deal.status || dispute.status || "—")}</span></div>
+                    ${decisionMeta.refund_usd ? `<div class="text-gray-500 text-[10px] mt-1">المبلغ المرتجع للمشتري: $${escapeHtml(Number(decisionMeta.refund_usd).toFixed(2))}</div>` : ""}
+                    ${decisionMeta.released_usd ? `<div class="text-gray-500 text-[10px] mt-1">المبلغ المحرر للبائع: $${escapeHtml(Number(decisionMeta.released_usd).toFixed(2))}</div>` : ""}
+                    <div class="text-gray-500 text-[10px] mt-2">لا يمكن تنفيذ قرار مالي آخر على هذه الصفقة.</div>
+                </div>
+            ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                        type="button"
+                        data-mediation-decision="buyer"
+                        data-mediation-decision-deal-id="${escapeHtml(String(dealId))}"
+                        class="w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/15 px-4 py-5 text-right transition">
+                        <div class="text-emerald-300 font-black text-sm">🟢 القرار للمشتري</div>
+                        <div class="text-gray-300 text-xs mt-2 leading-6">إرجاع إجمالي المبلغ المحجوز للمشتري وتسجيل النزاع كقرار نهائي لصالحه.</div>
+                        <div class="text-gray-500 text-[10px] mt-2">المبلغ المتوقع للإرجاع: $${escapeHtml(Number(deal.total_usd ?? deal.amount_usd ?? 0).toFixed(2))}</div>
+                    </button>
+
+                    <button
+                        type="button"
+                        data-mediation-decision="seller"
+                        data-mediation-decision-deal-id="${escapeHtml(String(dealId))}"
+                        class="w-full rounded-2xl border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/15 px-4 py-5 text-right transition">
+                        <div class="text-purple-300 font-black text-sm">🟣 القرار للبائع</div>
+                        <div class="text-gray-300 text-xs mt-2 leading-6">تحرير قيمة البيع للبائع وتسجيل الصفقة كمكتملة بقرار الأدمن.</div>
+                        <div class="text-gray-500 text-[10px] mt-2">المبلغ المتوقع للبائع: $${escapeHtml(Number(deal.amount_usd ?? 0).toFixed(2))}</div>
+                    </button>
+                </div>
+                <div class="mt-3 text-yellow-400/80 text-[10px] leading-5">
+                    ⚠️ القرار نهائي ماليًا ولا يجب الضغط إلا بعد مراجعة الأدلة والمحادثة والـ Snapshot والشهادة.
+                </div>
+            `}
+        </div>
+    `;
+
+    const technical = JSON.stringify(evidence, null, 2);
 
     content.innerHTML = `
         <div class="space-y-5">
-
-            <!-- ================= SUMMARY ================= -->
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                ${mediationEvidenceStat(
-                    "رقم الصفقة",
-                    `#${deal.id ?? dealId}`
-                )}
-
-                ${mediationEvidenceStat(
-                    "الكود",
-                    deal.code ?? "—"
-                )}
-
-                ${mediationEvidenceStat(
-                    "المبلغ",
-                    `$${Number(deal.amount_usd || 0).toFixed(2)}`
-                )}
-
-                ${mediationEvidenceStat(
-                    "الحالة",
-                    deal.status ?? "—"
-                )}
-
-            </div>
-
-            <!-- ================= EVIDENCE SUMMARY ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h5 class="text-white font-black text-sm">
-                            🛡️ ملخص الأدلة
-                        </h5>
-
-                        <p class="text-gray-500 text-[10px] mt-1">
-                            نتيجة Evidence Engine
-                        </p>
-                    </div>
-
-                    <span class="px-3 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[10px] font-bold">
-                        ${escapeHtml(String(evidence.engine_version || "v2"))}
-                    </span>
-                </div>
-
+            ${section("🧾", "الملخص التنفيذي", "المعلومات الأساسية لملف الأدلة بدون إخفاء التفاصيل الأصلية.", `
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الأحداث
-                        </div>
-                        <div class="text-white font-black text-lg mt-1">
-                            ${events.length}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الرسائل
-                        </div>
-                        <div class="text-white font-black text-lg mt-1">
-                            ${messageCount}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الشهادة
-                        </div>
-                        <div class="mt-2">
-                            ${
-                                certificate &&
-                                Object.keys(certificate).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            Snapshot
-                        </div>
-                        <div class="mt-2">
-                            ${
-                                snapshot &&
-                                Object.keys(snapshot).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-                    </div>
-
+                    ${mediationEvidenceStat("رقم الصفقة", `#${deal.id ?? dealId}`)}
+                    ${mediationEvidenceStat("الكود", deal.code ?? "—")}
+                    ${mediationEvidenceStat("المبلغ", `$${Number(deal.amount_usd || deal.amount || 0).toFixed(2)}`)}
+                    ${mediationEvidenceStat("الحالة", deal.status ?? dispute.status ?? "—")}
+                    ${mediationEvidenceStat("الأحداث", events.length)}
+                    ${mediationEvidenceStat("الرسائل", messageCount)}
+                    ${mediationEvidenceStat("التعارضات", conflicts.length)}
+                    ${mediationEvidenceStat("أدلة مفقودة", missingEvidence.length)}
                 </div>
-            </div>
+                <div class="mt-4">${renderObjectFields(summary)}</div>
+            `)}
 
-            <!-- ================= CHECKS ================= -->
+            ${decisionSection}
 
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
+            ${partySection}
 
-                <div class="mb-3">
-                    <h5 class="text-white font-black text-sm">
-                        🔍 فحوصات الأدلة
-                    </h5>
-
-                    <p class="text-gray-500 text-[10px] mt-1">
-                        كل فحص يظهر حالته بشكل مستقل
-                    </p>
-                </div>
-
-                <div>
-                    ${
-                        checkRows ||
-                        `
-                            <div class="text-gray-500 text-xs text-center py-5">
-                                لا توجد فحوصات
-                            </div>
-                        `
-                    }
-                </div>
-
-            </div>
-
-            <!-- ================= DISPUTE ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <h5 class="text-white font-black text-sm mb-4">
-                    ⚖️ معلومات النزاع
-                </h5>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            فتح بواسطة
-                        </div>
-                        <div class="text-white text-sm mt-1">
-                            ${valueOrDash(dispute.opened_by)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            الحالة
-                        </div>
-                        <div class="mt-1">
-                            ${statusBadge(dispute.status)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3 md:col-span-2">
-                        <div class="text-gray-500 text-[10px]">
-                            سبب النزاع
-                        </div>
-                        <div class="text-white text-sm mt-1 whitespace-pre-wrap">
-                            ${valueOrDash(dispute.reason)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            موافقة المشتري
-                        </div>
-                        <div class="mt-1">
-                            ${boolText(dispute.buyer_agreed)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            موافقة البائع
-                        </div>
-                        <div class="mt-1">
-                            ${boolText(dispute.seller_agreed)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            تاريخ فتح النزاع
-                        </div>
-                        <div class="text-white text-xs mt-1">
-                            ${formatMediationDate(dispute.opened_at)}
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 rounded-xl p-3">
-                        <div class="text-gray-500 text-[10px]">
-                            تاريخ التصعيد
-                        </div>
-                        <div class="text-white text-xs mt-1">
-                            ${formatMediationDate(dispute.escalated_at)}
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ================= CERTIFICATE / SNAPSHOT ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <h5 class="text-white font-black text-sm mb-4">
-                    📜 الشهادة و Snapshot
-                </h5>
-
+            ${section("⚖️", "معلومات الصفقة والنزاع", "تفاصيل الصفقة والنزاع كما هي في ملف الأدلة.", `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    <div class="bg-black/20 rounded-xl p-4">
-
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">
-                                الشهادة
-                            </span>
-
-                            ${
-                                certificate &&
-                                Object.keys(certificate).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-
-                        <div class="space-y-2 text-[11px]">
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">ID</span>
-                                <span class="text-gray-300 font-mono break-all">
-                                    ${valueOrDash(certificate.id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">الحالة</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(certificate.status)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Deal ID</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(certificate.deal_id)}
-                                </span>
-                            </div>
-
-                        </div>
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="text-gray-300 font-bold text-xs mb-3">الصفقة</div>
+                        ${renderObjectFields(deal)}
                     </div>
-
-                    <div class="bg-black/20 rounded-xl p-4">
-
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-gray-300 font-bold text-xs">
-                                Snapshot
-                            </span>
-
-                            ${
-                                snapshot &&
-                                Object.keys(snapshot).length
-                                    ? statusBadge("PASS")
-                                    : statusBadge("MISSING")
-                            }
-                        </div>
-
-                        <div class="space-y-2 text-[11px]">
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">ID</span>
-                                <span class="text-gray-300 font-mono break-all">
-                                    ${valueOrDash(snapshot.id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Deal ID</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(snapshot.deal_id)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Platform</span>
-                                <span class="text-purple-400 font-bold">
-                                    ${valueOrDash(snapshot.platform)}
-                                </span>
-                            </div>
-
-                            <div class="flex justify-between gap-3">
-                                <span class="text-gray-500">Account</span>
-                                <span class="text-gray-300">
-                                    ${valueOrDash(snapshot.account_url)}
-                                </span>
-                            </div>
-
-                        </div>
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="text-gray-300 font-bold text-xs mb-3">النزاع</div>
+                        ${renderObjectFields(dispute)}
                     </div>
-
                 </div>
-            </div>
+            `)}
 
-            <!-- ================= TIMELINE ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <div class="mb-4">
-                    <h5 class="text-white font-black text-sm">
-                        🕒 الخط الزمني للصفقة
-                    </h5>
-
-                    <p class="text-gray-500 text-[10px] mt-1">
-                        الأحداث المسجلة بالترتيب
-                    </p>
-                </div>
-
-                <div>
-                    ${eventRows}
-                </div>
-
-            </div>
-
-            <!-- ================= CHAT ================= -->
-
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-5">
-
-                <div class="flex items-center justify-between mb-4">
-
-                    <div>
-                        <h5 class="text-white font-black text-sm">
-                            💬 محادثة الصفقة
-                        </h5>
-
-                        <p class="text-gray-500 text-[10px] mt-1">
-                            ${messageCount} رسالة مسجلة
-                        </p>
+            ${section("📜", "الشهادة و Snapshot", "عرض الحقول الكاملة بدل الاقتصار على ID والحالة.", `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="flex items-center justify-between mb-3"><span class="text-gray-300 font-bold text-xs">الشهادة</span>${statusBadge(Object.keys(certificate).length ? "PASS" : "MISSING")}</div>
+                        ${certificateBody}
                     </div>
-
-                    ${
-                        messages.temporal_context
-                            ? `
-                                <span class="text-[10px] text-gray-500">
-                                    سياق زمني متوفر
-                                </span>
-                              `
-                            : ""
-                    }
-
+                    <div class="bg-black/20 rounded-xl p-4 border border-white/5">
+                        <div class="flex items-center justify-between mb-3"><span class="text-gray-300 font-bold text-xs">Snapshot</span>${statusBadge(Object.keys(snapshot).length ? "PASS" : "MISSING")}</div>
+                        ${snapshotBody}
+                    </div>
                 </div>
+            `)}
 
-                ${
-                    messageCount > 0
-                        ? `
-                            <div class="grid grid-cols-2 gap-3">
+            ${genericSources.length ? section("🧩", "المصادر التقنية", "الحساب والتحقق وتفاصيل المنتج/الحساب المتاحة في ملف الأدلة.", genericSources.map(([title, obj]) => `
+                <details class="bg-black/20 rounded-xl border border-white/5 p-4 mb-2 last:mb-0">
+                    <summary class="cursor-pointer text-white text-xs font-bold">${escapeHtml(title)}</summary>
+                    <div class="mt-3">${renderObjectFields(obj)}</div>
+                </details>
+            `).join("")) : ""}
 
-                                <div class="bg-black/20 rounded-xl p-3">
-                                    <div class="text-gray-500 text-[10px]">
-                                        أول رسالة
-                                    </div>
-                                    <div class="text-gray-300 text-xs mt-1">
-                                        ${formatMediationDate(messages.first)}
-                                    </div>
-                                </div>
+            ${section("🔍", "فحوصات الأدلة بالتفصيل", "كل فحص مع حالته والرسالة والمصدر ومراجع الأدلة والحقول الإضافية.", checkRows || `<div class="text-gray-500 text-xs text-center py-5">لا توجد فحوصات</div>`)}
 
-                                <div class="bg-black/20 rounded-xl p-3">
-                                    <div class="text-gray-500 text-[10px]">
-                                        آخر رسالة
-                                    </div>
-                                    <div class="text-gray-300 text-xs mt-1">
-                                        ${formatMediationDate(messages.last)}
-                                    </div>
-                                </div>
+            ${section("⚠️", "التعارضات", "أي إشارات متعارضة يجب أن تبقى مرئية للأدمن.", conflictBody)}
 
-                            </div>
-                          `
-                        : `
-                            <div class="text-gray-500 text-xs text-center py-5">
-                                لا توجد رسائل
-                            </div>
-                          `
-                }
+            ${section("🕳️", "الأدلة المفقودة", "العناصر التي ذكرها محرك الأدلة كبيانات غير متاحة.", missingBody)}
 
-            </div>
+            ${section("🕒", "الخط الزمني الكامل", "كل حدث مع البيانات الوصفية الأصلية عند توفرها.", `<div class="space-y-2">${eventRows}</div>`)}
 
-            <!-- ================= TECHNICAL DETAILS ================= -->
+            ${section("💬", "محادثة الصفقة — جميع الرسائل", `${messageCount} رسالة مسجلة. يتم عرض الرسائل الفعلية من messages.timeline، مع المرسل والدور والنوع والوقت والنص والحقول الإضافية.`, `
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    ${mediationEvidenceStat("عدد الرسائل", messageCount)}
+                    ${mediationEvidenceStat("أول رسالة", messages.first_message_at || messages.first || "—")}
+                    ${mediationEvidenceStat("آخر رسالة", messages.last_message_at || messages.last || "—")}
+                    ${mediationEvidenceStat("المشاركون", messageParticipants.length || "—")}
+                </div>
+                ${participantRows}
+                ${messageItems.length ? `<div class="space-y-2 max-h-[1200px] overflow-auto pr-1">${messageRows}</div>` : messageRows}
+            `)}
+
+            ${section("⏱️", "السياق الزمني", "السياق الزمني المرتبط بالرسائل أو الأدلة عند توفره.", temporalBody)}
+
+            ${section("📎", "المرفقات", "أي مرفقات أو مراجع ملفات وصلت مع ملف الأدلة.", attachmentBody)}
 
             <details class="bg-black/20 border border-white/5 rounded-xl">
-
-                <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">
-                    ⚙️ التفاصيل التقنية الخام
-                </summary>
-
-                <div class="p-4 space-y-4">
-
-                    <pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[400px] whitespace-pre-wrap">${escapeHtml(JSON.stringify({
-                        summary,
-                        checks
-                    }, null, 2))}</pre>
-
+                <summary class="cursor-pointer p-4 text-gray-400 text-xs font-bold">⚙️ التفاصيل التقنية الخام — كامل ملف الأدلة</summary>
+                <div class="p-4">
+                    <pre class="bg-[#080b12] rounded-xl p-4 text-[10px] text-gray-400 overflow-auto max-h-[800px] whitespace-pre-wrap">${escapeHtml(technical)}</pre>
                 </div>
-
             </details>
-
         </div>
     `;
 }
@@ -1749,6 +2042,102 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+async function submitMediationDecision(dealId, decision) {
+    const decisionText = decision === "buyer" ? "المشتري" : "البائع";
+    const actionText = decision === "buyer"
+        ? "سيتم إرجاع إجمالي المبلغ للمشتري."
+        : "سيتم تحرير قيمة البيع للبائع وإكمال الصفقة.";
+
+    const confirmed = window.confirm(
+        `⚠️ تأكيد القرار النهائي\n\nالصفقة #${dealId}\nالقرار: ${decisionText}\n\n${actionText}\n\nهذا القرار مالي ونهائي. هل تريد المتابعة؟`
+    );
+
+    if (!confirmed) return;
+
+    const buttons = document.querySelectorAll(`[data-mediation-decision-deal-id="${String(dealId)}"]`);
+    buttons.forEach((button) => {
+        button.disabled = true;
+        button.classList.add("opacity-50", "cursor-not-allowed");
+    });
+
+    const res = await api("resolve_mediation_dispute", {
+        deal_id: dealId,
+        decision,
+    });
+
+    if (!res || res.error) {
+        buttons.forEach((button) => {
+            button.disabled = false;
+            button.classList.remove("opacity-50", "cursor-not-allowed");
+        });
+
+        alert(`❌ تعذر تنفيذ القرار\n\n${res?.error || "خطأ غير معروف"}`);
+        return;
+    }
+
+    showToast?.(`تم تنفيذ القرار النهائي لصالح ${decisionText}`);
+
+    await loadMediationEvidence(dealId);
+    await loadMediationDisputes();
+}
+
+document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-mediation-decision]");
+    if (!button) return;
+
+    const dealId = Number(button.dataset.mediationDecisionDealId);
+    const decision = button.dataset.mediationDecision;
+
+    if (Number.isInteger(dealId) && dealId > 0 && (decision === "buyer" || decision === "seller")) {
+        submitMediationDecision(dealId, decision);
+    }
+});
+
+async function deleteSelectedMediationDeals(ids) {
+  const validIds = [...new Set((ids || []).map(Number).filter(id => Number.isInteger(id) && id > 0))];
+  if (!validIds.length) {
+    alert("حدد صفقة واحدة على الأقل.");
+    return;
+  }
+
+  const isBulk = validIds.length > 1;
+  const confirmed = confirm(
+    isBulk
+      ? `⚠️ سيتم حذف ${validIds.length} صفقة نهائيًا من سجل الصفقات.\n\nلا يمكن التراجع عن الحذف. هل تريد المتابعة؟`
+      : `⚠️ سيتم حذف الصفقة رقم ${validIds[0]} نهائيًا من سجل الصفقات.\n\nلا يمكن التراجع عن الحذف. هل تريد المتابعة؟`
+  );
+  if (!confirmed) return;
+
+  const action = isBulk ? "delete_mediation_deals_batch" : "delete_mediation_deal";
+  const payload = isBulk ? { ids: validIds } : { id: validIds[0] };
+  const res = await api(action, payload);
+
+  if (!res || res.error) {
+    alert(`❌ تعذر حذف الصفقة\n\n${res?.error || "خطأ غير معروف"}`);
+    return;
+  }
+
+  showToast?.(`تم حذف ${res.deleted_count || validIds.length} صفقة`);
+  await loadAllMediationDeals();
+}
+
+document.getElementById("btnSelectAllDeals")?.addEventListener("click", () => {
+  const boxes = [...document.querySelectorAll("#allDealsTable .mediation-deal-checkbox")];
+  if (!boxes.length) return;
+  const allChecked = boxes.every(box => box.checked);
+  boxes.forEach(box => { box.checked = !allChecked; });
+});
+
+document.getElementById("btnDeleteSelectedDeals")?.addEventListener("click", async () => {
+  const ids = [...document.querySelectorAll("#allDealsTable .mediation-deal-checkbox:checked")]
+    .map(box => Number(box.dataset.dealId));
+  await deleteSelectedMediationDeals(ids);
+});
+
+document.getElementById("btnRefreshDeals")?.addEventListener("click", loadAllMediationDeals);
+document.getElementById("dealsStatusFilter")?.addEventListener("change", renderAllMediationDeals);
+document.getElementById("dealsSearchInput")?.addEventListener("input", renderAllMediationDeals);
 
 document.getElementById("btnRefreshMediation")?.addEventListener(
   "click",
@@ -2458,14 +2847,3 @@ async function loadNewBanList() {
 }
 
 checkSession();
-
-
-// 🔒 تنظيف احتياطي لأي مرجع مؤقت بعد دورة الطلب.
-// لا يوجد PIN ثابت أو PIN حقيقي داخل هذا الملف.
-window.addEventListener("beforeunload", () => {
-  try {
-    if (typeof kingdzSecurityPinBusy !== "undefined") {
-      kingdzSecurityPinBusy = false;
-    }
-  } catch (_) {}
-});
