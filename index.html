@@ -631,6 +631,14 @@
                                         <option value="expired">منتهية</option>
                                     </select>
                                     <input id="dealsSearchInput" type="text" placeholder="بحث بالرقم أو الكود أو المستخدم..." class="bg-black/20 border border-white/10 text-gray-300 placeholder-gray-600 rounded-xl px-3 py-1.5 text-xs outline-none w-56">
+                                    <select id="dealsSortFilter" class="bg-black/20 border border-white/10 text-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none">
+                                        <option value="newest">الأحدث أولاً</option>
+                                        <option value="oldest">الأقدم أولاً</option>
+                                        <option value="amount_desc">الأعلى مبلغاً</option>
+                                        <option value="amount_asc">الأقل مبلغاً</option>
+                                    </select>
+                                    <span id="dealsResultCount" class="text-[10px] text-gray-500 px-2">0 نتيجة</span>
+                                    <button id="btnClearDealsFilters" class="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-xl text-xs">✕ مسح</button>
                                     <button id="btnSelectAllDeals" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">☑ تحديد الكل</button>
                                     <button id="btnDeleteSelectedDeals" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-3 py-1.5 rounded-xl text-xs">🗑 حذف المحدد</button>
                                     <button id="btnRefreshDeals" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>

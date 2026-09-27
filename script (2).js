@@ -889,6 +889,7 @@ function renderAllMediationDeals() {
 
   const statusFilter = String(document.getElementById("dealsStatusFilter")?.value || "all").toLowerCase();
   const query = String(document.getElementById("dealsSearchInput")?.value || "").trim().toLowerCase();
+  const sortFilter = String(document.getElementById("dealsSortFilter")?.value || "newest");
 
   const deals = allMediationDealsCache.filter((deal) => {
     const status = String(deal?.status || "").toLowerCase();
@@ -901,6 +902,20 @@ function renderAllMediationDeals() {
     ].map(v => String(v ?? "")).join(" ").toLowerCase();
     return haystack.includes(query);
   });
+
+  deals.sort((a, b) => {
+    if (sortFilter === "amount_desc" || sortFilter === "amount_asc") {
+      const av = Number(a?.amount_usd ?? a?.amount ?? 0);
+      const bv = Number(b?.amount_usd ?? b?.amount ?? 0);
+      return sortFilter === "amount_desc" ? bv - av : av - bv;
+    }
+    const ad = new Date(a?.created_at || a?.updated_at || 0).getTime() || 0;
+    const bd = new Date(b?.created_at || b?.updated_at || 0).getTime() || 0;
+    return sortFilter === "oldest" ? ad - bd : bd - ad;
+  });
+
+  const resultCount = document.getElementById("dealsResultCount");
+  if (resultCount) resultCount.textContent = `${deals.length} / ${allMediationDealsCache.length} نتيجة`;
 
   if (!deals.length) {
     table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">لا توجد صفقات مطابقة.</td></tr>`;
@@ -1051,42 +1066,6 @@ function showWithdrawalDetails(request) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function getFilteredWithdrawalRequests() {
-  const search = String(document.getElementById('withdrawSearch')?.value || '').trim().toLowerCase();
-  const status = String(document.getElementById('withdrawStatusFilter')?.value || 'all').toLowerCase();
-  const sort = String(document.getElementById('withdrawSort')?.value || 'newest');
-
-  let rows = allWithdrawalRequestsCache.filter(request => {
-    const requestStatus = String(request?.status || '').toLowerCase();
-    if (status !== 'all' && requestStatus !== status) return false;
-    if (!search) return true;
-    const haystack = [
-      request?.id, request?.user_id, request?.username, request?.full_name,
-      request?.phone, request?.email, request?.payout_account,
-      request?.payment_reference, request?.admin_note
-    ].map(v => String(v ?? '')).join(' ').toLowerCase();
-    return haystack.includes(search);
-  });
-
-  rows.sort((a, b) => {
-    if (sort === 'amount_desc' || sort === 'amount_asc') {
-      const diff = Number(a?.amount_dzd || 0) - Number(b?.amount_dzd || 0);
-      return sort === 'amount_desc' ? -diff : diff;
-    }
-    const at = new Date(a?.created_at || 0).getTime();
-    const bt = new Date(b?.created_at || 0).getTime();
-    return sort === 'oldest' ? at - bt : bt - at;
-  });
-  return rows;
-}
-
-function applyWithdrawalFilters() {
-  const rows = getFilteredWithdrawalRequests();
-  const info = document.getElementById('withdrawResultsInfo');
-  if (info) info.textContent = `عرض ${rows.length} من أصل ${allWithdrawalRequestsCache.length} طلب`;
-  renderWithdrawalRequests(rows);
-}
-
 function renderWithdrawalRequests(rows) {
   const table = document.getElementById('withdrawalsTable');
   if (!table) return;
@@ -1095,9 +1074,6 @@ function renderWithdrawalRequests(rows) {
     table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">لا توجد طلبات سحب.</td></tr>`;
     return;
   }
-
-  const info = document.getElementById('withdrawResultsInfo');
-  if (info) info.textContent = `عرض ${rows.length} من أصل ${allWithdrawalRequestsCache.length} طلب`;
 
   table.innerHTML = rows.map(request => {
     const status = String(request?.status || '').toLowerCase();
@@ -1249,7 +1225,7 @@ async function loadWithdrawalRequests() {
   const rows = Array.isArray(res?.requests) ? res.requests : Array.isArray(res?.data) ? res.data : [];
   allWithdrawalRequestsCache = rows;
   updateWithdrawalStats(rows);
-  applyWithdrawalFilters();
+  renderWithdrawalRequests(rows);
 }
 
 async function loadWithdrawalSettings() {
@@ -1278,25 +1254,6 @@ async function saveWithdrawalSettings() {
   }
   showToast('✅ تم حفظ إعدادات سحب الأرباح على السيرفر');
   await loadWithdrawalSettings();
-}
-
-['withdrawSearch', 'withdrawStatusFilter', 'withdrawSort'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) {
-    el.addEventListener(id === 'withdrawSearch' ? 'input' : 'change', applyWithdrawalFilters);
-  }
-});
-
-if (document.getElementById('btnClearWithdrawalFilters')) {
-  document.getElementById('btnClearWithdrawalFilters').addEventListener('click', () => {
-    const search = document.getElementById('withdrawSearch');
-    const status = document.getElementById('withdrawStatusFilter');
-    const sort = document.getElementById('withdrawSort');
-    if (search) search.value = '';
-    if (status) status.value = 'all';
-    if (sort) sort.value = 'newest';
-    applyWithdrawalFilters();
-  });
 }
 
 if (document.getElementById('btnRefreshWithdrawals')) {
@@ -2430,6 +2387,17 @@ document.getElementById("btnDeleteSelectedDeals")?.addEventListener("click", asy
 document.getElementById("btnRefreshDeals")?.addEventListener("click", loadAllMediationDeals);
 document.getElementById("dealsStatusFilter")?.addEventListener("change", renderAllMediationDeals);
 document.getElementById("dealsSearchInput")?.addEventListener("input", renderAllMediationDeals);
+document.getElementById("dealsStatusFilter")?.addEventListener("change", renderAllMediationDeals);
+document.getElementById("dealsSortFilter")?.addEventListener("change", renderAllMediationDeals);
+document.getElementById("btnClearDealsFilters")?.addEventListener("click", () => {
+  const search = document.getElementById("dealsSearchInput");
+  const status = document.getElementById("dealsStatusFilter");
+  const sort = document.getElementById("dealsSortFilter");
+  if (search) search.value = "";
+  if (status) status.value = "all";
+  if (sort) sort.value = "newest";
+  renderAllMediationDeals();
+});
 
 document.getElementById("btnRefreshMediation")?.addEventListener(
   "click",
