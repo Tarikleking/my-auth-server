@@ -1,13 +1,16 @@
 /* KINGDZ ADMIN PANEL - SUPABASE REALTIME & EDGE ENGINE */
 const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-users";
+const KINGDZ_ADMIN_ORIGIN = "https://admin.kingstoor.com";
 
 let ADMIN_TOKEN = null;
 let liveClock = null;
+let kingdzMfaCancelEpoch = 0;
 
 const KINGDZ_SESSION_TIMEOUT_MS = 15 * 60 * 1000;
 const KINGDZ_MAX_LOGIN_ATTEMPTS = 5;
 const KINGDZ_LOGIN_LOCK_MS = 5 * 60 * 1000;
 const KINGDZ_LOGIN_STATE_KEY = "kingdz_admin_login_state";
+const KINGDZ_MFA_CANCELLED_KEY = "kingdz_mfa_cancelled";
 let kingdzLastActivityAt = Date.now();
 let kingdzSessionTimer = null;
 
@@ -196,12 +199,71 @@ document.querySelectorAll('.nav-item').forEach(item => {
 // 2. فحص وتأمين الجلسة
 // مهم: وجود Supabase session وحده لا يعني أن MFA تم اجتيازه.
 // بعد إلغاء شاشة 2FA يجب أن تبقى الجلسة خارج اللوحة، ولا يسمح بالدخول إلا بعد AAL2.
+function isKingdzPasswordRecovery() {
+  const hash = String(window.location.hash || "").toLowerCase();
+  const search = String(window.location.search || "").toLowerCase();
+  return hash.includes("type=recovery") || search.includes("type=recovery");
+}
+
+async function showKingdzPasswordRecovery() {
+  const dashboard = document.getElementById("dashboard");
+  const loading = document.getElementById("loading");
+  const loginPage = document.getElementById("loginPage");
+  if (dashboard) dashboard.style.display = "none";
+  if (loading) loading.style.display = "none";
+  if (!loginPage) return;
+  loginPage.style.display = "flex";
+  loginPage.innerHTML = `
+    <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
+      <h1 class="text-2xl font-black text-white tracking-wider mb-2">استعادة كلمة المرور</h1>
+      <p class="text-gray-400 text-xs mb-6">أنشئ كلمة مرور جديدة للحساب الإداري.</p>
+      <div class="space-y-4">
+        <input id="recoveryPassword" type="password" autocomplete="new-password" minlength="12" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center focus:outline-none focus:border-purple-500" placeholder="كلمة المرور الجديدة">
+        <input id="recoveryPasswordConfirm" type="password" autocomplete="new-password" minlength="12" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center focus:outline-none focus:border-purple-500" placeholder="تأكيد كلمة المرور">
+        <div id="recoveryError" class="text-red-400 text-xs font-medium"></div>
+        <button id="recoverySaveBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition">حفظ كلمة المرور</button>
+        <button id="recoveryCancelBtn" type="button" class="text-xs text-gray-400 hover:underline">إلغاء والعودة لتسجيل الدخول</button>
+      </div>
+    </div>`;
+  const errorEl = document.getElementById("recoveryError");
+  document.getElementById("recoveryCancelBtn")?.addEventListener("click", async () => {
+    kingdzMfaCancelEpoch++;
+    ADMIN_TOKEN = null;
+    try { await client.auth.signOut({ scope: "local" }); } catch (_) {}
+    window.location.replace(KINGDZ_ADMIN_ORIGIN + "/#login");
+  });
+  document.getElementById("recoverySaveBtn")?.addEventListener("click", async () => {
+    const password = document.getElementById("recoveryPassword")?.value || "";
+    const confirm = document.getElementById("recoveryPasswordConfirm")?.value || "";
+    if (password.length < 12) { if (errorEl) errorEl.textContent = "كلمة المرور يجب أن تكون 12 حرفاً/رقماً على الأقل."; return; }
+    if (password !== confirm) { if (errorEl) errorEl.textContent = "كلمتا المرور غير متطابقتين."; return; }
+    const btn = document.getElementById("recoverySaveBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "جاري الحفظ..."; }
+    try {
+      const { error } = await client.auth.updateUser({ password });
+      if (error) throw error;
+      await client.auth.signOut({ scope: "local" }).catch(() => {});
+      ADMIN_TOKEN = null;
+      window.location.replace(KINGDZ_ADMIN_ORIGIN + "/#login");
+    } catch (e) {
+      if (errorEl) errorEl.textContent = e?.message || "تعذر تغيير كلمة المرور.";
+      if (btn) { btn.disabled = false; btn.textContent = "حفظ كلمة المرور"; }
+    }
+  });
+}
+
 async function checkSession() {
+  const checkEpoch = kingdzMfaCancelEpoch;
+  if (isKingdzPasswordRecovery()) { await showKingdzPasswordRecovery(); return; }
   // Fail-closed: اللوحة تبقى مخفية إلى أن يثبت AAL2 + صلاحية Admin.
   const dashboard = document.getElementById("dashboard");
   if (dashboard) dashboard.style.display = "none";
   const { data } = await client.auth.getSession();
   if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
+
+  // Fail-closed بعد إلغاء MFA: حتى لو بقيت جلسة Supabase للحظات، لا نفتح اللوحة.
+  let mfaWasCancelled = false;
+  try { mfaWasCancelled = sessionStorage.getItem(KINGDZ_MFA_CANCELLED_KEY) === "1"; } catch (_) {}
 
   const showLogin = (message = "") => {
     ADMIN_TOKEN = null;
@@ -212,6 +274,20 @@ async function checkSession() {
     const errorEl = document.getElementById("loginError");
     if (errorEl) errorEl.textContent = message;
   };
+
+  if (mfaWasCancelled) {
+    // لا نثق بأي session متبقية بعد الضغط على إلغاء. تنظيف محلي أولاً، ثم محاولة signOut للشبكة.
+    ADMIN_TOKEN = null;
+    if (dashboard) dashboard.style.display = "none";
+    try {
+      for (const key of Object.keys(sessionStorage)) {
+        if (key.startsWith("sb-") && key.includes("auth-token")) sessionStorage.removeItem(key);
+      }
+    } catch (_) {}
+    try { await client.auth.signOut({ scope: "local" }); } catch (_) {}
+    showLogin();
+    return;
+  }
 
   if (!data.session) {
     showLogin();
@@ -248,21 +324,19 @@ async function checkSession() {
     }
 
     // يوجد TOTP موثق، لكن الجلسة الحالية لم تجتز MFA بعد: نطلب الرمز مرة أخرى.
-    const factor = verifiedFactors[0];
-    const { data: challengeData, error: challengeError } =
-      await client.auth.mfa.challenge({ factorId: factor.id });
-
-    if (challengeError || !challengeData?.id) {
-      await client.auth.signOut();
-      showLogin("تعذر بدء التحقق الثنائي.");
+    const factor = pickKingdzTotpFactor(totpFactors);
+    if (!factor?.id) {
+      await client.auth.signOut({ scope: "local" });
+      showLogin("تعذر تحديد Authenticator الموثق لهذا الحساب.");
       return;
     }
-
-    show2FAModal(data.session.user?.email || "", factor.id, challengeData.id);
+    // التحدي يتم إنشاؤه عند الضغط على زر التحقق مباشرة حتى لا تنتهي صلاحيته.
+    show2FAModal(data.session.user?.email || "", factor.id);
     return;
   }
 
   // MFA اجتاز فعلاً: بعدها فقط نتحقق من صلاحية Admin ونفتح اللوحة.
+  if (checkEpoch !== kingdzMfaCancelEpoch || sessionStorage.getItem(KINGDZ_MFA_CANCELLED_KEY) === "1") { showLogin(); return; }
   const adminCheck = await api("get_settings");
   if (adminCheck?.error) {
     await client.auth.signOut();
@@ -270,6 +344,7 @@ async function checkSession() {
     return;
   }
 
+  if (checkEpoch !== kingdzMfaCancelEpoch || sessionStorage.getItem(KINGDZ_MFA_CANCELLED_KEY) === "1") { showLogin(); return; }
   afterLogin();
   startKingdzSessionGuard();
 }
@@ -295,6 +370,8 @@ if (document.getElementById("loginBtn")) {
     if (button) { button.disabled = true; button.textContent = "جاري التحقق..."; }
 
     try {
+      // بدء محاولة دخول جديدة يلغي حالة "إلغاء MFA" السابقة.
+      try { sessionStorage.removeItem(KINGDZ_MFA_CANCELLED_KEY); } catch (_) {}
       const { data, error } = await client.auth.signInWithPassword({ email, password });
       if (error || !data?.session) {
         registerKingdzLoginFailure();
@@ -336,17 +413,16 @@ if (document.getElementById("loginBtn")) {
         return;
       }
 
-      const factor = verifiedFactors[0];
-      const { data: challengeData, error: challengeError } = await client.auth.mfa.challenge({ factorId: factor.id });
-      if (challengeError || !challengeData?.id) {
+      const factor = pickKingdzTotpFactor(totpFactors);
+      if (!factor?.id) {
         registerKingdzLoginFailure();
-        await client.auth.signOut();
+        await client.auth.signOut({ scope: "local" });
         ADMIN_TOKEN = null;
-        if (errorEl) errorEl.textContent = "تعذر بدء التحقق الثنائي.";
+        if (errorEl) errorEl.textContent = "تعذر تحديد Authenticator الموثق لهذا الحساب.";
         return;
       }
-
-      show2FAModal(email, factor.id, challengeData.id);
+      // التحدي يتم إنشاؤه عند الضغط على زر التحقق مباشرة.
+      show2FAModal(email, factor.id);
     } finally {
       if (button) { button.disabled = false; button.textContent = "دخول"; }
     }
@@ -361,31 +437,41 @@ function normalizeMfaCode(value) {
     .trim();
 }
 
+function pickKingdzTotpFactor(factors) {
+  const verified = (Array.isArray(factors) ? factors : []).filter(f => f?.status === "verified");
+  // عند وجود أكثر من Authenticator (بسبب اختبارات/إعادة تفعيل سابقة)، نستعمل الأحدث.
+  // هذا يمنع تحدي عامل قديم بينما المستخدم يقرأ الكود من العامل الأحدث.
+  return verified.sort((a, b) => {
+    const ad = Date.parse(a?.created_at || a?.updated_at || "") || 0;
+    const bd = Date.parse(b?.created_at || b?.updated_at || "") || 0;
+    return bd - ad;
+  })[0] || null;
+}
+
 
 async function forceKingdzLogoutAndReload() {
-  // قطع الجلسة محلياً أولاً حتى لا تعود جلسة AAL1/AAL2 بسبب سباق
-  // بين signOut و location.reload(). لا نعتمد على الشبكة وحدها عند الإلغاء.
+  kingdzMfaCancelEpoch++;
+  // نضع حارساً محلياً قبل أي await. حتى لو فشل signOut أو تأخر،
+  // checkSession() بعد reload سيمنع فتح Dashboard قطعياً.
+  try { sessionStorage.setItem(KINGDZ_MFA_CANCELLED_KEY, "1"); } catch (_) {}
   ADMIN_TOKEN = null;
-  try { await client.auth.signOut({ scope: "local" }); } catch (_) {}
-  try {
-    // عميل Supabase مضبوط على sessionStorage، لذلك نمسح مفتاح الجلسة
-    // الخاص بالمشروع حتى لا يبقى Token قديم بعد إعادة تحميل الصفحة.
-    for (const key of Object.keys(sessionStorage)) {
-      if (key.startsWith("sb-") && key.includes("auth-token")) {
-        sessionStorage.removeItem(key);
-      }
-    }
-    sessionStorage.removeItem(KINGDZ_LOGIN_STATE_KEY);
-  } catch (_) {}
-  clearKingdzLoginState();
-
   const dashboard = document.getElementById("dashboard");
   const loginPage = document.getElementById("loginPage");
   if (dashboard) dashboard.style.display = "none";
   if (loginPage) loginPage.style.display = "flex";
 
-  // نعيد تحميل الصفحة فقط بعد تنظيف الجلسة محلياً.
-  location.reload();
+  // تنظيف جلسة Supabase محلياً، ثم محاولة إبطالها على الخادم.
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith("sb-") && key.includes("auth-token")) sessionStorage.removeItem(key);
+    }
+    sessionStorage.removeItem(KINGDZ_LOGIN_STATE_KEY);
+  } catch (_) {}
+  clearKingdzLoginState();
+  try { await client.auth.signOut({ scope: "local" }); } catch (_) {}
+
+  // نترك الحارس موجوداً بعد reload حتى لا تدخل جلسة قديمة بالخطأ.
+  location.replace(location.pathname + location.search + "#login");
 }
 
 async function cancelKingdzMfaFlow() {
@@ -510,7 +596,7 @@ async function showFirstTime2FAEnrollment(email) {
   }
 }
 
-function show2FAModal(email, factorId, challengeId) {
+function show2FAModal(email, factorId) {
   const loginPage = document.getElementById("loginPage");
   if (!loginPage) return;
   loginPage.innerHTML = `
@@ -530,23 +616,31 @@ function show2FAModal(email, factorId, challengeId) {
     const errDiv = document.getElementById("otpError");
     if (!/^\d{6}$/.test(token)) { if (errDiv) errDiv.textContent = "أدخل رمزاً صحيحاً من 6 أرقام."; return; }
     if (errDiv) errDiv.textContent = "جاري التحقق...";
-    const { data, error } = await client.auth.mfa.verify({ factorId, challengeId, code: token });
-    if (error || !data?.session) {
+    try {
+      // لا نستعمل challenge قديم من وقت فتح الشاشة؛ ننشئ تحدياً جديداً لكل محاولة.
+      const { data: freshChallenge, error: challengeError } = await client.auth.mfa.challenge({ factorId });
+      if (challengeError || !freshChallenge?.id) throw challengeError || new Error("تعذر إنشاء تحدي MFA جديد.");
+      const { data, error } = await client.auth.mfa.verify({ factorId, challengeId: freshChallenge.id, code: token });
+      if (error || !data?.session) throw error || new Error("رمز Authenticator غير صحيح.");
+
+      clearKingdzLoginState();
+      ADMIN_TOKEN = data.session.access_token;
+      const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assurance?.data?.currentLevel !== "aal2") throw new Error("لم يتم رفع الجلسة إلى AAL2.");
+
+      const adminCheck = await api("get_settings");
+      if (adminCheck?.error) throw new Error("الحساب غير مصرح له بلوحة الإدارة.");
+
+      showToast("تم التحقق وتسجيل الدخول بنجاح!");
+      setTimeout(() => { location.reload(); }, 500);
+      return;
+    } catch (e) {
       registerKingdzLoginFailure();
-      if (errDiv) errDiv.textContent = "رمز التحقق غير صحيح أو منتهي الصلاحية.";
+      console.error("MFA verification error:", e);
+      if (errDiv) errDiv.textContent = e?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية.";
       return;
     }
-    clearKingdzLoginState();
-    ADMIN_TOKEN = data.session.access_token;
-    const adminCheck = await api("get_settings");
-    if (adminCheck?.error) {
-      await client.auth.signOut();
-      ADMIN_TOKEN = null;
-      if (errDiv) errDiv.textContent = "الحساب غير مصرح له بلوحة الإدارة.";
-      return;
-    }
-    showToast("تم التحقق وتسجيل الدخول بنجاح!");
-    setTimeout(() => { location.reload(); }, 500);
+
   };
 }
 
@@ -556,7 +650,7 @@ document.addEventListener("click", async (e) => {
     const errorEl = document.getElementById("loginError");
     if (!email) { if (errorEl) errorEl.textContent = "اكتب البريد الإلكتروني أولاً."; return; }
     if (errorEl) errorEl.textContent = "جاري إرسال رابط الاستعادة...";
-    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: KINGDZ_ADMIN_ORIGIN + "/" });
     if (error) {
       if (errorEl) errorEl.textContent = "تعذر إرسال رابط الاستعادة.";
     } else {
