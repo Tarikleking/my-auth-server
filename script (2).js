@@ -273,15 +273,7 @@ async function refreshDashboard() {
            (Date.now() - new Date(u.last_online).getTime()) < 300000;  
   }).length;  
 
-  updateCounter("onlineUsers", onlineCount);
-
-  const mini = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = Number(value || 0).toLocaleString(); };
-  mini("homeMiniUsers", uData.length);
-  mini("homeMiniOnline", onlineCount);
-  mini("homeMiniKeys", kData.filter(k => k.status === "new").length);
-  mini("homeMiniVip", uData.filter(u => u.vip === true).length);
-  const refreshEl = document.getElementById("homeLastRefresh");
-  if (refreshEl) refreshEl.textContent = "آخر تحديث: " + new Date().toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" });
+  updateCounter("onlineUsers", onlineCount);  
 
   renderMainUsersTable(uData);  
   renderAllUsersTable(uData);  
@@ -685,27 +677,43 @@ function renderBalanceUsers() {
   const rows = balanceUsersCache.filter(u => {
     const hay = [u.username,u.email,u.device_id,u.id,u.uuid].filter(Boolean).join(" ").toLowerCase();
     return !q || hay.includes(q);
-  }).slice(0, 80);
-  box.innerHTML = rows.length ? rows.map((u,i) => {
-    const uid = u.id ?? u.user_id ?? u.device_id ?? u.uuid ?? "";
-    return `<button type="button" class="w-full text-right bg-white/5 hover:bg-purple-500/10 border border-white/5 rounded-xl p-3" data-balance-user-index="${balanceUsersCache.indexOf(u)}">
-      <div class="flex justify-between gap-2"><span class="text-white font-bold text-xs">${balanceEscape(u.username || u.email || "مستخدم")}</span><span class="text-green-400 text-[10px]">$${Number(u.balance_usd||0).toFixed(2)}</span></div>
-      <div class="text-gray-500 text-[9px] mt-1 break-all">${balanceEscape(u.device_id || uid)}</div>
+  }).slice(0, 100);
+  box.innerHTML = rows.length ? rows.map((u) => {
+    const idx = balanceUsersCache.indexOf(u);
+    const name = u.username || u.email || `مستخدم #${u.id ?? ""}`;
+    return `<button type="button" class="text-right bg-white/[0.03] hover:bg-purple-500/10 border border-white/5 hover:border-purple-500/20 rounded-xl p-3 transition" data-balance-user-index="${idx}">
+      <div class="flex items-center justify-between gap-2"><span class="text-white font-bold text-xs truncate">${balanceEscape(name)}</span><span class="text-purple-300 text-[9px]">فتح ›</span></div>
+      <div class="grid grid-cols-2 gap-2 mt-2"><span class="text-green-400 text-[10px]">USD ${Number(u.balance_usd||0).toFixed(2)}</span><span class="text-yellow-400 text-[10px]">DZD ${Number(u.balance_dzd||0).toFixed(2)}</span></div>
+      <div class="text-gray-600 text-[8px] mt-2 truncate">${balanceEscape(u.device_id || u.id || "")}</div>
     </button>`;
-  }).join("") : `<div class="text-center text-gray-500 text-[10px] py-5">لا توجد نتائج</div>`;
+  }).join("") : `<div class="col-span-full text-center text-gray-500 text-[10px] py-8">لا توجد نتائج</div>`;
   box.querySelectorAll("[data-balance-user-index]").forEach(btn => btn.onclick = () => selectBalanceUser(balanceUsersCache[Number(btn.dataset.balanceUserIndex)]));
 }
 
 function selectBalanceUser(user) {
   selectedBalanceUser = user || null;
+  if (!selectedBalanceUser) return;
   const panel = document.getElementById("selectedBalanceUser");
   const adminPanel = document.getElementById("balanceAdminPanel");
-  if (!panel || !adminPanel || !selectedBalanceUser) return;
+  const historyPanel = document.getElementById("balanceHistoryPanel");
+  if (!panel || !adminPanel || !historyPanel) return;
   panel.classList.remove("hidden");
   adminPanel.classList.remove("hidden");
-  panel.innerHTML = `<div class="flex justify-between gap-3"><div><div class="text-white font-bold text-xs">${balanceEscape(selectedBalanceUser.username || selectedBalanceUser.email || "مستخدم")}</div><div class="text-gray-500 text-[9px] break-all">${balanceEscape(selectedBalanceUser.device_id || selectedBalanceUser.id || selectedBalanceUser.uuid || "")}</div></div><button id="btnClearBalanceUser" class="text-gray-500 hover:text-white">✕</button></div><div class="grid grid-cols-2 gap-2 mt-3"><div class="bg-black/20 rounded-lg p-2"><div class="text-gray-500 text-[9px]">USD</div><div class="text-green-400 font-bold">${balanceMoney(selectedBalanceUser.balance_usd)}</div></div><div class="bg-black/20 rounded-lg p-2"><div class="text-gray-500 text-[9px]">DZD</div><div class="text-yellow-400 font-bold">${balanceMoney(selectedBalanceUser.balance_dzd,"DZD")}</div></div></div>`;
-  document.getElementById("btnClearBalanceUser")?.addEventListener("click", () => { selectedBalanceUser=null; panel.classList.add("hidden"); adminPanel.classList.add("hidden"); loadBalanceTransactions(); });
+  historyPanel.classList.remove("hidden");
+  const name = selectedBalanceUser.username || selectedBalanceUser.email || `مستخدم #${selectedBalanceUser.id ?? ""}`;
+  panel.innerHTML = `<div class="glass-card rounded-2xl border border-purple-500/15 p-5"><div class="flex flex-wrap items-center justify-between gap-4"><div><div class="text-purple-300 text-[10px] font-bold">الملف المالي</div><div class="text-white text-base font-black mt-1">${balanceEscape(name)}</div><div class="text-gray-500 text-[9px] mt-1 break-all">${balanceEscape(selectedBalanceUser.device_id || selectedBalanceUser.id || "")}</div></div><div class="flex gap-2"><div class="bg-green-500/10 rounded-xl px-4 py-2"><div class="text-gray-500 text-[8px]">USD</div><div class="text-green-400 font-black">${balanceMoney(selectedBalanceUser.balance_usd)}</div></div><div class="bg-yellow-500/10 rounded-xl px-4 py-2"><div class="text-gray-500 text-[8px]">DZD</div><div class="text-yellow-400 font-black">${balanceMoney(selectedBalanceUser.balance_dzd,"DZD")}</div></div></div></div></div>`;
+  const label = document.getElementById("balanceAdminUserLabel");
+  if (label) label.textContent = `المستخدم: ${name}`;
   loadBalanceTransactions(selectedBalanceUser);
+}
+
+function closeSelectedBalanceUser() {
+  selectedBalanceUser = null;
+  document.getElementById("selectedBalanceUser")?.classList.add("hidden");
+  document.getElementById("balanceAdminPanel")?.classList.add("hidden");
+  document.getElementById("balanceHistoryPanel")?.classList.add("hidden");
+  document.getElementById("balanceTransactionDetails")?.classList.add("hidden");
+  loadBalanceTransactions();
 }
 
 async function fetchBalanceTransactions(user = null) {
@@ -748,20 +756,24 @@ function renderBalanceTransactions() {
   if (!table) return;
   const filter = document.getElementById("balanceTypeFilter")?.value || "all";
   const rows = balanceTransactionsCache.filter(x => filter === "all" || String(x.type||"").toLowerCase() === filter).slice(0,200);
-  table.innerHTML = rows.length ? rows.map(x => {
+  table.innerHTML = rows.length ? rows.map((x, i) => {
     const amount = Number(x.amount || 0);
-    const currency = String(x.currency || "USD").toUpperCase();
-    const cls = amount >= 0 ? "text-green-400" : "text-red-400";
     const referenceType = String(x.reference_type || "").toLowerCase();
-    const inferredCurrency = x.currency
-      ? String(x.currency).toUpperCase()
-      : referenceType.endsWith("_dzd")
-        ? "DZD"
-        : "USD";
-    const displayCurrency = inferredCurrency === "DZD" ? "DZD" : "USD";
+    const displayCurrency = (x.currency || (referenceType.endsWith("_dzd") ? "DZD" : "USD")).toString().toUpperCase() === "DZD" ? "DZD" : "USD";
     const reference = x.reference || x.reference_id || x.tx_hash || "—";
-    return `<tr class="hover:bg-white/[0.02]"><td class="p-3 text-gray-500 whitespace-nowrap">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</td><td class="p-3 text-gray-300 break-all">${balanceEscape(x.username || x.user_id || "—")}</td><td class="p-3 text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</td><td class="p-3 ${cls} font-bold">${amount>0?"+":""}${balanceEscape(balanceMoney(amount,displayCurrency))}</td><td class="p-3 text-gray-400">${balanceEscape(balanceMoney(x.balance_before,displayCurrency))}</td><td class="p-3 text-white">${balanceEscape(balanceMoney(x.balance_after,displayCurrency))}</td><td class="p-3 text-gray-500 break-all">${balanceEscape(reference)}</td></tr>`;
-  }).join("") : `<tr><td colspan="7" class="p-8 text-center text-gray-500">لا توجد حركات مالية مسجلة</td></tr>`;
+    const cls = amount >= 0 ? "text-green-400" : "text-red-400";
+    return `<tr class="hover:bg-white/[0.02]"><td class="p-3 text-gray-500 whitespace-nowrap">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</td><td class="p-3 text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</td><td class="p-3 ${cls} font-bold">${amount>0?"+":""}${balanceEscape(balanceMoney(amount,displayCurrency))}</td><td class="p-3 text-gray-400">${balanceEscape(balanceMoney(x.balance_before,displayCurrency))}</td><td class="p-3 text-white">${balanceEscape(balanceMoney(x.balance_after,displayCurrency))}</td><td class="p-3 text-gray-500 max-w-48 truncate">${balanceEscape(reference)}</td><td class="p-3 text-center"><button type="button" class="bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 px-2 py-1 rounded-lg" data-balance-tx-index="${i}">عرض</button></td></tr>`;
+  }).join("") : `<tr><td colspan="7" class="p-8 text-center text-gray-500">لا توجد حركات مالية مسجلة لهذا المستخدم</td></tr>`;
+  table.querySelectorAll("[data-balance-tx-index]").forEach(btn => btn.onclick = () => showBalanceTransactionDetails(rows[Number(btn.dataset.balanceTxIndex)]));
+}
+
+function showBalanceTransactionDetails(tx) {
+  const box = document.getElementById("balanceTransactionDetails");
+  if (!box || !tx) return;
+  const reference = tx.reference || tx.reference_id || tx.tx_hash || "—";
+  box.classList.remove("hidden");
+  box.innerHTML = `<div class="flex justify-between items-center mb-4"><div><h4 class="text-white font-bold text-sm">🔎 تفاصيل الحركة</h4><p class="text-gray-500 text-[10px] mt-1">${balanceEscape(tx.created_at ? formatDate(tx.created_at) : "—")}</p></div><button id="btnCloseBalanceTxDetails" class="text-gray-400 hover:text-white text-lg">✕</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-3"><div class="bg-black/20 rounded-xl p-3"><div class="text-gray-500 text-[9px]">النوع</div><div class="text-purple-300 font-bold text-xs mt-1">${balanceEscape(balanceTypeLabel(tx.type))}</div></div><div class="bg-black/20 rounded-xl p-3"><div class="text-gray-500 text-[9px]">المبلغ</div><div class="text-white font-bold text-xs mt-1">${balanceEscape(balanceMoney(tx.amount, String(tx.currency||"USD").toUpperCase()==="DZD"?"DZD":"USD"))}</div></div><div class="bg-black/20 rounded-xl p-3"><div class="text-gray-500 text-[9px]">الرصيد قبل</div><div class="text-gray-300 font-bold text-xs mt-1">${balanceEscape(balanceMoney(tx.balance_before, String(tx.currency||"USD").toUpperCase()==="DZD"?"DZD":"USD"))}</div></div><div class="bg-black/20 rounded-xl p-3"><div class="text-gray-500 text-[9px]">الرصيد بعد</div><div class="text-green-400 font-bold text-xs mt-1">${balanceEscape(balanceMoney(tx.balance_after, String(tx.currency||"USD").toUpperCase()==="DZD"?"DZD":"USD"))}</div></div></div><div class="mt-3 bg-black/20 rounded-xl p-3"><div class="text-gray-500 text-[9px]">المرجع</div><div class="text-gray-300 text-xs mt-1 break-all">${balanceEscape(reference)}</div></div>`;
+  document.getElementById("btnCloseBalanceTxDetails")?.addEventListener("click", () => box.classList.add("hidden"));
 }
 
 function updateBalanceStats() {
@@ -869,6 +881,8 @@ document.getElementById("btnRefreshBalances")?.addEventListener("click", loadBal
 document.getElementById("balanceUserSearch")?.addEventListener("input", renderBalanceUsers);
 document.getElementById("balanceTypeFilter")?.addEventListener("change", renderBalanceTransactions);
 document.getElementById("btnApplyBalanceAdjustment")?.addEventListener("click", applyBalanceAdjustment);
+document.getElementById("btnCloseBalanceUser")?.addEventListener("click", closeSelectedBalanceUser);
+document.getElementById("btnCloseBalanceHistory")?.addEventListener("click", () => { document.getElementById("balanceHistoryPanel")?.classList.add("hidden"); document.getElementById("balanceTransactionDetails")?.classList.add("hidden"); });
 
 // ============================================================
 // ALL MEDIATION DEALS — ADMIN HISTORY
@@ -2917,7 +2931,6 @@ async function deleteActivityLog(id) {
   if (res && !res.error) { showToast("تم حذف السجل"); loadActivityLogs(); }
 }
 
-document.getElementById("homeRefreshBtn")?.addEventListener("click", async () => { const b = document.getElementById("homeRefreshBtn"); if (b) { b.disabled = true; b.textContent = "⏳ جاري التحديث"; } try { await refreshDashboard(); showToast("تم تحديث لوحة القيادة"); } finally { if (b) { b.disabled = false; b.textContent = "🔄 تحديث الكل"; } } });
 document.getElementById("btnRefreshActivity")?.addEventListener("click", () => { loadActivityLogs(); showToast("تم تحديث سجل النشاط"); });
 document.getElementById("btnSelectAllLogs")?.addEventListener("click", () => {
   const checkboxes = document.querySelectorAll(".log-checkbox");
