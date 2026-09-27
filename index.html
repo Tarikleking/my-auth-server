@@ -27,6 +27,17 @@
         .quick-action-copy small { color: #6b7280; font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .quick-action-key { color: #4b5563; font: 700 8px/1 monospace; align-self: flex-start; padding-top: 2px; }
         .quick-action-btn:hover .quick-action-key { color: #a78bfa; }
+
+        .stats-shell { display:grid; gap:10px; }
+        .stats-metric { min-height:72px; padding:11px 12px; border-radius:13px; border:1px solid rgba(255,255,255,.055); background:rgba(255,255,255,.022); transition:.16s ease; }
+        .stats-metric:hover { background:rgba(139,92,246,.055); border-color:rgba(139,92,246,.18); transform:translateY(-1px); }
+        .stats-metric-icon { width:28px; height:28px; display:grid; place-items:center; border-radius:9px; font-size:13px; background:rgba(255,255,255,.045); }
+        .stats-mini-btn { height:29px; padding:0 9px; border-radius:8px; font-size:9px; font-weight:800; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.025); color:#9ca3af; transition:.15s ease; }
+        .stats-mini-btn:hover,.stats-mini-btn.active { background:rgba(139,92,246,.12); color:#c4b5fd; border-color:rgba(139,92,246,.22); }
+        .stats-progress { height:4px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden; }
+        .stats-progress > span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#8b5cf6,#22c55e); }
+        .stats-table-compact th,.stats-table-compact td { padding:7px 9px !important; }
+        .stats-insight { min-height:52px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,.018); border:1px solid rgba(255,255,255,.045); }
         @media (max-width: 420px) { .quick-action-btn { height: 54px; padding: 7px; gap: 7px; } .quick-action-icon { width: 29px; height: 29px; flex-basis: 29px; font-size: 14px; } .quick-action-copy b { font-size: 9px; } .quick-action-copy small { display: none; } }
     </style>
 </head>
@@ -477,89 +488,64 @@
                 </section>
 
                 <!-- قسم الإحصائيات -->
-                <section id="stats-section" class="tab-content hidden space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">إجمالي المستخدمين المسجلين</p>
-                            <h4 id="statsUsers" class="text-2xl font-black text-white mt-1">0</h4>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">الأجهزة المتصلة حالياً</p>
-                            <h4 id="statsOnline" class="text-2xl font-black text-green-400 mt-1">0</h4>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">إجمالي اشتراكات VIP</p>
-                            <h4 id="statsVip" class="text-2xl font-black text-yellow-400 mt-1">0</h4>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">الحسابات المحظورة</p>
-                            <h4 id="statsBanned" class="text-2xl font-black text-red-400 mt-1">0</h4>
-                        </div>
-                    </div>
-
-                    <!-- إحصائيات إضافية متقدمة -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">إجمالي المفاتيح في النظام</p>
-                            <h4 id="statsKeys" class="text-xl font-bold text-cyan-400 mt-1">0</h4>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">المفاتيح الجديدة (غير المستعملة)</p>
-                            <h4 id="statsKeysNew" class="text-xl font-bold text-green-400 mt-1">0</h4>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">المفاتيح المستعملة</p>
-                            <h4 id="statsKeysUsed" class="text-xl font-bold text-yellow-400 mt-1">0</h4>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <p class="text-gray-400 text-xs">اشتراكات VIP النشطة حالياً</p>
-                            <h4 id="statsVipActive" class="text-xl font-bold text-purple-400 mt-1">0</h4>
-                        </div>
-                    </div>
-
-                    <!-- معلومات مفصلة عن الحسابات والإيميلات -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="glass-card p-5 rounded-2xl border border-white/5 flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-xs">إجمالي الإيميلات الجديدة المسجلة</p>
-                                <h4 id="statsNewEmails" class="text-2xl font-black text-white mt-1">0</h4>
-                            </div>
-                            <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl"><i data-lucide="mail" class="w-6 h-6"></i></div>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5 flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-xs">نسبة استهلاك مفاتيح التفعيل</p>
-                                <h4 id="statsActivationKeysInfo" class="text-2xl font-black text-purple-400 mt-1">0 / 0</h4>
-                            </div>
-                            <div class="p-3 bg-purple-500/10 text-purple-400 rounded-xl"><i data-lucide="key-round" class="w-6 h-6"></i></div>
-                        </div>
-                    </div>
-
-                    <!-- جدول الإيميلات والبيانات التفصيلية -->
+                <section id="stats-section" class="tab-content hidden stats-shell">
                     <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
-                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
-                            <h4 class="text-white font-bold text-sm">سجل الإيميلات والبيانات المسجلة</h4>
-                            <div class="flex gap-2">
-                                <button id="btnSelectAllStats" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-lg text-xs">☑ تحديد الكل</button>
-                                <button id="btnCopySelectedStats" class="bg-purple-600/20 text-purple-400 px-3 py-1.5 rounded-lg text-xs">📋 نسخ المحدد</button>
-                                <button id="btnDeleteSelectedStats" class="bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg text-xs">🗑 حذف المحدد</button>
+                        <div class="px-4 py-3 border-b border-white/5 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/15 grid place-items-center text-sm">📊</div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2"><h4 class="text-white font-black text-sm">لوحة الإحصائيات</h4><span id="statsLastUpdate" class="text-[8px] text-gray-600">مباشر</span></div>
+                                    <p class="text-gray-500 text-[9px] mt-0.5">ملخص سريع لحالة المستخدمين والمفاتيح والتسجيلات</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button class="stats-mini-btn active" data-stats-range="all">الكل</button>
+                                <button class="stats-mini-btn" data-stats-range="today">اليوم</button>
+                                <button id="btnRefreshStats" class="stats-mini-btn text-purple-300">↻ تحديث</button>
                             </div>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right text-xs">
-                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
-                                    <tr>
-                                        <th class="p-3 text-center w-10">تحديد</th>
-                                        <th class="p-3">البريد الإلكتروني</th>
-                                        <th class="p-3">معرف الجهاز</th>
-                                        <th class="p-3">مفتاح التفعيل</th>
-                                        <th class="p-3 text-center">الحالة</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="statsDataTable" class="divide-y divide-white/5">
-                                    <tr><td colspan="5" class="p-4 text-center text-gray-500">جاري تحميل البيانات...</td></tr>
-                                </tbody>
-                            </table>
+
+                        <div class="p-3 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">المستخدمون</span><span class="stats-metric-icon">👥</span></div><b id="statsUsers" class="block text-lg leading-none mt-2 text-white">0</b></div>
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">متصل الآن</span><span class="stats-metric-icon">🟢</span></div><b id="statsOnline" class="block text-lg leading-none mt-2 text-green-400">0</b></div>
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">VIP</span><span class="stats-metric-icon">⭐</span></div><b id="statsVip" class="block text-lg leading-none mt-2 text-yellow-400">0</b></div>
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">محظور</span><span class="stats-metric-icon">🚫</span></div><b id="statsBanned" class="block text-lg leading-none mt-2 text-red-400">0</b></div>
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">المفاتيح</span><span class="stats-metric-icon">🔑</span></div><b id="statsKeys" class="block text-lg leading-none mt-2 text-cyan-400">0</b></div>
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">جديدة</span><span class="stats-metric-icon">✨</span></div><b id="statsKeysNew" class="block text-lg leading-none mt-2 text-green-400">0</b></div>
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">مستعملة</span><span class="stats-metric-icon">✓</span></div><b id="statsKeysUsed" class="block text-lg leading-none mt-2 text-yellow-400">0</b></div>
+                            <div class="stats-metric"><div class="flex justify-between items-start"><span class="text-[9px] text-gray-500">VIP نشط</span><span class="stats-metric-icon">⚡</span></div><b id="statsVipActive" class="block text-lg leading-none mt-2 text-purple-400">0</b></div>
+                        </div>
+
+                        <div class="px-3 pb-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div class="stats-insight"><div class="flex justify-between text-[9px] mb-2"><span class="text-gray-500">نسبة الاتصال</span><b id="statsOnlineRate" class="text-green-400">0%</b></div><div class="stats-progress"><span id="statsOnlineBar" style="width:0%"></span></div></div>
+                            <div class="stats-insight"><div class="flex justify-between text-[9px] mb-2"><span class="text-gray-500">استهلاك المفاتيح</span><b id="statsKeyRate" class="text-purple-400">0%</b></div><div class="stats-progress"><span id="statsKeyBar" style="width:0%"></span></div></div>
+                            <div class="stats-insight"><div class="flex justify-between text-[9px] mb-2"><span class="text-gray-500">VIP من المستخدمين</span><b id="statsVipRate" class="text-yellow-400">0%</b></div><div class="stats-progress"><span id="statsVipBar" style="width:0%"></span></div></div>
+                        </div>
+
+                        <div class="px-3 pb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div class="stats-insight"><span class="text-[8px] text-gray-600">تسجيلات بإيميل</span><b id="statsNewEmails" class="block text-sm text-white mt-1">0</b></div>
+                            <div class="stats-insight"><span class="text-[8px] text-gray-600">VIP نشط فعليًا</span><b id="statsVipActiveSmall" class="block text-sm text-purple-300 mt-1">0</b></div>
+                            <div class="stats-insight"><span class="text-[8px] text-gray-600">المفاتيح المستخدمة</span><b id="statsActivationKeysInfo" class="block text-sm text-cyan-300 mt-1">0 / 0</b></div>
+                            <div class="stats-insight"><span class="text-[8px] text-gray-600">تسجيلات آخر 7 أيام</span><b id="statsRecentRegs" class="block text-sm text-green-300 mt-1">0</b></div>
+                        </div>
+
+                        <div class="border-t border-white/5">
+                            <div class="px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2"><h4 class="text-white font-bold text-xs">سجل التسجيلات</h4><span id="statsResultCount" class="text-[8px] text-gray-600">0 نتيجة</span></div>
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <input id="statsSearch" type="search" placeholder="بحث بالإيميل أو الجهاز..." class="h-7 w-44 bg-[#161b26] border border-white/10 rounded-lg px-2.5 text-[9px] text-white outline-none focus:border-purple-500/40">
+                                    <select id="statsStatusFilter" class="h-7 bg-[#161b26] border border-white/10 rounded-lg px-2 text-[9px] text-gray-300 outline-none"><option value="all">كل الحالات</option><option value="approved">موافق عليه</option><option value="registered">مسجل</option></select>
+                                    <button id="btnSelectAllStats" class="stats-mini-btn">☑ الكل</button>
+                                    <button id="btnCopySelectedStats" class="stats-mini-btn text-purple-300">📋 نسخ</button>
+                                    <button id="btnDeleteSelectedStats" class="stats-mini-btn text-red-300">🗑 حذف</button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right text-[10px] stats-table-compact">
+                                    <thead class="bg-white/[0.02] text-gray-500 border-y border-white/5"><tr><th class="text-center w-8">✓</th><th>البريد</th><th>الجهاز</th><th>المفتاح</th><th class="text-center">الحالة</th></tr></thead>
+                                    <tbody id="statsDataTable" class="divide-y divide-white/5"><tr><td colspan="5" class="p-3 text-center text-gray-600">جاري تحميل البيانات...</td></tr></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </section>

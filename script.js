@@ -346,6 +346,58 @@ function updateCounter(id, value) {
   if (el) el.textContent = value.toLocaleString();
 }
 
+function renderStatsRegistrationTable(rData = [], u = []) {
+  const table = document.getElementById("statsDataTable");
+  if (!table) return;
+  const search = String(document.getElementById("statsSearch")?.value || "").trim().toLowerCase();
+  const status = String(document.getElementById("statsStatusFilter")?.value || "all");
+  const range = String(window.__statsRange || "all");
+  const now = Date.now();
+  const filtered = rData.filter(reg => {
+    const email = String(reg.email || "").toLowerCase();
+    const username = String(reg.username || "").toLowerCase();
+    const activationKey = String(reg.activation_key || "").toLowerCase();
+    const matchedUser = u.find(user => String(user.device_id || user.id || user.uuid || "") === String(reg.username || "")) || {};
+    const deviceId = String(matchedUser.device_id || matchedUser.id || matchedUser.uuid || reg.username || "").toLowerCase();
+    const haystack = `${email} ${username} ${activationKey} ${deviceId}`;
+    if (search && !haystack.includes(search)) return false;
+    if (status === "approved" && !reg.approved) return false;
+    if (status === "registered" && reg.approved) return false;
+    if (range === "today") {
+      const rawDate = reg.created_at || reg.registered_at || reg.createdAt || reg.date;
+      if (rawDate) {
+        const d = new Date(rawDate).getTime();
+        if (Number.isFinite(d) && now - d > 86400000) return false;
+      }
+    }
+    return true;
+  });
+
+  const count = document.getElementById("statsResultCount");
+  if (count) count.textContent = `${filtered.length.toLocaleString()} نتيجة`;
+  if (!filtered.length) {
+    table.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-600">لا توجد نتائج مطابقة</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = filtered.map(reg => {
+    const email = reg.email || "غير متوفر";
+    const activationKey = reg.activation_key || "KING-DZ-XXXX";
+    const matchedUser = u.find(user => String(user.device_id || user.id || user.uuid || "") === String(reg.username || "")) || {};
+    const deviceId = matchedUser.device_id || matchedUser.id || matchedUser.uuid || reg.username || "غير مرتبط";
+    const statusHtml = reg.approved
+      ? '<span class="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded-md text-[8px]">موافق عليه</span>'
+      : '<span class="px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded-md text-[8px]">مسجل</span>';
+    return `<tr class="hover:bg-white/[0.02]">
+      <td class="text-center"><input type="checkbox" class="stat-checkbox accent-purple-600 rounded w-3 h-3" data-id="${reg.id || ''}" data-email="${email}"></td>
+      <td class="text-white font-medium max-w-[220px] truncate select-all">${email}</td>
+      <td class="font-mono text-[9px] text-purple-300 max-w-[170px] truncate select-all">${deviceId}</td>
+      <td class="font-mono text-[9px] text-purple-400 font-bold tracking-wider select-all">${activationKey}</td>
+      <td class="text-center">${statusHtml}</td>
+    </tr>`;
+  }).join("");
+}
+
 async function loadStats(uData = null, kData = null) {
   let u = uData;
   let k = kData;
@@ -384,37 +436,62 @@ async function loadStats(uData = null, kData = null) {
     document.getElementById("statsActivationKeysInfo").textContent = `${usedKeysCount} / ${totalKeysCount}`;  
   }  
 
-  const statsDataTable = document.getElementById("statsDataTable");  
-  if (statsDataTable) {  
-    if (rData.length === 0) {  
-      statsDataTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">لا توجد بيانات مسجلة حالياً</td></tr>`;  
-    } else {  
-      statsDataTable.innerHTML = rData.map(reg => {  
-        const email = reg.email || "غير متوفر";  
-        const activationKey = reg.activation_key || "KING-DZ-XXXX";  
-          
-        const matchedUser = u.find(user => (user.device_id || user.id || user.uuid) === reg.username) || {};  
-        const deviceId = matchedUser.device_id || matchedUser.id || matchedUser.uuid || reg.username || "غير مسجل/مرتبط بعد";  
-          
-        let statusHtml = '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded-lg">مسجل</span>';  
-        if (reg.approved) {  
-          statusHtml = '<span class="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg">موافق عليه</span>';  
-        }  
+  const onlineCount = u.filter(user => user.last_online && (now - new Date(user.last_online).getTime()) < 300000).length;
+  const onlineRate = u.length ? Math.round((onlineCount / u.length) * 100) : 0;
+  const keyRate = totalKeysCount ? Math.round((usedKeysCount / totalKeysCount) * 100) : 0;
+  const vipRate = u.length ? Math.round((activeVips / u.length) * 100) : 0;
+  const setStat = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = `${value}%`; };
+  const setBar = (id, value) => { const el = document.getElementById(id); if (el) el.style.width = `${Math.max(0, Math.min(100, value))}%`; };
+  setStat("statsOnlineRate", onlineRate); setBar("statsOnlineBar", onlineRate);
+  setStat("statsKeyRate", keyRate); setBar("statsKeyBar", keyRate);
+  setStat("statsVipRate", vipRate); setBar("statsVipBar", vipRate);
+  updateCounter("statsVipActiveSmall", activeVips);
+  const recentRegs = rData.filter(r => {
+    const raw = r.created_at || r.registered_at || r.createdAt || r.date;
+    if (!raw) return false;
+    const d = new Date(raw).getTime();
+    return Number.isFinite(d) && now - d <= 7 * 86400000;
+  }).length;
+  updateCounter("statsRecentRegs", recentRegs);
+  const stamp = document.getElementById("statsLastUpdate");
+  if (stamp) stamp.textContent = `تحديث ${new Date().toLocaleTimeString('ar-DZ', {hour:'2-digit', minute:'2-digit'})}`;
+  window.__statsRegistrations = rData;
+  window.__statsUsers = u;
 
-        return `  
-          <tr class="hover:bg-white/[0.005] border-b border-white/5">  
-            <td class="p-3 text-center"><input type="checkbox" class="stat-checkbox accent-purple-600 rounded w-4 h-4" data-id="${reg.id || ''}" data-email="${email}"></td>  
-            <td class="p-3 text-white font-medium select-all">${email}</td>  
-            <td class="p-3 font-mono text-xs text-purple-300 select-all">${deviceId}</td>  
-            <td class="p-3 font-mono text-purple-400 font-bold tracking-wider select-all">${activationKey}</td>  
-            <td class="p-3 text-gray-400 text-center">${statusHtml}</td>  
-          </tr>  
-        `;  
-      }).join("");  
-    }  
-  }
+  renderStatsRegistrationTable(rData, u);
 }
 
+
+
+document.addEventListener("input", function(event) {
+  if (event.target && event.target.id === "statsSearch") renderStatsRegistrationTable(window.__statsRegistrations || [], window.__statsUsers || []);
+});
+document.addEventListener("change", function(event) {
+  if (event.target && event.target.id === "statsStatusFilter") renderStatsRegistrationTable(window.__statsRegistrations || [], window.__statsUsers || []);
+  if (event.target && event.target.matches("[data-stats-range]")) {
+    window.__statsRange = event.target.dataset.statsRange || "all";
+    document.querySelectorAll("[data-stats-range]").forEach(btn => btn.classList.toggle("active", btn === event.target));
+    renderStatsRegistrationTable(window.__statsRegistrations || [], window.__statsUsers || []);
+  }
+});
+document.addEventListener("click", function(event) {
+  const rangeBtn = event.target.closest("[data-stats-range]");
+  if (!rangeBtn) return;
+  window.__statsRange = rangeBtn.dataset.statsRange || "all";
+  document.querySelectorAll("[data-stats-range]").forEach(btn => btn.classList.toggle("active", btn === rangeBtn));
+  renderStatsRegistrationTable(window.__statsRegistrations || [], window.__statsUsers || []);
+});
+document.addEventListener("click", async function(event) {
+  if (!event.target.closest("#btnRefreshStats")) return;
+  const btn = document.getElementById("btnRefreshStats");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ تحديث"; }
+  try {
+    await loadStats();
+    if (typeof showToast === "function") showToast("تم تحديث الإحصائيات");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "↻ تحديث"; }
+  }
+});
 document.addEventListener('click', async function(event) {
   const target = event.target.closest('#btnSelectAllStats, #btnCopySelectedStats, #btnDeleteSelectedStats');
   if (!target) return;
