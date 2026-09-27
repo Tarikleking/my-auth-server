@@ -679,12 +679,32 @@
                 <!-- قسم نزاعات الوساطة -->
                 <section id="mediation-section" class="tab-content hidden space-y-6">
                     <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
-                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
-                            <div>
-                                <h4 class="text-white font-bold text-sm">نزاعات الوساطة</h4>
-                                <p class="text-gray-500 text-[11px] mt-1">الصفقات التي تحتاج مراجعة المشرف</p>
+                        <div class="p-5 border-b border-white/5">
+                            <div class="flex flex-wrap gap-3 justify-between items-center">
+                                <div>
+                                    <h4 class="text-white font-bold text-sm">⚠️ نزاعات الوساطة</h4>
+                                    <p class="text-gray-500 text-[11px] mt-1">الصفقات التي تحتاج مراجعة المشرف</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button id="btnClearMediationFilters" class="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-xl text-xs">✕ مسح</button>
+                                    <button id="btnRefreshMediation" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
+                                </div>
                             </div>
-                            <button id="btnRefreshMediation" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-white/5">
+                            <div id="mediationStatTotal" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                            <div id="mediationStatDispute" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                            <div id="mediationStatResolved" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                            <div id="mediationStatAmount" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
+                        </div>
+                        <div class="p-4 border-b border-white/5 grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <input id="mediationSearchInput" type="search" placeholder="🔎 بحث بالرقم أو الكود أو المستخدم..." class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
+                            <select id="mediationStatusFilter" class="bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
+                                <option value="all">كل الحالات</option>
+                                <option value="dispute">قيد النزاع</option>
+                                <option value="resolved">تم الفصل</option>
+                            </select>
+                            <div id="mediationResultCount" class="flex items-center justify-center bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-gray-400 text-xs">0 نتيجة</div>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-right text-xs">
@@ -714,7 +734,7 @@
                                 <h4 class="text-white font-bold text-sm">تحليل أدلة النزاع</h4>
                                 <p id="mediationAnalysisDeal" class="text-gray-500 text-[11px] mt-1"></p>
                             </div>
-                            <button id="btnCloseMediationAnalysis" class="text-gray-400 hover:text-white text-lg">✕</button>
+                            <button id="btnCloseMediationAnalysis" class="bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl text-xs">↩️ رجوع</button>
                         </div>
                         <div id="mediationAnalysisContent" class="p-6 space-y-6">
                             <div class="text-center text-gray-500 py-8">اختر صفقة لتحليل أدلتها</div>
@@ -727,7 +747,7 @@
                                 <h4 class="text-white font-bold text-sm">ملف أدلة النزاع</h4>
                                 <p id="mediationEvidenceDeal" class="text-gray-500 text-[11px] mt-1"></p>
                             </div>
-                            <button id="btnCloseMediationEvidence" class="text-gray-400 hover:text-white text-lg">✕</button>
+                            <button id="btnCloseMediationEvidence" class="bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl text-xs">↩️ رجوع</button>
                         </div>
                         <div id="mediationEvidenceContent" class="p-6 space-y-6">
                             <div class="text-center text-gray-500 py-8">اختر صفقة لعرض الأدلة</div>
@@ -782,7 +802,7 @@
                     </div>
 
                     <div id="withdrawalDetailsPanel" class="glass-card rounded-2xl border border-white/5 p-5 hidden">
-                        <div class="flex items-center justify-between mb-4"><div><h4 class="text-white font-bold text-sm">🔐 تفاصيل طلب السحب</h4><p id="withdrawalDetailsSubtitle" class="text-gray-500 text-[11px] mt-1"></p></div><button id="btnCloseWithdrawalDetails" class="text-gray-400 hover:text-white text-lg">✕</button></div>
+                        <div class="flex items-center justify-between mb-4"><div><h4 class="text-white font-bold text-sm">🔐 تفاصيل طلب السحب</h4><p id="withdrawalDetailsSubtitle" class="text-gray-500 text-[11px] mt-1"></p></div><button id="btnCloseWithdrawalDetails" class="bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl text-xs">↩️ رجوع</button></div>
                         <div id="withdrawalDetailsContent" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
                     </div>
                 </section>

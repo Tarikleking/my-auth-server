@@ -1275,111 +1275,90 @@ if (document.getElementById('btnCloseWithdrawalDetails')) {
 // MEDIATION DISPUTES
 // ============================================================
 
+let allMediationDisputesCache = [];
+
+function mediationStat(label, value, tone = "text-white") {
+  return `<div class="text-gray-500 text-[10px]">${escapeHtml(String(label))}</div><div class="${tone} font-black text-lg mt-1">${escapeHtml(String(value))}</div>`;
+}
+
+function renderMediationDisputes() {
+  const table = document.getElementById("mediationDisputesTable");
+  if (!table) return;
+  const query = String(document.getElementById("mediationSearchInput")?.value || "").trim().toLowerCase();
+  const statusFilter = String(document.getElementById("mediationStatusFilter")?.value || "all").toLowerCase();
+  const deals = allMediationDisputesCache.filter(deal => {
+    const status = String(deal?.status || "dispute").toLowerCase();
+    if (statusFilter !== "all" && status !== statusFilter) return false;
+    if (!query) return true;
+    const haystack = [deal?.id, deal?.deal_id, deal?.code, deal?.deal_code, deal?.buyer_id, deal?.seller_id, deal?.buyer_username, deal?.seller_username]
+      .map(v => String(v ?? "")).join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+
+  const totalAmount = allMediationDisputesCache.reduce((sum, d) => sum + Number(d?.amount_usd ?? d?.amount ?? 0), 0);
+  const resolved = allMediationDisputesCache.filter(d => String(d?.status || "").toLowerCase() === "resolved").length;
+  const statTotal = document.getElementById("mediationStatTotal");
+  const statDispute = document.getElementById("mediationStatDispute");
+  const statResolved = document.getElementById("mediationStatResolved");
+  const statAmount = document.getElementById("mediationStatAmount");
+  if (statTotal) statTotal.innerHTML = mediationStat("إجمالي النزاعات", allMediationDisputesCache.length);
+  if (statDispute) statDispute.innerHTML = mediationStat("قيد النزاع", allMediationDisputesCache.filter(d => String(d?.status || "dispute").toLowerCase() === "dispute").length, "text-red-400");
+  if (statResolved) statResolved.innerHTML = mediationStat("تم الفصل", resolved, "text-purple-300");
+  if (statAmount) statAmount.innerHTML = mediationStat("إجمالي المبالغ", `$${totalAmount.toFixed(2)}`, "text-yellow-300");
+  const count = document.getElementById("mediationResultCount");
+  if (count) count.textContent = `${deals.length} / ${allMediationDisputesCache.length} نتيجة`;
+
+  if (!deals.length) {
+    table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-gray-500">لا توجد نزاعات مطابقة.</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = deals.map(deal => {
+    const dealId = deal.id ?? deal.deal_id ?? "";
+    const code = deal.code ?? deal.deal_code ?? "—";
+    const amount = deal.amount_usd ?? deal.amount ?? 0;
+    const buyer = deal.buyer_username ?? deal.buyer_id ?? "—";
+    const seller = deal.seller_username ?? deal.seller_id ?? "—";
+    const status = String(deal.status ?? "dispute").toLowerCase();
+    const disputeAt = deal.dispute_opened_at ?? deal.opened_at ?? deal.created_at ?? "";
+    const statusText = status === "resolved" ? "تم الفصل" : status === "dispute" ? "قيد النزاع" : (deal.status || "غير معروف");
+    const statusClass = status === "resolved" ? "bg-purple-500/10 text-purple-300" : "bg-red-500/10 text-red-400";
+    return `<tr class="hover:bg-white/[0.02]">
+      <td class="p-3 text-white font-mono">${escapeHtml(String(dealId))}</td>
+      <td class="p-3 text-purple-400 font-mono">${escapeHtml(String(code))}</td>
+      <td class="p-3 text-white">$${escapeHtml(Number(amount || 0).toFixed(2))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(buyer))}</td>
+      <td class="p-3 text-gray-300">${escapeHtml(String(seller))}</td>
+      <td class="p-3"><span class="px-2 py-1 rounded-lg ${statusClass}">${escapeHtml(statusText)}</span></td>
+      <td class="p-3 text-gray-400">${formatMediationDate(disputeAt)}</td>
+      <td class="p-3 text-center"><button class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg" data-mediation-deal-id="${escapeHtml(String(dealId))}">عرض الأدلة</button></td>
+      <td class="p-3 text-center"><button class="bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 px-3 py-1.5 rounded-lg" data-mediation-analyze-deal-id="${escapeHtml(String(dealId))}">تحليل النزاع</button></td>
+    </tr>`;
+  }).join("");
+
+  table.querySelectorAll("[data-mediation-deal-id]").forEach(button => button.addEventListener("click", () => {
+    const dealId = Number(button.dataset.mediationDealId);
+    if (Number.isInteger(dealId) && dealId > 0) loadMediationEvidence(dealId);
+  }));
+  table.querySelectorAll("[data-mediation-analyze-deal-id]").forEach(button => button.addEventListener("click", () => {
+    const dealId = Number(button.dataset.mediationAnalyzeDealId);
+    if (Number.isInteger(dealId) && dealId > 0) loadMediationAnalysis(dealId);
+  }));
+}
+
 async function loadMediationDisputes() {
   const table = document.getElementById("mediationDisputesTable");
   if (!table) return;
-
-  table.innerHTML = `  
-      <tr>  
-          <td colspan="8" class="p-6 text-center text-gray-500">  
-              جاري تحميل نزاعات الوساطة...  
-          </td>  
-      </tr>  
-  `;  
-
-  const res = await api("get_mediation_disputes");  
-
-  if (!res || res.error) {  
-      table.innerHTML = `  
-          <tr>  
-              <td colspan="9" class="p-6 text-center text-red-400">  
-                  تعذر تحميل نزاعات الوساطة  
-              </td>  
-          </tr>  
-      `;  
-      return;  
-  }  
-
-  const deals = Array.isArray(res.data)  
-      ? res.data  
-      : Array.isArray(res.deals)  
-          ? res.deals  
-          : Array.isArray(res)  
-              ? res  
-              : [];  
-
-  if (!deals.length) {  
-      table.innerHTML = `  
-          <tr>  
-              <td colspan="9" class="p-6 text-center text-gray-500">  
-                  لا توجد صفقات في حالة نزاع حالياً  
-              </td>  
-          </tr>  
-      `;  
-      return;  
-  }  
-
-  table.innerHTML = deals.map(deal => {  
-      const dealId = deal.id ?? deal.deal_id ?? "";  
-      const code = deal.code ?? deal.deal_code ?? "—";  
-      const amount = deal.amount_usd ?? deal.amount ?? 0;  
-      const buyer = deal.buyer_id ?? "—";  
-      const seller = deal.seller_id ?? "—";  
-      const status = deal.status ?? "dispute";  
-      const disputeAt =  
-          deal.dispute_opened_at ??  
-          deal.opened_at ??  
-          deal.created_at ??  
-          "";  
-
-      return `  
-          <tr class="hover:bg-white/[0.02]">  
-              <td class="p-3 text-white font-mono">${escapeHtml(String(dealId))}</td>  
-              <td class="p-3 text-purple-400 font-mono">${escapeHtml(String(code))}</td>  
-              <td class="p-3 text-white">$${escapeHtml(Number(amount || 0).toFixed(2))}</td>  
-              <td class="p-3 text-gray-300">${escapeHtml(String(buyer))}</td>  
-              <td class="p-3 text-gray-300">${escapeHtml(String(seller))}</td>  
-              <td class="p-3">  
-                  <span class="px-2 py-1 rounded-lg bg-red-500/10 text-red-400">  
-                      ${escapeHtml(String(status))}  
-                  </span>  
-              </td>  
-              <td class="p-3 text-gray-400">${formatMediationDate(disputeAt)}</td>  
-              <td class="p-3 text-center">  
-                  <button  
-                      class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg"  
-                      data-mediation-deal-id="${escapeHtml(String(dealId))}">  
-                      عرض الأدلة  
-                  </button>  
-              </td>
-              <td class="p-3 text-center">
-                  <button
-                      class="bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 px-3 py-1.5 rounded-lg"
-                      data-mediation-analyze-deal-id="${escapeHtml(String(dealId))}">
-                      تحليل النزاع
-                  </button>
-              </td>
-          </tr>  
-      `;  
-  }).join("");  
-
-  table.querySelectorAll("[data-mediation-deal-id]").forEach(button => {  
-      button.addEventListener("click", () => {  
-          const dealId = Number(button.dataset.mediationDealId);  
-          if (Number.isInteger(dealId) && dealId > 0) {  
-              loadMediationEvidence(dealId);  
-          }  
-      });  
-  });
-
-  table.querySelectorAll("[data-mediation-analyze-deal-id]").forEach(button => {
-      button.addEventListener("click", () => {
-          const dealId = Number(button.dataset.mediationAnalyzeDealId);
-          if (Number.isInteger(dealId) && dealId > 0) {
-              loadMediationAnalysis(dealId);
-          }
-      });
-  });
+  table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-gray-500">جاري تحميل نزاعات الوساطة...</td></tr>`;
+  const res = await api("get_mediation_disputes");
+  if (!res || res.error) {
+    allMediationDisputesCache = [];
+    table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-red-400">تعذر تحميل نزاعات الوساطة</td></tr>`;
+    renderMediationDisputes();
+    return;
+  }
+  allMediationDisputesCache = Array.isArray(res.data) ? res.data : Array.isArray(res.deals) ? res.deals : Array.isArray(res) ? res : [];
+  renderMediationDisputes();
 }
 
 function mediationAnalysisStat(label, value, tone = "text-white") {
@@ -2404,6 +2383,16 @@ document.getElementById("btnRefreshMediation")?.addEventListener(
   loadMediationDisputes
 );
 
+document.getElementById("mediationSearchInput")?.addEventListener("input", renderMediationDisputes);
+document.getElementById("mediationStatusFilter")?.addEventListener("change", renderMediationDisputes);
+document.getElementById("btnClearMediationFilters")?.addEventListener("click", () => {
+  const search = document.getElementById("mediationSearchInput");
+  const status = document.getElementById("mediationStatusFilter");
+  if (search) search.value = "";
+  if (status) status.value = "all";
+  renderMediationDisputes();
+});
+
 document.getElementById("btnCloseMediationEvidence")?.addEventListener(
   "click",
   () => {
@@ -3143,4 +3132,23 @@ document.getElementById("quickRefreshDashboard")?.addEventListener("click", asyn
   }
 });
 
+// سهم رجوع موحّد داخل كل قسم رئيسي
+function initSectionBackButtons() {
+  document.querySelectorAll(".tab-content[id]").forEach(section => {
+    if (section.id === "home-section") return;
+    if (section.querySelector(":scope > .section-back-button")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "section-back-button mb-1 inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-2 rounded-xl text-xs transition";
+    button.innerHTML = "↩️ رجوع";
+    button.addEventListener("click", () => {
+      const quick = document.querySelector('.nav-item[data-target="quick-actions-section"]');
+      if (quick) quick.click();
+      else document.querySelectorAll(".tab-content").forEach(s => s.classList.toggle("hidden", s.id !== "home-section"));
+    });
+    section.insertBefore(button, section.firstElementChild);
+  });
+}
+
+initSectionBackButtons();
 checkSession();
