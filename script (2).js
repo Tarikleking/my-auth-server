@@ -741,7 +741,7 @@ function renderBalanceTransactions() {
   const filter = document.getElementById("balanceTypeFilter")?.value || "all";
   const rows = balanceTransactionsCache.filter(x => filter === "all" || String(x.type||"").toLowerCase() === filter).slice(0,200);
 
-  table.innerHTML = rows.length ? rows.map((x, index) => {
+  table.innerHTML = rows.length ? rows.map(x => {
     const amount = Number(x.amount || 0);
     const referenceType = String(x.reference_type || "").toLowerCase();
     const inferredCurrency = x.currency
@@ -750,60 +750,31 @@ function renderBalanceTransactions() {
     const displayCurrency = inferredCurrency === "DZD" ? "DZD" : "USD";
     const cls = amount >= 0 ? "text-green-400" : "text-red-400";
     const reference = x.reference || x.reference_id || x.tx_hash || "—";
-    const detailId = `balance-tx-details-${index}`;
-
-    return `
-      <tr class="hover:bg-white/[0.02] transition" data-balance-tx-row="${index}">
-        <td class="p-3 text-gray-500 whitespace-nowrap">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</td>
-        <td class="p-3 text-gray-300 break-all">${balanceEscape(x.username || x.user_id || "—")}</td>
-        <td class="p-3 text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</td>
-        <td class="p-3 ${cls} font-bold">${amount > 0 ? "+" : ""}${balanceEscape(balanceMoney(amount, displayCurrency))}</td>
-        <td class="p-3 text-gray-400">${balanceEscape(balanceMoney(x.balance_before, displayCurrency))}</td>
-        <td class="p-3 text-white">${balanceEscape(balanceMoney(x.balance_after, displayCurrency))}</td>
-        <td class="p-3 text-center">
-          <button type="button" class="balance-tx-toggle inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-purple-500/15 text-purple-300 border border-white/5 transition" data-balance-tx-toggle="${index}" aria-expanded="false" aria-controls="${detailId}" title="عرض تفاصيل الحركة">
-            <span class="balance-tx-arrow transition-transform">⌄</span>
-          </button>
-        </td>
-      </tr>
-      <tr id="${detailId}" class="hidden bg-black/10" data-balance-tx-details-row="${index}">
-        <td colspan="7" class="p-0">
-          <div class="mx-3 my-2 rounded-xl border border-purple-500/10 bg-white/[0.02] p-4">
-            <div class="flex items-center justify-between gap-3 mb-3">
-              <div class="text-purple-300 text-[10px] font-black">📋 جميع معلومات الحركة المالية</div>
-              <div class="text-gray-600 text-[9px]">اضغط السهم لإخفاء التفاصيل</div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[10px]">
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">التاريخ</span><span class="text-gray-200">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">المستخدم</span><span class="text-gray-200 break-all">${balanceEscape(x.username || x.user_id || "—")}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">نوع الحركة</span><span class="text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">المبلغ</span><span class="${cls} font-bold">${amount > 0 ? "+" : ""}${balanceEscape(balanceMoney(amount, displayCurrency))}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">الرصيد قبل</span><span class="text-gray-300">${balanceEscape(balanceMoney(x.balance_before, displayCurrency))}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">الرصيد بعد</span><span class="text-white font-bold">${balanceEscape(balanceMoney(x.balance_after, displayCurrency))}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">العملة</span><span class="text-yellow-300">${balanceEscape(displayCurrency)}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">نوع المرجع</span><span class="text-gray-300 break-all">${balanceEscape(x.reference_type || "—")}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">معرّف المرجع</span><span class="text-gray-300 break-all">${balanceEscape(x.reference_id ?? "—")}</span></div>
-              <div class="bg-black/20 rounded-lg p-2 md:col-span-2"><span class="text-gray-500 block">المرجع</span><span class="text-gray-300 break-all">${balanceEscape(reference)}</span></div>
-              <div class="bg-black/20 rounded-lg p-2"><span class="text-gray-500 block">TX Hash</span><span class="text-gray-300 break-all">${balanceEscape(x.tx_hash || "—")}</span></div>
-            </div>
-          </div>
-        </td>
-      </tr>`;
+    return `<tr class="hover:bg-white/[0.02] transition">
+      <td class="p-3 text-gray-500 whitespace-nowrap">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</td>
+      <td class="p-3 text-gray-300 break-all">${balanceEscape(x.username || x.user_id || "—")}</td>
+      <td class="p-3 text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</td>
+      <td class="p-3 ${cls} font-bold">${amount > 0 ? "+" : ""}${balanceEscape(balanceMoney(amount, displayCurrency))}</td>
+      <td class="p-3 text-gray-400">${balanceEscape(balanceMoney(x.balance_before, displayCurrency))}</td>
+      <td class="p-3 text-white">${balanceEscape(balanceMoney(x.balance_after, displayCurrency))}</td>
+      <td class="p-3 text-gray-500 break-all">${balanceEscape(reference)}</td>
+    </tr>`;
   }).join("") : `<tr><td colspan="7" class="p-8 text-center text-gray-500">لا توجد حركات مالية مسجلة</td></tr>`;
-
-  table.querySelectorAll("[data-balance-tx-toggle]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const index = Number(button.dataset.balanceTxToggle);
-      const details = table.querySelector(`[data-balance-tx-details-row="${index}"]`);
-      const arrow = button.querySelector(".balance-tx-arrow");
-      if (!details) return;
-      const willOpen = details.classList.contains("hidden");
-      details.classList.toggle("hidden", !willOpen);
-      button.setAttribute("aria-expanded", String(willOpen));
-      if (arrow) arrow.style.transform = willOpen ? "rotate(180deg)" : "rotate(0deg)";
-    });
-  });
 }
+
+function toggleBalanceTransactions(forceOpen = null) {
+  const wrap = document.getElementById("balanceTransactionsListWrap");
+  const button = document.getElementById("btnToggleBalanceTransactions");
+  const arrow = document.getElementById("balanceTransactionsArrow");
+  if (!wrap || !button) return;
+
+  const isOpen = !wrap.classList.contains("hidden");
+  const shouldOpen = forceOpen === null ? !isOpen : Boolean(forceOpen);
+  wrap.classList.toggle("hidden", !shouldOpen);
+  button.setAttribute("aria-expanded", String(shouldOpen));
+  if (arrow) arrow.style.transform = shouldOpen ? "rotate(180deg)" : "rotate(0deg)";
+}
+
 
 function updateBalanceStats() {
   const users = balanceUsersCache;
@@ -909,6 +880,7 @@ async function loadBalanceManagement() {
 document.getElementById("btnRefreshBalances")?.addEventListener("click", loadBalanceManagement);
 document.getElementById("balanceUserSearch")?.addEventListener("input", renderBalanceUsers);
 document.getElementById("balanceTypeFilter")?.addEventListener("change", renderBalanceTransactions);
+  document.getElementById("btnToggleBalanceTransactions")?.addEventListener("click", () => toggleBalanceTransactions());
 document.getElementById("btnApplyBalanceAdjustment")?.addEventListener("click", applyBalanceAdjustment);
 
 // ============================================================
