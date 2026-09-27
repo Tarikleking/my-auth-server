@@ -524,25 +524,123 @@ async function showFirstTime2FAEnrollment(email) {
 
   loginPage.innerHTML = `
     <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
-      <h1 class="text-2xl font-black text-white tracking-wider mb-2">تفعيل <span class="text-purple-500">Authenticator 2FA</span></h1>
-      <p class="text-gray-400 text-xs mb-5">هذا أول دخول لهذا الحساب. أضف الحساب إلى Google Authenticator أو Microsoft Authenticator ثم أدخل الرمز المكون من 6 أرقام.</p>
+      <h1 class="text-2xl font-black text-white tracking-wider mb-2">
+        تفعيل <span class="text-purple-500">Authenticator 2FA</span>
+      </h1>
+
+      <p class="text-gray-400 text-xs mb-5">
+        هذا أول دخول لهذا الحساب. أضف الحساب إلى Google Authenticator أو Microsoft Authenticator ثم أدخل الرمز المكون من 6 أرقام.
+      </p>
+
       <div id="mfaEnrollArea" class="space-y-4">
-        <div class="text-gray-300 text-xs">جاري إنشاء إعداد المصادقة...</div>
+        <div class="text-gray-300 text-xs">
+          جاري إنشاء إعداد المصادقة...
+        </div>
       </div>
     </div>`;
 
   const area = document.getElementById("mfaEnrollArea");
+
   try {
+    /*
+     * التأكد من وجود جلسة دخول قبل بدء إعداد MFA.
+     */
+    const { data: sessionData, error: sessionError } =
+      await client.auth.getSession();
+
+    if (sessionError || !sessionData?.session) {
+      throw new Error(
+        sessionError?.message || "لا توجد جلسة دخول صالحة."
+      );
+    }
+
+    /*
+     * فحص عوامل MFA الموجودة حاليًا.
+     *
+     * إذا كان هناك عامل verified فلا ننشئ عاملًا جديدًا.
+     * وإذا كان هناك عامل unverified نعرض رسالة واضحة بدل إنشاء
+     * عوامل متعددة للحساب.
+     */
+    const { data: factorsData, error: factorsError } =
+      await client.auth.mfa.listFactors();
+
+    if (factorsError) {
+      throw new Error(
+        `تعذر قراءة إعدادات MFA: ${factorsError.message || factorsError}`
+      );
+    }
+
+    const totpFactors = Array.isArray(factorsData?.totp)
+      ? factorsData.totp
+      : [];
+
+    const verifiedFactor = totpFactors.find(
+      factor => factor.status === "verified"
+    );
+
+    if (verifiedFactor?.id) {
+      console.log(
+        "KINGDZ MFA: يوجد عامل TOTP موثق بالفعل:",
+        verifiedFactor.id
+      );
+
+      await show2FAModal(email, verifiedFactor.id);
+      return;
+    }
+
+    const unverifiedFactor = totpFactors.find(
+      factor => factor.status === "unverified"
+    );
+
+    /*
+     * إذا كان هناك عامل غير مكتمل من محاولة سابقة،
+     * لا ننشئ عاملًا ثانيًا.
+     */
+    if (unverifiedFactor?.id) {
+      console.log(
+        "KINGDZ MFA: يوجد عامل TOTP غير مكتمل:",
+        unverifiedFactor.id
+      );
+
+      await showPending2FAEnrollment(
+        email,
+        unverifiedFactor.id
+      );
+
+      return;
+    }
+
+    /*
+     * إنشاء TOTP جديد.
+     */
+    console.log("KINGDZ MFA: بدء إنشاء TOTP...");
+
     const { data, error } = await client.auth.mfa.enroll({
       factorType: "totp",
       friendlyName: `KING-DZ Admin - ${email}`,
     });
 
-    if (error || !data?.id || !data?.totp) {
-      if (area) area.innerHTML = `
-        <div class="text-red-400 text-xs">تعذر إنشاء إعداد Authenticator. حاول مرة أخرى.</div>
-        <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline">العودة</button>`;
-      return;
+    console.log("KINGDZ MFA ENROLL DATA:", data);
+    console.error("KINGDZ MFA ENROLL ERROR:", error);
+
+    if (error) {
+      throw new Error(
+        `فشل إنشاء Authenticator: ${
+          error.message || error
+        }`
+      );
+    }
+
+    if (!data?.id) {
+      throw new Error(
+        "Supabase لم يرجع معرف عامل MFA."
+      );
+    }
+
+    if (!data?.totp) {
+      throw new Error(
+        "Supabase أنشأ عامل MFA لكنه لم يرجع بيانات TOTP."
+      );
     }
 
     const factorId = data.id;
@@ -550,98 +648,515 @@ async function showFirstTime2FAEnrollment(email) {
     const secret = data.totp.secret || "";
     const uri = data.totp.uri || "";
 
-    if (area) area.innerHTML = `
-      ${qrSvg ? `<div class="bg-white rounded-xl p-3 mx-auto w-fit">${qrSvg}</div>` : ""}
-      <div class="text-gray-300 text-xs">إذا لم يظهر QR، استعمل المفتاح اليدوي:</div>
-      <div class="bg-[#161b26] border border-white/10 rounded-xl px-3 py-3 text-white text-xs font-mono break-all select-all">${secret || "غير متاح"}</div>
-      <input inputmode="numeric" autocomplete="one-time-code" type="text" id="firstMfaCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="رمز 6 أرقام">
-      <div id="firstMfaError" class="text-red-400 text-xs font-medium"></div>
-      <button id="activateMfaBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تفعيل 2FA والدخول</button>
-      <button type="button" onclick="cancelKingdzMfaFlow()" class="text-xs text-gray-400 hover:underline block mx-auto">إلغاء</button>`;
+    if (!qrSvg && !secret && !uri) {
+      throw new Error(
+        "لم يتم استلام QR أو المفتاح اليدوي من Supabase."
+      );
+    }
 
-    document.getElementById("activateMfaBtn").onclick = async () => {
-      const code = normalizeMfaCode(document.getElementById("firstMfaCode")?.value || "");
-      const errDiv = document.getElementById("firstMfaError");
-      const btn = document.getElementById("activateMfaBtn");
+    /*
+     * عرض إعداد Authenticator.
+     */
+    if (area) {
+      area.innerHTML = `
+        ${
+          qrSvg
+            ? `
+              <div class="bg-white rounded-xl p-3 mx-auto w-fit">
+                ${qrSvg}
+              </div>
+            `
+            : ""
+        }
+
+        <div class="text-gray-300 text-xs">
+          ${
+            qrSvg
+              ? "امسح رمز QR بواسطة Google Authenticator أو Microsoft Authenticator."
+              : "إذا لم يظهر QR، استعمل المفتاح اليدوي:"
+          }
+        </div>
+
+        ${
+          secret
+            ? `
+              <div class="bg-[#161b26] border border-white/10 rounded-xl px-3 py-3 text-white text-xs font-mono break-all select-all">
+                ${escapeHtml(secret)}
+              </div>
+            `
+            : ""
+        }
+
+        ${
+          uri
+            ? `
+              <div class="text-gray-500 text-[9px] break-all select-all">
+                ${escapeHtml(uri)}
+              </div>
+            `
+            : ""
+        }
+
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="text"
+          id="firstMfaCode"
+          maxlength="6"
+          class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono"
+          placeholder="رمز 6 أرقام"
+        >
+
+        <div
+          id="firstMfaError"
+          class="text-red-400 text-xs font-medium min-h-[18px]"
+        ></div>
+
+        <button
+          id="activateMfaBtn"
+          type="button"
+          class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30"
+        >
+          تفعيل 2FA والدخول
+        </button>
+
+        <button
+          type="button"
+          onclick="cancelKingdzMfaFlow()"
+          class="text-xs text-gray-400 hover:underline block mx-auto"
+        >
+          إلغاء
+        </button>
+      `;
+    }
+
+    const activateBtn =
+      document.getElementById("activateMfaBtn");
+
+    const codeInput =
+      document.getElementById("firstMfaCode");
+
+    const errDiv =
+      document.getElementById("firstMfaError");
+
+    if (!activateBtn || !codeInput || !errDiv) {
+      throw new Error(
+        "تعذر إنشاء عناصر إدخال رمز MFA."
+      );
+    }
+
+    activateBtn.onclick = async () => {
+      const code = normalizeMfaCode(
+        codeInput.value || ""
+      );
+
       if (!/^\d{6}$/.test(code)) {
-        if (errDiv) errDiv.textContent = "أدخل رمزاً صحيحاً من 6 أرقام.";
+        errDiv.textContent =
+          "أدخل رمزاً صحيحاً من 6 أرقام.";
         return;
       }
-      if (btn) { btn.disabled = true; btn.textContent = "جاري التفعيل..."; }
-      if (errDiv) errDiv.textContent = "";
+
+      activateBtn.disabled = true;
+      activateBtn.textContent = "جاري التفعيل...";
+      errDiv.textContent = "";
 
       try {
-        const { data: challengeData, error: challengeError } = await client.auth.mfa.challenge({ factorId });
-        if (challengeError || !challengeData?.id) throw new Error("challenge");
+        /*
+         * إنشاء Challenge جديد.
+         */
+        const {
+          data: challengeData,
+          error: challengeError
+        } = await client.auth.mfa.challenge({
+          factorId
+        });
 
-        const { data: verifyData, error: verifyError } = await client.auth.mfa.verify({
+        if (challengeError) {
+          throw new Error(
+            `تعذر إنشاء تحدي MFA: ${
+              challengeError.message || challengeError
+            }`
+          );
+        }
+
+        if (!challengeData?.id) {
+          throw new Error(
+            "Supabase لم يرجع معرف تحدي MFA."
+          );
+        }
+
+        /*
+         * التحقق من رمز Authenticator.
+         */
+        const {
+          data: verifyData,
+          error: verifyError
+        } = await client.auth.mfa.verify({
           factorId,
           challengeId: challengeData.id,
-          code,
+          code
         });
-        if (verifyError || !verifyData?.session) throw new Error("verify");
 
+        if (verifyError) {
+          throw new Error(
+            `فشل التحقق من رمز Authenticator: ${
+              verifyError.message || verifyError
+            }`
+          );
+        }
+
+        /*
+         * الحصول على الجلسة الحالية بعد التحقق.
+         */
+        const {
+          data: currentSessionData,
+          error: currentSessionError
+        } = await client.auth.getSession();
+
+        if (currentSessionError) {
+          throw new Error(
+            `تعذر قراءة الجلسة بعد التحقق: ${
+              currentSessionError.message ||
+              currentSessionError
+            }`
+          );
+        }
+
+        const session =
+          verifyData?.session ||
+          currentSessionData?.session;
+
+        if (!session?.access_token) {
+          throw new Error(
+            "تم التحقق لكن لم يتم الحصول على جلسة دخول صالحة."
+          );
+        }
+
+        ADMIN_TOKEN = session.access_token;
+
+        /*
+         * التأكد أن الجلسة أصبحت AAL2.
+         */
+        const {
+          data: assuranceData,
+          error: assuranceError
+        } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+
+        if (assuranceError) {
+          throw new Error(
+            `تعذر التحقق من مستوى أمان الجلسة: ${
+              assuranceError.message ||
+              assuranceError
+            }`
+          );
+        }
+
+        if (
+          assuranceData?.currentLevel !== "aal2"
+        ) {
+          throw new Error(
+            "تم قبول الرمز، لكن جلسة الحساب لم تنتقل إلى AAL2."
+          );
+        }
+
+        /*
+         * التأكد من صلاحية الحساب للوصول إلى لوحة الإدارة.
+         */
+        const adminCheck =
+          await api("get_settings");
+
+        if (adminCheck?.error) {
+          throw new Error(
+            "الحساب غير مصرح له بالوصول إلى لوحة الإدارة."
+          );
+        }
+
+        /*
+         * نجاح التفعيل بالكامل.
+         */
         clearKingdzLoginState();
-        ADMIN_TOKEN = verifyData.session.access_token;
-        showToast("تم تفعيل Authenticator 2FA وتسجيل الدخول بنجاح!");
-        setTimeout(() => { location.reload(); }, 500);
+
+        showToast(
+          "تم تفعيل Authenticator 2FA وتسجيل الدخول بنجاح!"
+        );
+
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+
       } catch (e) {
-        registerKingdzLoginFailure();
-        if (errDiv) errDiv.textContent = e?.message || "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.";
-        if (btn) { btn.disabled = false; btn.textContent = "تفعيل 2FA والدخول"; }
+        console.error(
+          "KINGDZ FIRST MFA VERIFY ERROR:",
+          e
+        );
+
+        if (errDiv) {
+          errDiv.textContent =
+            e?.message ||
+            "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.";
+        }
+
+        activateBtn.disabled = false;
+        activateBtn.textContent =
+          "تفعيل 2FA والدخول";
       }
     };
+
+    codeInput.focus();
+
   } catch (e) {
-    if (area) area.innerHTML = `<div class="text-red-400 text-xs">تعذر تفعيل Authenticator حالياً.</div><button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline">العودة</button>`;
+    console.error(
+      "KINGDZ FIRST MFA ENROLL ERROR:",
+      e
+    );
+
+    if (area) {
+      area.innerHTML = `
+        <div class="text-red-400 text-xs font-bold">
+          تعذر إنشاء إعداد Authenticator
+        </div>
+
+        <div class="text-gray-400 text-[11px] mt-2 break-all select-all">
+          ${escapeHtml(
+            e?.message ||
+            "حدث خطأ غير معروف أثناء إعداد Authenticator."
+          )}
+        </div>
+
+        <button
+          type="button"
+          onclick="location.reload()"
+          class="mt-3 text-xs text-gray-400 hover:underline"
+        >
+          إعادة المحاولة
+        </button>
+      `;
+    }
   }
 }
+
 
 function show2FAModal(email, factorId) {
   const loginPage = document.getElementById("loginPage");
   if (!loginPage) return;
+
   loginPage.innerHTML = `
     <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
-      <h1 class="text-2xl font-black text-white tracking-wider mb-2">التحقق الثنائي <span class="text-purple-500">2FA</span></h1>
-      <p class="text-gray-400 text-xs mb-6">افتح تطبيق Authenticator وأدخل رمز التحقق المكون من 6 أرقام.</p>
+      <h1 class="text-2xl font-black text-white tracking-wider mb-2">
+        التحقق الثنائي <span class="text-purple-500">2FA</span>
+      </h1>
+
+      <p class="text-gray-400 text-xs mb-6">
+        افتح تطبيق Authenticator وأدخل رمز التحقق المكون من 6 أرقام.
+      </p>
+
       <div class="space-y-4">
-        <input inputmode="numeric" autocomplete="one-time-code" type="text" id="otpCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="------">
-        <div id="otpError" class="text-red-400 text-xs font-medium"></div>
-        <button id="verifyOtpBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تأكيد الرمز والدخول</button>
-        <button type="button" onclick="cancelKingdzMfaFlow()" class="text-xs text-gray-400 hover:underline mt-2 block mx-auto">إلغاء والعودة</button>
+
+        <input
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          type="text"
+          id="otpCode"
+          maxlength="6"
+          class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono"
+          placeholder="------"
+        >
+
+        <div
+          id="otpError"
+          class="text-red-400 text-xs font-medium min-h-[18px]"
+        ></div>
+
+        <button
+          id="verifyOtpBtn"
+          type="button"
+          class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30"
+        >
+          تأكيد الرمز والدخول
+        </button>
+
+        <button
+          type="button"
+          onclick="cancelKingdzMfaFlow()"
+          class="text-xs text-gray-400 hover:underline mt-2 block mx-auto"
+        >
+          إلغاء والعودة
+        </button>
+
       </div>
-    </div>`;
+    </div>
+  `;
 
-  document.getElementById("verifyOtpBtn").onclick = async () => {
-    const token = normalizeMfaCode(document.getElementById("otpCode")?.value || "");
-    const errDiv = document.getElementById("otpError");
-    if (!/^\d{6}$/.test(token)) { if (errDiv) errDiv.textContent = "أدخل رمزاً صحيحاً من 6 أرقام."; return; }
-    if (errDiv) errDiv.textContent = "جاري التحقق...";
-    try {
-      // لا نستعمل challenge قديم من وقت فتح الشاشة؛ ننشئ تحدياً جديداً لكل محاولة.
-      const { data: freshChallenge, error: challengeError } = await client.auth.mfa.challenge({ factorId });
-      if (challengeError || !freshChallenge?.id) throw challengeError || new Error("تعذر إنشاء تحدي MFA جديد.");
-      const { data, error } = await client.auth.mfa.verify({ factorId, challengeId: freshChallenge.id, code: token });
-      if (error || !data?.session) throw error || new Error("رمز Authenticator غير صحيح.");
+  const verifyBtn =
+    document.getElementById("verifyOtpBtn");
 
-      clearKingdzLoginState();
-      ADMIN_TOKEN = data.session.access_token;
-      const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (assurance?.data?.currentLevel !== "aal2") throw new Error("لم يتم رفع الجلسة إلى AAL2.");
+  const otpInput =
+    document.getElementById("otpCode");
 
-      const adminCheck = await api("get_settings");
-      if (adminCheck?.error) throw new Error("الحساب غير مصرح له بلوحة الإدارة.");
+  const errDiv =
+    document.getElementById("otpError");
 
-      showToast("تم التحقق وتسجيل الدخول بنجاح!");
-      setTimeout(() => { location.reload(); }, 500);
-      return;
-    } catch (e) {
-      registerKingdzLoginFailure();
-      console.error("MFA verification error:", e);
-      if (errDiv) errDiv.textContent = e?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية.";
+  if (!verifyBtn || !otpInput || !errDiv) {
+    console.error(
+      "KINGDZ MFA: عناصر نافذة التحقق غير موجودة."
+    );
+    return;
+  }
+
+  verifyBtn.onclick = async () => {
+    const token = normalizeMfaCode(
+      otpInput.value || ""
+    );
+
+    if (!/^\d{6}$/.test(token)) {
+      errDiv.textContent =
+        "أدخل رمزاً صحيحاً من 6 أرقام.";
       return;
     }
 
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = "جاري التحقق...";
+    errDiv.textContent = "";
+
+    try {
+      /*
+       * لا نستعمل Challenge قديم.
+       * ننشئ Challenge جديدًا لكل محاولة.
+       */
+      const {
+        data: freshChallenge,
+        error: challengeError
+      } = await client.auth.mfa.challenge({
+        factorId
+      });
+
+      if (challengeError) {
+        throw new Error(
+          `تعذر إنشاء تحدي MFA: ${
+            challengeError.message ||
+            challengeError
+          }`
+        );
+      }
+
+      if (!freshChallenge?.id) {
+        throw new Error(
+          "تعذر إنشاء تحدي MFA جديد."
+        );
+      }
+
+      /*
+       * التحقق من الرمز.
+       */
+      const {
+        data,
+        error
+      } = await client.auth.mfa.verify({
+        factorId,
+        challengeId: freshChallenge.id,
+        code: token
+      });
+
+      if (error) {
+        throw new Error(
+          `رمز Authenticator غير صحيح: ${
+            error.message || error
+          }`
+        );
+      }
+
+      const {
+        data: sessionData,
+        error: sessionError
+      } = await client.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(
+          `تعذر قراءة الجلسة: ${
+            sessionError.message ||
+            sessionError
+          }`
+        );
+      }
+
+      const session =
+        data?.session ||
+        sessionData?.session;
+
+      if (!session?.access_token) {
+        throw new Error(
+          "تم التحقق من الرمز لكن لم يتم الحصول على جلسة صالحة."
+        );
+      }
+
+      ADMIN_TOKEN = session.access_token;
+
+      /*
+       * التأكد من وصول الجلسة إلى AAL2.
+       */
+      const {
+        data: assuranceData,
+        error: assuranceError
+      } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+
+      if (assuranceError) {
+        throw new Error(
+          `تعذر التحقق من مستوى أمان الجلسة: ${
+            assuranceError.message ||
+            assuranceError
+          }`
+        );
+      }
+
+      if (
+        assuranceData?.currentLevel !== "aal2"
+      ) {
+        throw new Error(
+          "تم قبول الرمز لكن الجلسة لم تنتقل إلى AAL2."
+        );
+      }
+
+      /*
+       * التأكد من صلاحية الحساب للوحة الإدارة.
+       */
+      const adminCheck =
+        await api("get_settings");
+
+      if (adminCheck?.error) {
+        throw new Error(
+          "الحساب غير مصرح له بلوحة الإدارة."
+        );
+      }
+
+      clearKingdzLoginState();
+
+      showToast(
+        "تم التحقق وتسجيل الدخول بنجاح!"
+      );
+
+      setTimeout(() => {
+        location.reload();
+      }, 500);
+
+    } catch (e) {
+      console.error(
+        "MFA verification error:",
+        e
+      );
+
+      registerKingdzLoginFailure();
+
+      errDiv.textContent =
+        e?.message ||
+        "رمز التحقق غير صحيح أو منتهي الصلاحية.";
+
+      verifyBtn.disabled = false;
+      verifyBtn.textContent =
+        "تأكيد الرمز والدخول";
+    }
   };
+
+  otpInput.focus();
 }
 
 document.addEventListener("click", async (e) => {
