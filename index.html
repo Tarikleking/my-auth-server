@@ -273,6 +273,24 @@
                         <div class="p-5 border-b border-white/5 flex justify-between items-center">
                             <h4 class="text-white font-bold text-sm">آخر الأجهزة المسجلة</h4>
                         </div>
+                        <div class="p-4 border-b border-white/5 grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <input id="withdrawSearch" type="search" placeholder="🔎 بحث: رقم الطلب، المستخدم، الاسم، الهاتف، البريد أو حساب الدفع" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
+                            <select id="withdrawStatusFilter" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
+                                <option value="all">كل الحالات</option>
+                                <option value="pending">قيد المراجعة</option>
+                                <option value="processing">قيد التنفيذ</option>
+                                <option value="paid">تم الدفع</option>
+                                <option value="rejected">مرفوض</option>
+                            </select>
+                            <select id="withdrawSort" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
+                                <option value="newest">الأحدث أولاً</option>
+                                <option value="oldest">الأقدم أولاً</option>
+                                <option value="amount_desc">المبلغ: الأعلى أولاً</option>
+                                <option value="amount_asc">المبلغ: الأقل أولاً</option>
+                            </select>
+                            <button id="btnClearWithdrawalFilters" class="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-2 rounded-xl text-xs">✕ مسح الفلاتر</button>
+                        </div>
+                        <div class="px-4 py-2 text-[10px] text-gray-500" id="withdrawResultsInfo"></div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-right text-xs">
                                 <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
@@ -811,7 +829,7 @@
     <div id="userDrawer" class="fixed top-0 bottom-0 left-auto right-[-450px] w-[420px] glass-card border-l border-white/10 z-50 transition-all duration-300 shadow-2xl overflow-y-auto p-6 flex flex-col justify-between">
         <div>
             <div class="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
-                <h3 class="text-white font-bold text-base">👤 ملف المستخدم الموحّد</h3>
+                <h3 class="text-white font-bold text-base">تفاصيل الجهاز</h3>
                 <button onclick="closeDrawer()" class="text-gray-400 hover:text-white text-lg">✕</button>
             </div>
             <div id="drawerContent" class="space-y-4"></div>
