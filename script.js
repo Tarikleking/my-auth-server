@@ -578,29 +578,6 @@ if (document.getElementById("loginBtn")) {
   return;
 }
 
-        /*
-         * محاولة تسجيل سابقة غير مكتملة.
-         */
-        if (unverifiedFactor?.id) {
-
-          await showPending2FAEnrollment(
-            email,
-            unverifiedFactor.id
-          );
-
-        } else {
-
-          /*
-           * أول تسجيل فعلي لـ Authenticator.
-           */
-          await showFirstTime2FAEnrollment(
-            email
-          );
-        }
-
-        return;
-      }
-
       /*
        * يوجد Authenticator موثق.
        */
@@ -730,10 +707,50 @@ async function showPending2FAEnrollment(email, factorId) {
     try {
       const { data: challengeData, error: challengeError } = await client.auth.mfa.challenge({ factorId });
       if (challengeError || !challengeData?.id) throw challengeError || new Error("challenge");
-      const { data: verifyData, error: verifyError } = await client.auth.mfa.verify({ factorId, challengeId: challengeData.id, code });
-      if (verifyError || !verifyData?.session) throw verifyError || new Error("verify");
+      const { data: verifyData, error: verifyError } = await client.auth.mfa.verify({
+        factorId,
+        challengeId: challengeData.id,
+        code
+      });
+
+      if (verifyError) {
+        throw verifyError;
+      }
+
+      // verify يحفظ جلسة MFA الجديدة داخل Supabase Auth.
+      const { data: finalSessionData, error: finalSessionError } =
+        await client.auth.getSession();
+
+      const finalSession = finalSessionData?.session || null;
+
+      if (finalSessionError || !finalSession?.access_token) {
+        throw finalSessionError ||
+          new Error("تم التحقق من الرمز لكن تعذر الحصول على جلسة الدخول.");
+      }
+
+      const {
+        data: assuranceData,
+        error: assuranceError
+      } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+
+      if (
+        assuranceError ||
+        assuranceData?.currentLevel !== "aal2"
+      ) {
+        throw assuranceError ||
+          new Error("لم يتم رفع جلسة الدخول إلى AAL2.");
+      }
+
+      ADMIN_TOKEN = finalSession.access_token;
+
+      // الآن فقط نتحقق من صلاحية Admin عبر endpoint المحمي بـ AAL2.
+      const adminCheck = await api("get_settings");
+
+      if (!adminCheck || adminCheck.error) {
+        throw new Error("الحساب غير مصرح له بلوحة الإدارة.");
+      }
+
       clearKingdzLoginState();
-      ADMIN_TOKEN = verifyData.session.access_token;
       showToast("تم تفعيل Authenticator 2FA وتسجيل الدخول بنجاح!");
       setTimeout(() => location.reload(), 500);
     } catch (e) {
