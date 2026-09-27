@@ -249,12 +249,27 @@ if (document.getElementById("loginBtn")) {
 
       // لا نسمح بالدخول قبل MFA/TOTP. لا نعتمد على OTP بالبريد كبديل هنا.
       const { data: factorsData, error: factorsError } = await client.auth.mfa.listFactors();
-      const verifiedFactors = (factorsData?.totp || []).filter(f => f.status === "verified");
-      if (factorsError || verifiedFactors.length === 0) {
+      if (factorsError) {
         registerKingdzLoginFailure();
         await client.auth.signOut();
         ADMIN_TOKEN = null;
-        if (errorEl) errorEl.textContent = "يجب تفعيل Authenticator 2FA لهذا حساب الإدارة أولاً.";
+        if (errorEl) errorEl.textContent = "تعذر قراءة حالة المصادقة الثنائية.";
+        return;
+      }
+
+      const verifiedFactors = (factorsData?.totp || []).filter(f => f.status === "verified");
+
+      // أول دخول لحساب Admin: نتحقق من صلاحية الحساب أولاً، ثم نسمح بتسجيل Authenticator.
+      if (verifiedFactors.length === 0) {
+        const adminCheck = await api("get_settings");
+        if (adminCheck?.error) {
+          registerKingdzLoginFailure();
+          await client.auth.signOut();
+          ADMIN_TOKEN = null;
+          if (errorEl) errorEl.textContent = "هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.";
+          return;
+        }
+        await showFirstTime2FAEnrollment(email);
         return;
       }
 
@@ -273,6 +288,84 @@ if (document.getElementById("loginBtn")) {
       if (button) { button.disabled = false; button.textContent = "دخول"; }
     }
   };
+}
+
+async function showFirstTime2FAEnrollment(email) {
+  const loginPage = document.getElementById("loginPage");
+  if (!loginPage) return;
+
+  loginPage.innerHTML = `
+    <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
+      <h1 class="text-2xl font-black text-white tracking-wider mb-2">تفعيل <span class="text-purple-500">Authenticator 2FA</span></h1>
+      <p class="text-gray-400 text-xs mb-5">هذا أول دخول لهذا الحساب. أضف الحساب إلى Google Authenticator أو Microsoft Authenticator ثم أدخل الرمز المكون من 6 أرقام.</p>
+      <div id="mfaEnrollArea" class="space-y-4">
+        <div class="text-gray-300 text-xs">جاري إنشاء إعداد المصادقة...</div>
+      </div>
+    </div>`;
+
+  const area = document.getElementById("mfaEnrollArea");
+  try {
+    const { data, error } = await client.auth.mfa.enroll({
+      factorType: "totp",
+      friendlyName: `KING-DZ Admin - ${email}`,
+    });
+
+    if (error || !data?.id || !data?.totp) {
+      if (area) area.innerHTML = `
+        <div class="text-red-400 text-xs">تعذر إنشاء إعداد Authenticator. حاول مرة أخرى.</div>
+        <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline">العودة</button>`;
+      return;
+    }
+
+    const factorId = data.id;
+    const qrSvg = data.totp.qr_code || "";
+    const secret = data.totp.secret || "";
+    const uri = data.totp.uri || "";
+
+    if (area) area.innerHTML = `
+      ${qrSvg ? `<div class="bg-white rounded-xl p-3 mx-auto w-fit">${qrSvg}</div>` : ""}
+      <div class="text-gray-300 text-xs">إذا لم يظهر QR، استعمل المفتاح اليدوي:</div>
+      <div class="bg-[#161b26] border border-white/10 rounded-xl px-3 py-3 text-white text-xs font-mono break-all select-all">${secret || "غير متاح"}</div>
+      <input inputmode="numeric" autocomplete="one-time-code" type="text" id="firstMfaCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="رمز 6 أرقام">
+      <div id="firstMfaError" class="text-red-400 text-xs font-medium"></div>
+      <button id="activateMfaBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تفعيل 2FA والدخول</button>
+      <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline block mx-auto">إلغاء</button>`;
+
+    document.getElementById("activateMfaBtn").onclick = async () => {
+      const code = document.getElementById("firstMfaCode")?.value.trim() || "";
+      const errDiv = document.getElementById("firstMfaError");
+      const btn = document.getElementById("activateMfaBtn");
+      if (!/^\d{6}$/.test(code)) {
+        if (errDiv) errDiv.textContent = "أدخل رمزاً صحيحاً من 6 أرقام.";
+        return;
+      }
+      if (btn) { btn.disabled = true; btn.textContent = "جاري التفعيل..."; }
+      if (errDiv) errDiv.textContent = "";
+
+      try {
+        const { data: challengeData, error: challengeError } = await client.auth.mfa.challenge({ factorId });
+        if (challengeError || !challengeData?.id) throw new Error("challenge");
+
+        const { data: verifyData, error: verifyError } = await client.auth.mfa.verify({
+          factorId,
+          challengeId: challengeData.id,
+          code,
+        });
+        if (verifyError || !verifyData?.session) throw new Error("verify");
+
+        clearKingdzLoginState();
+        ADMIN_TOKEN = verifyData.session.access_token;
+        showToast("تم تفعيل Authenticator 2FA وتسجيل الدخول بنجاح!");
+        setTimeout(() => { location.reload(); }, 500);
+      } catch (e) {
+        registerKingdzLoginFailure();
+        if (errDiv) errDiv.textContent = "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.";
+        if (btn) { btn.disabled = false; btn.textContent = "تفعيل 2FA والدخول"; }
+      }
+    };
+  } catch (e) {
+    if (area) area.innerHTML = `<div class="text-red-400 text-xs">تعذر تفعيل Authenticator حالياً.</div><button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline">العودة</button>`;
+  }
 }
 
 function show2FAModal(email, factorId, challengeId) {
