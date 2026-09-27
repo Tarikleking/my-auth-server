@@ -45,8 +45,12 @@ async function api(action, data = {}) {
     if (res.status === 401) {
       localStorage.removeItem("admin_token"); ADMIN_TOKEN = null; location.reload(); return null;
     }
-    if (!res.ok) { console.error("API ERROR:", res.status); return null; }
-    return await res.json();
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error("API ERROR:", res.status, body);
+      return { ...(body && typeof body === "object" ? body : {}), error: true, _http_status: res.status };
+    }
+    return body;
   } catch (err) { console.error("NETWORK ERROR:", err); return null; }
 }
 
@@ -109,6 +113,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
       targetEl.classList.remove('hidden');  
       if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {  
         refreshDashboard();  
+      } else if (targetSection === 'quick-actions-section') {
+        // قسم اختصارات فقط؛ لا يكرر أي طلبات API عند فتحه.
       } else if (targetSection === 'balance-section') {
         loadBalanceManagement();
       } else if (targetSection === 'mediation-section') {  
@@ -766,12 +772,13 @@ async function applyBalanceAdjustment() {
     return;
   }
 
-  const amount = Number(document.getElementById("balanceAdjustAmount")?.value || 0);
+  // هذا الحقل يمثل الرصيد النهائي المطلوب، وليس مبلغ الإضافة/الخصم.
+  const target = Number(document.getElementById("balanceAdjustAmount")?.value || "");
   const currency = String(document.getElementById("balanceAdjustCurrency")?.value || "usd").toLowerCase();
   const reason = String(document.getElementById("balanceAdjustReason")?.value || "تعديل إداري").trim();
 
-  if (!Number.isFinite(amount) || amount === 0) {
-    showToast("أدخل مبلغًا صحيحًا غير صفري");
+  if (!Number.isFinite(target) || target < 0) {
+    showToast("أدخل الرصيد النهائي بشكل صحيح");
     return;
   }
 
@@ -780,33 +787,55 @@ async function applyBalanceAdjustment() {
       ? (selectedBalanceUser.balance_dzd ?? 0)
       : (selectedBalanceUser.balance_usd ?? 0)
   );
-  const next = current + amount;
 
-  if (!Number.isFinite(current) || next < 0) {
-    showToast("لا يمكن أن يصبح الرصيد سالبًا");
+  if (!Number.isFinite(current)) {
+    showToast("تعذر قراءة الرصيد الحالي للمستخدم");
     return;
   }
 
-  const deviceId = selectedBalanceUser.device_id || null;
-  if (!deviceId) {
-    showToast("تعذر تحديد جهاز المستخدم");
+  const next = Number(target.toFixed(2));
+  const change = Number((next - current).toFixed(2));
+
+  if (change === 0) {
+    showToast("الرصيد الجديد مطابق للرصيد الحالي");
     return;
   }
 
+  const userId = Number(selectedBalanceUser.id ?? selectedBalanceUser.user_id);
   const payload = {
-    device_id: deviceId,
-    ...(currency === "dzd" ? { balance_dzd: Number(next.toFixed(2)) } : { balance_usd: Number(next.toFixed(2)) }),
-    transaction_amount: Number(amount.toFixed(2)),
+    ...(Number.isInteger(userId) && userId > 0
+      ? { user_id: userId }
+      : { device_id: selectedBalanceUser.device_id || null }),
+    ...(currency === "dzd" ? { balance_dzd: next } : { balance_usd: next }),
+    transaction_amount: Math.abs(change),
+    transaction_change: change,
     transaction_currency: currency,
     transaction_type: "admin_adjustment",
     transaction_reason: reason,
-    transaction_reference: reason
+    transaction_reference: null
   };
+
+  if (!payload.user_id && !payload.device_id) {
+    showToast("تعذر تحديد مستخدم الرصيد");
+    return;
+  }
+
+  const confirmed = confirm(
+    `تأكيد تعديل رصيد ${currency.toUpperCase()}\n\n` +
+    `الحالي: ${current.toFixed(2)}\n` +
+    `الجديد: ${next.toFixed(2)}\n` +
+    `الحركة: ${change > 0 ? "+" : ""}${change.toFixed(2)}\n\n` +
+    `السبب: ${reason || "تعديل إداري"}`
+  );
+  if (!confirmed) return;
 
   const res = await api("update_balances", payload);
 
   if (!res || res.error) {
-    if (!res?.canceled) showToast("❌ تعذر تعديل الرصيد: " + (res?.error || "خطأ غير معروف"));
+    if (!res?.canceled) {
+      const detail = res?.error || res?.message || `HTTP ${res?._http_status || "?"}`;
+      showToast("❌ تعذر تعديل الرصيد: " + detail);
+    }
     return;
   }
 
@@ -815,9 +844,10 @@ async function applyBalanceAdjustment() {
   document.getElementById("balanceAdjustReason").value = "";
 
   await loadBalanceUsers();
+  await loadBalanceTransactions();
+  const selectedId = selectedBalanceUser.id ?? selectedBalanceUser.user_id ?? selectedBalanceUser.device_id ?? selectedBalanceUser.uuid;
   const fresh = balanceUsersCache.find(u =>
-    String(u.id ?? u.user_id ?? u.device_id ?? u.uuid) ===
-    String(selectedBalanceUser.id ?? selectedBalanceUser.user_id ?? selectedBalanceUser.device_id ?? selectedBalanceUser.uuid)
+    String(u.id ?? u.user_id ?? u.device_id ?? u.uuid) === String(selectedId)
   ) || selectedBalanceUser;
   selectBalanceUser(fresh);
 }
@@ -3049,5 +3079,42 @@ async function loadNewBanList() {
       console.error(e);  
   }
 }
+
+// ============================================================
+// QUICK ACTIONS CENTER — ADMIN SHORTCUTS
+// ============================================================
+function openQuickAdminSection(targetSection) {
+  const navItem = document.querySelector(`.nav-item[data-target="${targetSection}"]`);
+  if (navItem) {
+    navItem.click();
+    return;
+  }
+  const targetEl = document.getElementById(targetSection);
+  if (targetEl) targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+document.querySelectorAll("[data-quick-target]").forEach(button => {
+  button.addEventListener("click", () => {
+    const target = button.getAttribute("data-quick-target");
+    if (target) openQuickAdminSection(target);
+  });
+});
+
+document.getElementById("quickRefreshDashboard")?.addEventListener("click", async () => {
+  const button = document.getElementById("quickRefreshDashboard");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "⏳ جاري التحديث...";
+  }
+  try {
+    await refreshDashboard();
+    showToast("تم تحديث بيانات اللوحة");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "🔄 تحديث البيانات";
+    }
+  }
+});
 
 checkSession();
