@@ -525,28 +525,58 @@ if (document.getElementById("loginBtn")) {
        */
       if (verifiedFactors.length === 0) {
 
-        /*
-         * نتحقق من صلاحية Admin قبل إنشاء Authenticator.
-         */
-        const adminCheck =
-          await api("get_settings");
+  // أول دخول: الجلسة AAL1.
+  // نستخدم check_admin فقط للتأكد أن الحساب موجود في admins.
+  // لا نستخدم get_settings هنا لأنه يتطلب AAL2.
+  const adminCheck = await api("check_admin");
 
-        if (adminCheck?.error) {
-          registerKingdzLoginFailure();
+  if (!adminCheck || adminCheck.error || adminCheck.admin !== true) {
+    registerKingdzLoginFailure();
 
-          await client.auth.signOut({
-            scope: "local"
-          });
+    await client.auth.signOut({ scope: "local" });
+    ADMIN_TOKEN = null;
 
-          ADMIN_TOKEN = null;
+    if (errorEl) {
+      errorEl.textContent =
+        "هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.";
+    }
 
-          if (errorEl) {
-            errorEl.textContent =
-              "هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.";
-          }
+    return;
+  }
 
-          return;
-        }
+  // تأكد أن جلسة Supabase ما زالت موجودة قبل mfa.enroll()
+  const {
+    data: currentSessionData,
+    error: currentSessionError
+  } = await client.auth.getSession();
+
+  if (
+    currentSessionError ||
+    !currentSessionData?.session?.access_token
+  ) {
+    registerKingdzLoginFailure();
+
+    await client.auth.signOut({ scope: "local" });
+    ADMIN_TOKEN = null;
+
+    if (errorEl) {
+      errorEl.textContent =
+        "لا توجد جلسة دخول صالحة. حاول تسجيل الدخول مرة أخرى.";
+    }
+
+    return;
+  }
+
+  ADMIN_TOKEN = currentSessionData.session.access_token;
+
+  if (unverifiedFactor?.id) {
+    await showPending2FAEnrollment(email, unverifiedFactor.id);
+  } else {
+    await showFirstTime2FAEnrollment(email);
+  }
+
+  return;
+}
 
         /*
          * محاولة تسجيل سابقة غير مكتملة.
