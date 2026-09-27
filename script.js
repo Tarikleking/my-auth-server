@@ -2887,107 +2887,132 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
   refreshDashboard();
 });
 
-async function loadActivityLogs() {
-  const container = document.getElementById("activityLogs");
-  if (!container) return;
-  const res = await api("get_logs");
-  const data = (res && (res.data || res)) || null;
-  if (!res || res.error) { container.innerHTML = `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`; return; }
-  if (!data || data.length === 0) { container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات نشاط</div>`; return; }
+let __activityLogsCache = [];
 
-  container.innerHTML = "";  
-  data.forEach(log => {  
-      let color = "text-purple-400";   
-      let icon = "📋";  
-        
-      if (log.type === "USER" || log.type === "AUTH") { color = "text-blue-400"; icon = "👤"; }  
-      else if (log.type === "VIP") { color = "text-yellow-400"; icon = "👑"; }  
-      else if (log.type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }  
-      else if (log.type === "ORDER") { color = "text-emerald-400"; icon = "📦"; }  
-      else if (log.type === "TOPUP" || log.type === "GAME") { color = "text-indigo-400"; icon = "🎮"; }  
-      else if (log.type === "PAYMENT") { color = "text-amber-400"; icon = "💳"; }  
-      else if (log.type === "NAVIGATION") { color = "text-gray-400"; icon = "🧭"; }  
-      else if (log.type === "AI") { color = "text-pink-400"; icon = "🤖"; }  
-
-      let actionName = log.action;  
-      const actionTranslations = {  
-          "APP_OPENED": "فتح التطبيق",  
-          "USER_LOGOUT": "تسجيل خروج",  
-          "SECTION_VIEWED": "تصفح قسم",  
-          "SERVICE_SELECTED": "تحديد خدمة",  
-          "GAME_VIEWED": "مشاهدة لعبة",  
-          "GAME_TOPUP_COMPLETED": "نجاح شحن اللعبة",  
-          "GAME_TOPUP_FAILED": "فشل شحن اللعبة",  
-          "ORDER_COMPLETED": "اكتمال طلب",  
-          "ORDER_FAILED": "فشل طلب",  
-          "BALANCE_RECHARGE_INITIATED": "بدء شحن رصيد",  
-          "KEY_ACTIVATED": "تفعيل مفتاح VIP",  
-          "KEY_ACTIVATION_FAILED": "فشل تفعيل مفتاح",  
-          "AI_CHAT_OPENED": "استخدام المساعد الذكي",  
-          "VIP_GRANTED": "منح VIP",  
-          "VIP_REVOKED": "سحب VIP",  
-          "USER_DELETED": "حذف مستخدم",  
-          "USER_BANNED": "حظر مستخدم",  
-          "USER_UNBANNED": "فك حظر مستخدم",  
-          "KEY_CREATED": "إنشاء مفتاح",  
-          "KEY_DELETED": "حذف مفتاح",  
-          "KEYS_DELETED": "حذف عدة مفاتيح"  
-      };  
-      if (actionTranslations[log.action]) {  
-          actionName = actionTranslations[log.action];  
-      }  
-
-      let displayHtml = "";  
-      let isJsonParsed = false;  
-
-      try {  
-          if (log.details && (log.details.startsWith("{") || log.details.startsWith("["))) {  
-              const parsed = JSON.parse(log.details);  
-              isJsonParsed = true;  
-
-              const username = parsed.username && parsed.username !== "Unknown" ? parsed.username : (log.device_id || "مستخدم");  
-              const service = parsed.service && parsed.service !== "N/A" ? `<span class="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.service}</span>` : "";  
-              const amount = parsed.amount > 0 ? `<span class="bg-green-500/20 text-green-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.amount} ${parsed.currency || ''}</span>` : "";  
-              const msg = parsed.message ? parsed.message : "";  
-
-              displayHtml = `  
-                  <div class="flex flex-wrap items-center gap-1 text-xs text-gray-300 mt-1">  
-                      <span class="text-white font-bold">${username}</span>:   
-                      <span>${msg}</span>  
-                      ${service}  
-                      ${amount}  
-                  </div>  
-              `;  
-          }  
-      } catch (e) {  
-          isJsonParsed = false;  
-      }  
-
-      if (!isJsonParsed) {  
-          displayHtml = `<div class="text-white text-xs mt-1">${log.details || "--"}</div>`;  
-      }  
-
-      container.innerHTML += `  
-          <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">  
-              <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${log.id}">  
-              <div class="flex-1 flex justify-between items-start">  
-                  <div class="text-right">  
-                      <div class="${color} font-bold text-sm flex items-center gap-2">  
-                          <span>${icon}</span>  
-                          <span>${actionName}</span>  
-                          ${log.device_id ? `<span class="text-[10px] text-gray-500 font-mono">(${log.device_id})</span>` : ''}  
-                      </div>  
-                      ${displayHtml}  
-                  </div>  
-                  <div class="flex items-center gap-3">  
-                      <span class="text-xs text-gray-400">🕒 ${formatDate(log.created_at)}</span>  
-                      <button onclick="deleteActivityLog('${log.id}')" class="text-red-500 hover:text-red-400 transition text-lg" title="حذف السجل">🗑️</button>  
-                  </div>  
-              </div>  
-          </div>  
-      `;  
-  });
+function activityLogMeta(log) {
+  const map = {
+    USER: ['👤','text-blue-400'], AUTH: ['🔐','text-blue-300'], VIP: ['👑','text-yellow-400'],
+    KEY: ['🔑','text-cyan-400'], ORDER: ['📦','text-emerald-400'], TOPUP: ['💰','text-indigo-400'],
+    GAME: ['🎮','text-indigo-400'], PAYMENT: ['💳','text-amber-400'], NAVIGATION: ['🧭','text-gray-400'], AI: ['🤖','text-pink-400']
+  };
+  return map[log.type] || ['📋','text-purple-400'];
 }
+
+function translateActivityAction(action) {
+  const map = {
+    APP_OPENED:'فتح التطبيق', USER_LOGOUT:'تسجيل خروج', SECTION_VIEWED:'تصفح قسم', SERVICE_SELECTED:'تحديد خدمة',
+    GAME_VIEWED:'مشاهدة لعبة', GAME_TOPUP_COMPLETED:'نجاح شحن اللعبة', GAME_TOPUP_FAILED:'فشل شحن اللعبة',
+    ORDER_COMPLETED:'اكتمال طلب', ORDER_FAILED:'فشل طلب', BALANCE_RECHARGE_INITIATED:'بدء شحن رصيد',
+    KEY_ACTIVATED:'تفعيل مفتاح VIP', KEY_ACTIVATION_FAILED:'فشل تفعيل مفتاح', AI_CHAT_OPENED:'استخدام المساعد الذكي',
+    VIP_GRANTED:'منح VIP', VIP_REVOKED:'سحب VIP', USER_DELETED:'حذف مستخدم', USER_BANNED:'حظر مستخدم',
+    USER_UNBANNED:'فك حظر مستخدم', KEY_CREATED:'إنشاء مفتاح', KEY_DELETED:'حذف مفتاح', KEYS_DELETED:'حذف عدة مفاتيح',
+    BALANCE_UPDATED:'تعديل الرصيد', ADMIN_BALANCE_ADJUSTED:'تعديل إداري للرصيد'
+  };
+  return map[action] || action || 'نشاط';
+}
+
+function activityDetailsText(log) {
+  let details = log.details || '--';
+  try {
+    if (typeof details === 'string' && (details.trim().startsWith('{') || details.trim().startsWith('['))) {
+      const p = JSON.parse(details);
+      const parts = [];
+      if (p.username && p.username !== 'Unknown') parts.push(p.username);
+      if (p.message) parts.push(p.message);
+      if (p.service && p.service !== 'N/A') parts.push(p.service);
+      if (p.amount != null && Number(p.amount) !== 0) parts.push(`${p.amount} ${p.currency || ''}`.trim());
+      details = parts.join(' · ') || 'بيانات العملية متوفرة';
+    }
+  } catch (_) {}
+  return String(details).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function renderActivityLogs() {
+  const container = document.getElementById('activityLogs');
+  if (!container) return;
+  const q = String(document.getElementById('activityLogSearch')?.value || '').trim().toLowerCase();
+  const type = document.getElementById('activityLogType')?.value || 'all';
+  const period = document.getElementById('activityLogPeriod')?.value || 'all';
+  const sort = document.getElementById('activityLogSort')?.value || 'newest';
+  const now = Date.now();
+
+  let rows = __activityLogsCache.filter(log => {
+    if (type !== 'all' && String(log.type || '').toUpperCase() !== type) return false;
+    if (period !== 'all') {
+      const d = new Date(log.created_at).getTime();
+      const days = period === 'today' ? 1 : Number(period);
+      if (!Number.isFinite(d) || d < now - days * 86400000) return false;
+    }
+    if (q) {
+      const hay = `${log.device_id || ''} ${log.type || ''} ${log.action || ''} ${log.details || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  rows.sort((a,b) => {
+    const av = new Date(a.created_at).getTime() || 0, bv = new Date(b.created_at).getTime() || 0;
+    return sort === 'oldest' ? av - bv : bv - av;
+  });
+
+  const count = document.getElementById('activityLogCount');
+  if (count) count.textContent = `${rows.length} سجل`;
+  if (!rows.length) {
+    container.innerHTML = '<div class="text-center text-gray-500 py-7 text-xs">لا توجد سجلات مطابقة</div>';
+    return;
+  }
+
+  container.innerHTML = rows.map(log => {
+    const [icon, color] = activityLogMeta(log);
+    const action = translateActivityAction(log.action);
+    const details = activityDetailsText(log);
+    const device = log.device_id ? String(log.device_id) : 'غير محدد';
+    return `
+      <div class="px-3 py-2 hover:bg-white/[0.025] transition group">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <input type="checkbox" class="log-checkbox w-3.5 h-3.5 accent-purple-600 shrink-0" data-id="${log.id}">
+          <div class="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0 text-sm">${icon}</div>
+          <div class="min-w-0 flex-1 text-right">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="${color} font-bold text-[11px] shrink-0">${action}</span>
+              <span class="text-gray-500 text-[9px] truncate">${details}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-0.5 text-[8px] text-gray-600">
+              <span class="font-mono truncate max-w-[220px]">${device}</span>
+              <span>•</span><span>${formatDate(log.created_at)}</span>
+            </div>
+          </div>
+          <button onclick="deleteActivityLog('${log.id}')" class="opacity-60 group-hover:opacity-100 text-red-500 hover:text-red-400 text-sm px-1" title="حذف">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadActivityLogs() {
+  const container = document.getElementById('activityLogs');
+  if (!container) return;
+  container.innerHTML = '<div class="text-center text-gray-500 py-6 text-xs">⏳ جاري تحميل السجلات...</div>';
+  const res = await api('get_logs');
+  const data = (res && (res.data || res)) || null;
+  if (!res || res.error) {
+    container.innerHTML = '<div class="text-red-400 text-center py-6 text-xs">فشل تحميل السجلات</div>';
+    return;
+  }
+  __activityLogsCache = Array.isArray(data) ? data : [];
+  renderActivityLogs();
+}
+
+['activityLogSearch','activityLogType','activityLogPeriod','activityLogSort'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', renderActivityLogs);
+  document.getElementById(id)?.addEventListener('change', renderActivityLogs);
+});
+document.getElementById('btnClearActivityFilters')?.addEventListener('click', () => {
+  ['activityLogSearch','activityLogType','activityLogPeriod','activityLogSort'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.value = id === 'activityLogSort' ? 'newest' : 'all';
+  });
+  renderActivityLogs();
+});
 
 async function deleteActivityLog(id) {
   if (!confirm("حذف هذا السجل؟")) return;

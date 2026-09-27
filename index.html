@@ -309,16 +309,16 @@
                 </section>
 
                 <!-- قسم المستخدمين -->
-                <section id="users-section" class="tab-content hidden space-y-5">
+                <section id="users-section" class="tab-content hidden space-y-3">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">إجمالي المستخدمين</div><div id="usersMgmtTotal" class="text-white text-xl font-black mt-1">0</div></div>
-                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">متصلون الآن</div><div id="usersMgmtOnline" class="text-green-400 text-xl font-black mt-1">0</div></div>
-                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">VIP نشط</div><div id="usersMgmtVip" class="text-yellow-400 text-xl font-black mt-1">0</div></div>
-                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">محظورون</div><div id="usersMgmtBanned" class="text-red-400 text-xl font-black mt-1">0</div></div>
+                        <div class="glass-card rounded-xl border border-white/5 p-3"><div class="text-gray-500 text-[9px]">إجمالي المستخدمين</div><div id="usersMgmtTotal" class="text-white text-lg font-black mt-0.5">0</div></div>
+                        <div class="glass-card rounded-xl border border-white/5 p-3"><div class="text-gray-500 text-[9px]">متصلون الآن</div><div id="usersMgmtOnline" class="text-green-400 text-lg font-black mt-0.5">0</div></div>
+                        <div class="glass-card rounded-xl border border-white/5 p-3"><div class="text-gray-500 text-[9px]">VIP نشط</div><div id="usersMgmtVip" class="text-yellow-400 text-lg font-black mt-0.5">0</div></div>
+                        <div class="glass-card rounded-xl border border-white/5 p-3"><div class="text-gray-500 text-[9px]">محظورون</div><div id="usersMgmtBanned" class="text-red-400 text-lg font-black mt-0.5">0</div></div>
                     </div>
 
-                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
-                        <div class="p-4 md:p-5 border-b border-white/5 space-y-3">
+                    <div class="glass-card rounded-xl border border-white/5 overflow-hidden">
+                        <div class="p-3 border-b border-white/5 space-y-2">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <h4 class="text-white font-bold text-sm">👥 إدارة المستخدمين</h4>
@@ -329,15 +329,15 @@
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
                                 <div class="md:col-span-6 relative">
                                     <span class="absolute right-3 top-2.5 text-gray-500">⌕</span>
-                                    <input id="usersManagementSearch" class="w-full bg-[#161b26] border border-white/10 rounded-xl pr-9 pl-3 py-2.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="اسم المستخدم / الإيميل / Device ID / الدولة">
+                                    <input id="usersManagementSearch" class="w-full bg-[#161b26] border border-white/10 rounded-lg pr-9 pl-3 py-2 text-white text-[11px] focus:outline-none focus:border-purple-500" placeholder="اسم المستخدم / الإيميل / Device ID / الدولة">
                                 </div>
-                                <select id="usersManagementStatus" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-xl px-3 py-2.5 text-gray-200 text-xs focus:outline-none">
+                                <select id="usersManagementStatus" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-lg px-2.5 py-2 text-gray-200 text-[11px] focus:outline-none">
                                     <option value="all">كل الحالات</option><option value="online">متصل الآن</option><option value="offline">غير متصل</option><option value="banned">محظور</option>
                                 </select>
-                                <select id="usersManagementType" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-xl px-3 py-2.5 text-gray-200 text-xs focus:outline-none">
+                                <select id="usersManagementType" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-lg px-2.5 py-2 text-gray-200 text-[11px] focus:outline-none">
                                     <option value="all">كل الأنواع</option><option value="vip">VIP</option><option value="free">FREE</option>
                                 </select>
-                                <select id="usersManagementSort" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-xl px-3 py-2.5 text-gray-200 text-xs focus:outline-none">
+                                <select id="usersManagementSort" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-lg px-2.5 py-2 text-gray-200 text-[11px] focus:outline-none">
                                     <option value="latest">الأحدث اتصالاً</option><option value="oldest">الأقدم اتصالاً</option><option value="vip">VIP أولاً</option><option value="name">حسب الاسم</option>
                                 </select>
                             </div>
@@ -624,18 +624,41 @@
                 </section>
 
                 <!-- قسم سجل النشاط -->
-                <section id="logs-section" class="tab-content hidden space-y-6">
-                    <div class="glass-card p-6 rounded-2xl border border-white/5">
-                        <div class="flex justify-between items-center mb-6">
-                            <h4 class="text-white font-bold text-sm">سجل نشاطات المشرفين والأجهزة</h4>
-                            <div class="flex gap-2">
-                                <button id="btnRefreshActivity" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
-                                <button id="btnSelectAllLogs" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">☑ تحديد الكل</button>
-                                <button id="btnDeleteSelectedLogs" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 rounded-xl text-xs">🗑 حذف المحدد</button>
+                <section id="logs-section" class="tab-content hidden space-y-3">
+                    <div class="glass-card rounded-xl border border-white/5 overflow-hidden">
+                        <div class="p-3 border-b border-white/5">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <h4 class="text-white font-bold text-sm">🧾 سجل النشاط</h4>
+                                    <p class="text-gray-500 text-[9px] mt-0.5">مراقبة نشاط المستخدمين والمشرفين والعمليات الإدارية.</p>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span id="activityLogCount" class="bg-white/5 text-gray-400 px-2 py-1 rounded-lg text-[9px]">0 سجل</span>
+                                    <button id="btnRefreshActivity" class="bg-white/5 hover:bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px]">🔄 تحديث</button>
+                                    <button id="btnSelectAllLogs" class="bg-white/5 hover:bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px]">☑ الكل</button>
+                                    <button id="btnDeleteSelectedLogs" class="bg-red-500/15 hover:bg-red-500/25 text-red-400 px-2.5 py-1.5 rounded-lg text-[10px]">🗑 حذف</button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-1.5 mt-2">
+                                <div class="md:col-span-5 relative">
+                                    <span class="absolute right-2.5 top-2 text-gray-500 text-xs">⌕</span>
+                                    <input id="activityLogSearch" class="w-full bg-[#161b26] border border-white/10 rounded-lg pr-8 pl-2.5 py-2 text-white text-[10px] focus:outline-none focus:border-purple-500" placeholder="بحث في المستخدم، الجهاز، العملية أو التفاصيل">
+                                </div>
+                                <select id="activityLogType" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-lg px-2 py-2 text-gray-200 text-[10px] focus:outline-none">
+                                    <option value="all">كل الأنواع</option>
+                                    <option value="USER">المستخدمون</option><option value="AUTH">الدخول</option><option value="VIP">VIP</option><option value="KEY">المفاتيح</option><option value="ORDER">الطلبات</option><option value="TOPUP">الشحن</option><option value="PAYMENT">الدفع</option><option value="NAVIGATION">التنقل</option><option value="AI">المساعد</option>
+                                </select>
+                                <select id="activityLogPeriod" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-lg px-2 py-2 text-gray-200 text-[10px] focus:outline-none">
+                                    <option value="all">كل الفترات</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option>
+                                </select>
+                                <select id="activityLogSort" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-lg px-2 py-2 text-gray-200 text-[10px] focus:outline-none">
+                                    <option value="newest">الأحدث</option><option value="oldest">الأقدم</option>
+                                </select>
+                                <button id="btnClearActivityFilters" class="md:col-span-1 bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg text-[10px] px-2 py-2">مسح</button>
                             </div>
                         </div>
-                        <div id="activityLogs" class="space-y-3">
-                            <div class="text-center text-gray-500 py-8">جاري تحميل السجلات...</div>
+                        <div id="activityLogs" class="divide-y divide-white/5">
+                            <div class="text-center text-gray-500 py-6 text-xs">جاري تحميل السجلات...</div>
                         </div>
                     </div>
                 </section>
