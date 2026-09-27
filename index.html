@@ -225,87 +225,45 @@
 
                 <!-- قسم الرئيسية -->
                 <section id="home-section" class="tab-content space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <div class="flex justify-between items-start">
-                                <div><p class="text-gray-400 text-xs">إجمالي الأجهزة</p><h4 id="usersCount" class="text-2xl font-black text-white mt-1">0</h4></div>
-                                <div class="p-2.5 rounded-xl bg-purple-500/10 text-purple-400"><i data-lucide="users" class="w-5 h-5"></i></div>
+                    <div class="relative overflow-hidden rounded-3xl border border-purple-500/20 bg-gradient-to-br from-[#17132b] via-[#111827] to-[#0b0f19] p-6 md:p-8 shadow-2xl">
+                        <div class="absolute -top-24 -left-24 w-64 h-64 bg-purple-600/15 rounded-full blur-3xl"></div>
+                        <div class="absolute -bottom-32 right-10 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl"></div>
+                        <div class="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                            <div>
+                                <div class="flex items-center gap-2 mb-3"><span class="px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold">● النظام يعمل</span><span id="homeLastRefresh" class="text-[10px] text-gray-500">آخر تحديث: --</span></div>
+                                <h1 class="text-2xl md:text-3xl font-black text-white leading-tight">مرحباً بك في <span class="text-purple-400">KING-DZ</span> 👑</h1>
+                                <p class="text-gray-400 text-xs md:text-sm mt-2 max-w-2xl">مركز قيادة موحّد لمراقبة المستخدمين، الأرصدة، الصفقات، السحوبات والنزاعات من مكان واحد.</p>
                             </div>
+                            <div class="flex gap-2 shrink-0"><button id="homeRefreshBtn" class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-900/30">🔄 تحديث الكل</button><button data-quick-target="quick-actions-section" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-bold">⚡ الإجراءات</button></div>
                         </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <div class="flex justify-between items-start">
-                                <div><p class="text-gray-400 text-xs">المتصلون الآن</p><h4 id="onlineUsers" class="text-2xl font-black text-green-400 mt-1">0</h4></div>
-                                <div class="p-2.5 rounded-xl bg-green-500/10 text-green-400"><i data-lucide="wifi" class="w-5 h-5"></i></div>
-                            </div>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <div class="flex justify-between items-start">
-                                <div><p class="text-gray-400 text-xs">مشتركو VIP</p><h4 id="vipCount" class="text-2xl font-black text-yellow-400 mt-1">0</h4></div>
-                                <div class="p-2.5 rounded-xl bg-yellow-500/10 text-yellow-400"><i data-lucide="crown" class="w-5 h-5"></i></div>
-                            </div>
-                        </div>
-                        <div class="glass-card p-5 rounded-2xl border border-white/5">
-                            <div class="flex justify-between items-start">
-                                <div><p class="text-gray-400 text-xs">المفاتيح المتاحة</p><h4 id="keysCount" class="text-2xl font-black text-cyan-400 mt-1">0</h4></div>
-                                <div class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400"><i data-lucide="key" class="w-5 h-5"></i></div>
-                            </div>
+                        <div class="relative grid grid-cols-2 lg:grid-cols-4 gap-3 mt-7">
+                            <button data-quick-target="users-section" class="text-right rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/5 p-4 transition"><div class="text-[10px] text-gray-500">المستخدمون</div><div id="homeMiniUsers" class="text-xl font-black text-white mt-1">0</div><div class="text-[10px] text-purple-400 mt-1">إدارة الحسابات ←</div></button>
+                            <button data-quick-target="balance-section" class="text-right rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/5 p-4 transition"><div class="text-[10px] text-gray-500">حالة الأرصدة</div><div id="homeMiniOnline" class="text-xl font-black text-green-400 mt-1">0</div><div class="text-[10px] text-green-400 mt-1">متصلون الآن</div></button>
+                            <button data-quick-target="deals-section" class="text-right rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/5 p-4 transition"><div class="text-[10px] text-gray-500">المفاتيح الجديدة</div><div id="homeMiniKeys" class="text-xl font-black text-cyan-400 mt-1">0</div><div class="text-[10px] text-cyan-400 mt-1">جاهزة للاستخدام</div></button>
+                            <button data-quick-target="mediation-section" class="text-right rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/5 p-4 transition"><div class="text-[10px] text-gray-500">VIP</div><div id="homeMiniVip" class="text-xl font-black text-yellow-400 mt-1">0</div><div class="text-[10px] text-yellow-400 mt-1">مشترك VIP</div></button>
                         </div>
                     </div>
 
-                    <!-- الرسم البياني والنشاطات -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="glass-card p-6 rounded-2xl lg:col-span-2 border border-white/5">
-                            <h4 class="text-white font-bold mb-4 text-sm">نشاط الاتصال الأسبوعي</h4>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <button data-quick-target="withdrawals-section" class="glass-card rounded-2xl p-5 text-right hover:border-amber-500/30 transition group"><div class="flex justify-between items-start"><span class="text-2xl">💸</span><span class="text-gray-600 group-hover:text-amber-400">←</span></div><div class="text-white font-bold mt-4">طلبات السحب</div><p class="text-gray-500 text-[10px] mt-1">راجع الطلبات والمدفوعات والحالات المعلقة.</p><div class="text-amber-400 text-xs font-bold mt-4">فتح القسم</div></button>
+                        <button data-quick-target="mediation-section" class="glass-card rounded-2xl p-5 text-right hover:border-orange-500/30 transition group"><div class="flex justify-between items-start"><span class="text-2xl">⚠️</span><span class="text-gray-600 group-hover:text-orange-400">←</span></div><div class="text-white font-bold mt-4">النزاعات</div><p class="text-gray-500 text-[10px] mt-1">مراجعة الأدلة وتحليل الصفقات التي تحتاج تدخلاً.</p><div class="text-orange-400 text-xs font-bold mt-4">مراجعة النزاعات</div></button>
+                        <button data-quick-target="logs-section" class="glass-card rounded-2xl p-5 text-right hover:border-purple-500/30 transition group"><div class="flex justify-between items-start"><span class="text-2xl">📋</span><span class="text-gray-600 group-hover:text-purple-400">←</span></div><div class="text-white font-bold mt-4">آخر النشاطات</div><p class="text-gray-500 text-[10px] mt-1">تتبع العمليات والتغييرات داخل النظام.</p><div class="text-purple-400 text-xs font-bold mt-4">فتح Audit Log</div></button>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div class="glass-card p-6 rounded-2xl xl:col-span-2 border border-white/5">
+                            <div class="flex items-center justify-between mb-4"><div><h4 class="text-white font-bold text-sm">📈 نشاط الاتصال الأسبوعي</h4><p class="text-gray-500 text-[10px] mt-1">مؤشر سريع على نشاط الأجهزة خلال الأسبوع.</p></div><span class="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-300 text-[10px]">Live</span></div>
                             <div class="h-64"><canvas id="statsChart"></canvas></div>
                         </div>
                         <div class="glass-card p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
-                            <div>
-                                <h4 class="text-white font-bold mb-4 text-sm">إحصائيات الأجهزة</h4>
-                                <div class="flex justify-center items-center my-4 h-40"><canvas id="deviceChart"></canvas></div>
-                                <div id="deviceStatsList" class="space-y-2 mt-4 max-h-32 overflow-y-auto"></div>
-                            </div>
-                            <div class="mt-4 pt-4 border-t border-white/5 text-center text-xs text-gray-400">إجمالي الأجهزة المحللة: <span id="totalDeviceCount" class="text-white font-bold">0</span></div>
+                            <div><div class="flex items-center justify-between"><h4 class="text-white font-bold text-sm">📱 توزيع الأجهزة</h4><span id="totalDeviceCount" class="text-purple-400 text-xs font-bold">0</span></div><div class="flex justify-center items-center my-4 h-40"><canvas id="deviceChart"></canvas></div><div id="deviceStatsList" class="space-y-2 mt-4 max-h-32 overflow-y-auto"></div></div>
+                            <div class="mt-4 pt-4 border-t border-white/5 text-center text-[10px] text-gray-500">إجمالي الأجهزة المحللة</div>
                         </div>
                     </div>
 
-                    <!-- جدول آخر الأجهزة المتصلة -->
                     <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
-                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
-                            <h4 class="text-white font-bold text-sm">آخر الأجهزة المسجلة</h4>
-                        </div>
-                        <div class="p-4 border-b border-white/5 grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <input id="withdrawSearch" type="search" placeholder="🔎 بحث: رقم الطلب، المستخدم، الاسم، الهاتف، البريد أو حساب الدفع" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
-                            <select id="withdrawStatusFilter" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
-                                <option value="all">كل الحالات</option>
-                                <option value="pending">قيد المراجعة</option>
-                                <option value="processing">قيد التنفيذ</option>
-                                <option value="paid">تم الدفع</option>
-                                <option value="rejected">مرفوض</option>
-                            </select>
-                            <select id="withdrawSort" class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
-                                <option value="newest">الأحدث أولاً</option>
-                                <option value="oldest">الأقدم أولاً</option>
-                                <option value="amount_desc">المبلغ: الأعلى أولاً</option>
-                                <option value="amount_asc">المبلغ: الأقل أولاً</option>
-                            </select>
-                            <button id="btnClearWithdrawalFilters" class="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-2 rounded-xl text-xs">✕ مسح الفلاتر</button>
-                        </div>
-                        <div class="px-4 py-2 text-[10px] text-gray-500" id="withdrawResultsInfo"></div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right text-xs">
-                                <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
-                                    <tr>
-                                        <th class="p-3 pr-4">معرف الجهاز</th>
-                                        <th class="p-3">الدولة</th>
-                                        <th class="p-3">الموديل</th>
-                                        <th class="p-3">النوع</th>
-                                        <th class="p-3">الحالة</th>
-                                        <th class="p-3 text-center pl-4">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="usersTable" class="divide-y divide-white/5"></tbody>
-                            </table>
-                        </div>
+                        <div class="p-5 border-b border-white/5 flex flex-wrap items-center justify-between gap-3"><div><h4 class="text-white font-bold text-sm">👥 آخر الأجهزة المسجلة</h4><p class="text-gray-500 text-[10px] mt-1">أحدث الحسابات التي تظهر في لوحة المراقبة.</p></div><button data-quick-target="users-section" class="text-xs text-purple-400 hover:text-purple-300 font-bold">عرض الكل ←</button></div>
+                        <div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-white/[0.02] text-gray-400 border-b border-white/5"><tr><th class="p-3 pr-4">معرف الجهاز</th><th class="p-3">الدولة</th><th class="p-3">الموديل</th><th class="p-3">النوع</th><th class="p-3">الحالة</th><th class="p-3 text-center pl-4">الإجراءات</th></tr></thead><tbody id="usersTable" class="divide-y divide-white/5"></tbody></table></div>
                     </div>
                 </section>
 
@@ -595,46 +553,16 @@
                     </div>
                 </section>
 
-                <!-- قسم سجل النشاط / Audit Log -->
+                <!-- قسم سجل النشاط -->
                 <section id="logs-section" class="tab-content hidden space-y-6">
                     <div class="glass-card p-6 rounded-2xl border border-white/5">
-                        <div class="flex flex-wrap gap-3 justify-between items-center mb-5">
-                            <div>
-                                <h4 class="text-white font-bold text-sm">📋 سجل النشاط الموحّد</h4>
-                                <p class="text-gray-500 text-[11px] mt-1">تتبع عمليات المشرفين والأجهزة والتغييرات الإدارية.</p>
-                            </div>
-                            <div class="flex flex-wrap gap-2 items-center">
-                                <button id="btnClearLogsFilters" class="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-xl text-xs">✕ مسح</button>
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="text-white font-bold text-sm">سجل نشاطات المشرفين والأجهزة</h4>
+                            <div class="flex gap-2">
                                 <button id="btnRefreshActivity" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
                                 <button id="btnSelectAllLogs" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">☑ تحديد الكل</button>
                                 <button id="btnDeleteSelectedLogs" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 rounded-xl text-xs">🗑 حذف المحدد</button>
                             </div>
-                        </div>
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            <input id="logsSearchInput" type="text" placeholder="بحث بالإجراء أو المستخدم أو الجهاز..." class="bg-black/20 border border-white/10 text-gray-300 placeholder-gray-600 rounded-xl px-3 py-2 text-xs outline-none flex-1 min-w-[220px]">
-                            <select id="logsTypeFilter" class="bg-black/20 border border-white/10 text-gray-300 rounded-xl px-3 py-2 text-xs outline-none">
-                                <option value="all">كل الأنواع</option>
-                                <option value="USER">مستخدم</option>
-                                <option value="AUTH">مصادقة</option>
-                                <option value="VIP">VIP</option>
-                                <option value="KEY">مفاتيح</option>
-                                <option value="ORDER">صفقات/طلبات</option>
-                                <option value="TOPUP">شحن</option>
-                                <option value="PAYMENT">دفع</option>
-                                <option value="AI">مساعد ذكي</option>
-                                <option value="NAVIGATION">تنقل</option>
-                            </select>
-                            <select id="logsSortFilter" class="bg-black/20 border border-white/10 text-gray-300 rounded-xl px-3 py-2 text-xs outline-none">
-                                <option value="newest">الأحدث أولاً</option>
-                                <option value="oldest">الأقدم أولاً</option>
-                            </select>
-                            <span id="logsResultCount" class="text-[10px] text-gray-500 px-2 py-2">0 سجل</span>
-                        </div>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                            <div id="logsStatTotal" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
-                            <div id="logsStatToday" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
-                            <div id="logsStatUsers" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
-                            <div id="logsStatAdmin" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
                         </div>
                         <div id="activityLogs" class="space-y-3">
                             <div class="text-center text-gray-500 py-8">جاري تحميل السجلات...</div>
@@ -661,14 +589,6 @@
                                         <option value="expired">منتهية</option>
                                     </select>
                                     <input id="dealsSearchInput" type="text" placeholder="بحث بالرقم أو الكود أو المستخدم..." class="bg-black/20 border border-white/10 text-gray-300 placeholder-gray-600 rounded-xl px-3 py-1.5 text-xs outline-none w-56">
-                                    <select id="dealsSortFilter" class="bg-black/20 border border-white/10 text-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none">
-                                        <option value="newest">الأحدث أولاً</option>
-                                        <option value="oldest">الأقدم أولاً</option>
-                                        <option value="amount_desc">الأعلى مبلغاً</option>
-                                        <option value="amount_asc">الأقل مبلغاً</option>
-                                    </select>
-                                    <span id="dealsResultCount" class="text-[10px] text-gray-500 px-2">0 نتيجة</span>
-                                    <button id="btnClearDealsFilters" class="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-xl text-xs">✕ مسح</button>
                                     <button id="btnSelectAllDeals" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">☑ تحديد الكل</button>
                                     <button id="btnDeleteSelectedDeals" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-3 py-1.5 rounded-xl text-xs">🗑 حذف المحدد</button>
                                     <button id="btnRefreshDeals" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
@@ -709,32 +629,12 @@
                 <!-- قسم نزاعات الوساطة -->
                 <section id="mediation-section" class="tab-content hidden space-y-6">
                     <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
-                        <div class="p-5 border-b border-white/5">
-                            <div class="flex flex-wrap gap-3 justify-between items-center">
-                                <div>
-                                    <h4 class="text-white font-bold text-sm">⚠️ نزاعات الوساطة</h4>
-                                    <p class="text-gray-500 text-[11px] mt-1">الصفقات التي تحتاج مراجعة المشرف</p>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button id="btnClearMediationFilters" class="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-xl text-xs">✕ مسح</button>
-                                    <button id="btnRefreshMediation" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
-                                </div>
+                        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+                            <div>
+                                <h4 class="text-white font-bold text-sm">نزاعات الوساطة</h4>
+                                <p class="text-gray-500 text-[11px] mt-1">الصفقات التي تحتاج مراجعة المشرف</p>
                             </div>
-                        </div>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-white/5">
-                            <div id="mediationStatTotal" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
-                            <div id="mediationStatDispute" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
-                            <div id="mediationStatResolved" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
-                            <div id="mediationStatAmount" class="bg-black/20 rounded-xl p-3 border border-white/5"></div>
-                        </div>
-                        <div class="p-4 border-b border-white/5 grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <input id="mediationSearchInput" type="search" placeholder="🔎 بحث بالرقم أو الكود أو المستخدم..." class="w-full bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
-                            <select id="mediationStatusFilter" class="bg-black/20 border border-white/10 text-white rounded-xl px-3 py-2 text-xs outline-none">
-                                <option value="all">كل الحالات</option>
-                                <option value="dispute">قيد النزاع</option>
-                                <option value="resolved">تم الفصل</option>
-                            </select>
-                            <div id="mediationResultCount" class="flex items-center justify-center bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-gray-400 text-xs">0 نتيجة</div>
+                            <button id="btnRefreshMediation" class="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-xl text-xs">🔄 تحديث</button>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-right text-xs">
@@ -764,7 +664,7 @@
                                 <h4 class="text-white font-bold text-sm">تحليل أدلة النزاع</h4>
                                 <p id="mediationAnalysisDeal" class="text-gray-500 text-[11px] mt-1"></p>
                             </div>
-                            <button id="btnCloseMediationAnalysis" class="bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl text-xs">↩️ رجوع</button>
+                            <button id="btnCloseMediationAnalysis" class="text-gray-400 hover:text-white text-lg">✕</button>
                         </div>
                         <div id="mediationAnalysisContent" class="p-6 space-y-6">
                             <div class="text-center text-gray-500 py-8">اختر صفقة لتحليل أدلتها</div>
@@ -777,7 +677,7 @@
                                 <h4 class="text-white font-bold text-sm">ملف أدلة النزاع</h4>
                                 <p id="mediationEvidenceDeal" class="text-gray-500 text-[11px] mt-1"></p>
                             </div>
-                            <button id="btnCloseMediationEvidence" class="bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl text-xs">↩️ رجوع</button>
+                            <button id="btnCloseMediationEvidence" class="text-gray-400 hover:text-white text-lg">✕</button>
                         </div>
                         <div id="mediationEvidenceContent" class="p-6 space-y-6">
                             <div class="text-center text-gray-500 py-8">اختر صفقة لعرض الأدلة</div>
@@ -832,32 +732,13 @@
                     </div>
 
                     <div id="withdrawalDetailsPanel" class="glass-card rounded-2xl border border-white/5 p-5 hidden">
-                        <div class="flex items-center justify-between mb-4"><div><h4 class="text-white font-bold text-sm">🔐 تفاصيل طلب السحب</h4><p id="withdrawalDetailsSubtitle" class="text-gray-500 text-[11px] mt-1"></p></div><button id="btnCloseWithdrawalDetails" class="bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl text-xs">↩️ رجوع</button></div>
+                        <div class="flex items-center justify-between mb-4"><div><h4 class="text-white font-bold text-sm">🔐 تفاصيل طلب السحب</h4><p id="withdrawalDetailsSubtitle" class="text-gray-500 text-[11px] mt-1"></p></div><button id="btnCloseWithdrawalDetails" class="text-gray-400 hover:text-white text-lg">✕</button></div>
                         <div id="withdrawalDetailsContent" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
                     </div>
                 </section>
 
                 <!-- قسم الإعدادات -->
                 <section id="settings-section" class="tab-content hidden space-y-6">
-                    <div class="glass-card p-5 rounded-2xl border border-green-500/10 max-w-2xl">
-                        <div class="flex items-center justify-between gap-4">
-                            <div>
-                                <h4 class="text-white font-bold text-sm">🔐 أمان لوحة التحكم</h4>
-                                <p class="text-gray-500 text-[10px] mt-1">العمليات الحساسة تطلب رمز أمان إضافي قبل إرسالها للسيرفر.</p>
-                            </div>
-                            <div id="securitySessionStatus" class="text-[10px] whitespace-nowrap">جاري التحقق...</div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
-                                <div class="text-gray-500 text-[9px]">المصادقة</div>
-                                <div class="text-gray-200 text-xs font-bold mt-1">Supabase Auth + تحقق ثنائي</div>
-                            </div>
-                            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
-                                <div class="text-gray-500 text-[9px]">العمليات الحساسة</div>
-                                <div class="text-purple-300 text-xs font-bold mt-1">رمز أمان إضافي</div>
-                            </div>
-                        </div>
-                    </div>
                     <div class="glass-card p-6 rounded-2xl border border-white/5 space-y-6 max-w-2xl">
                         <h4 class="text-white font-bold text-sm">إعدادات التطبيق العامة</h4>
                         <div class="space-y-4">

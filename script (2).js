@@ -9,9 +9,7 @@ const KINGDZ_SENSITIVE_ACTIONS = new Set([
   "zero_user_balance", "reset_user_balance", "admin_process_withdrawal_request",
   "process_withdrawal_request", "confirm_withdrawal_payment", "pay_withdrawal",
   "resolve_mediation_dispute", "refund_mediation", "release_mediation",
-  "complete_mediation_withdrawal",
-  "delete_user", "delete_key", "create_key", "ban_user", "update_vip",
-  "update_settings", "delete_log"
+  "complete_mediation_withdrawal"
 ]);
 
 let kingdzSecurityPinBusy = false;
@@ -95,7 +93,6 @@ client.auth.onAuthStateChange((event, session) => {
     ADMIN_TOKEN = null;
     localStorage.removeItem("admin_token");
   }
-  updateSecurityStatus?.();
 });
 
 let statsChart = null;
@@ -240,7 +237,6 @@ document.addEventListener("click", async (e) => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-  updateSecurityStatus();
   const loginCard = document.querySelector("#loginPage .glass-card, #loginPage > div");
   if (loginCard && !document.getElementById("forgotPasswordBtn")) {
     const forgotBtn = document.createElement("button");
@@ -277,7 +273,15 @@ async function refreshDashboard() {
            (Date.now() - new Date(u.last_online).getTime()) < 300000;  
   }).length;  
 
-  updateCounter("onlineUsers", onlineCount);  
+  updateCounter("onlineUsers", onlineCount);
+
+  const mini = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = Number(value || 0).toLocaleString(); };
+  mini("homeMiniUsers", uData.length);
+  mini("homeMiniOnline", onlineCount);
+  mini("homeMiniKeys", kData.filter(k => k.status === "new").length);
+  mini("homeMiniVip", uData.filter(u => u.vip === true).length);
+  const refreshEl = document.getElementById("homeLastRefresh");
+  if (refreshEl) refreshEl.textContent = "آخر تحديث: " + new Date().toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" });
 
   renderMainUsersTable(uData);  
   renderAllUsersTable(uData);  
@@ -893,7 +897,6 @@ function renderAllMediationDeals() {
 
   const statusFilter = String(document.getElementById("dealsStatusFilter")?.value || "all").toLowerCase();
   const query = String(document.getElementById("dealsSearchInput")?.value || "").trim().toLowerCase();
-  const sortFilter = String(document.getElementById("dealsSortFilter")?.value || "newest");
 
   const deals = allMediationDealsCache.filter((deal) => {
     const status = String(deal?.status || "").toLowerCase();
@@ -906,20 +909,6 @@ function renderAllMediationDeals() {
     ].map(v => String(v ?? "")).join(" ").toLowerCase();
     return haystack.includes(query);
   });
-
-  deals.sort((a, b) => {
-    if (sortFilter === "amount_desc" || sortFilter === "amount_asc") {
-      const av = Number(a?.amount_usd ?? a?.amount ?? 0);
-      const bv = Number(b?.amount_usd ?? b?.amount ?? 0);
-      return sortFilter === "amount_desc" ? bv - av : av - bv;
-    }
-    const ad = new Date(a?.created_at || a?.updated_at || 0).getTime() || 0;
-    const bd = new Date(b?.created_at || b?.updated_at || 0).getTime() || 0;
-    return sortFilter === "oldest" ? ad - bd : bd - ad;
-  });
-
-  const resultCount = document.getElementById("dealsResultCount");
-  if (resultCount) resultCount.textContent = `${deals.length} / ${allMediationDealsCache.length} نتيجة`;
 
   if (!deals.length) {
     table.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500">لا توجد صفقات مطابقة.</td></tr>`;
@@ -1279,90 +1268,111 @@ if (document.getElementById('btnCloseWithdrawalDetails')) {
 // MEDIATION DISPUTES
 // ============================================================
 
-let allMediationDisputesCache = [];
-
-function mediationStat(label, value, tone = "text-white") {
-  return `<div class="text-gray-500 text-[10px]">${escapeHtml(String(label))}</div><div class="${tone} font-black text-lg mt-1">${escapeHtml(String(value))}</div>`;
-}
-
-function renderMediationDisputes() {
-  const table = document.getElementById("mediationDisputesTable");
-  if (!table) return;
-  const query = String(document.getElementById("mediationSearchInput")?.value || "").trim().toLowerCase();
-  const statusFilter = String(document.getElementById("mediationStatusFilter")?.value || "all").toLowerCase();
-  const deals = allMediationDisputesCache.filter(deal => {
-    const status = String(deal?.status || "dispute").toLowerCase();
-    if (statusFilter !== "all" && status !== statusFilter) return false;
-    if (!query) return true;
-    const haystack = [deal?.id, deal?.deal_id, deal?.code, deal?.deal_code, deal?.buyer_id, deal?.seller_id, deal?.buyer_username, deal?.seller_username]
-      .map(v => String(v ?? "")).join(" ").toLowerCase();
-    return haystack.includes(query);
-  });
-
-  const totalAmount = allMediationDisputesCache.reduce((sum, d) => sum + Number(d?.amount_usd ?? d?.amount ?? 0), 0);
-  const resolved = allMediationDisputesCache.filter(d => String(d?.status || "").toLowerCase() === "resolved").length;
-  const statTotal = document.getElementById("mediationStatTotal");
-  const statDispute = document.getElementById("mediationStatDispute");
-  const statResolved = document.getElementById("mediationStatResolved");
-  const statAmount = document.getElementById("mediationStatAmount");
-  if (statTotal) statTotal.innerHTML = mediationStat("إجمالي النزاعات", allMediationDisputesCache.length);
-  if (statDispute) statDispute.innerHTML = mediationStat("قيد النزاع", allMediationDisputesCache.filter(d => String(d?.status || "dispute").toLowerCase() === "dispute").length, "text-red-400");
-  if (statResolved) statResolved.innerHTML = mediationStat("تم الفصل", resolved, "text-purple-300");
-  if (statAmount) statAmount.innerHTML = mediationStat("إجمالي المبالغ", `$${totalAmount.toFixed(2)}`, "text-yellow-300");
-  const count = document.getElementById("mediationResultCount");
-  if (count) count.textContent = `${deals.length} / ${allMediationDisputesCache.length} نتيجة`;
-
-  if (!deals.length) {
-    table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-gray-500">لا توجد نزاعات مطابقة.</td></tr>`;
-    return;
-  }
-
-  table.innerHTML = deals.map(deal => {
-    const dealId = deal.id ?? deal.deal_id ?? "";
-    const code = deal.code ?? deal.deal_code ?? "—";
-    const amount = deal.amount_usd ?? deal.amount ?? 0;
-    const buyer = deal.buyer_username ?? deal.buyer_id ?? "—";
-    const seller = deal.seller_username ?? deal.seller_id ?? "—";
-    const status = String(deal.status ?? "dispute").toLowerCase();
-    const disputeAt = deal.dispute_opened_at ?? deal.opened_at ?? deal.created_at ?? "";
-    const statusText = status === "resolved" ? "تم الفصل" : status === "dispute" ? "قيد النزاع" : (deal.status || "غير معروف");
-    const statusClass = status === "resolved" ? "bg-purple-500/10 text-purple-300" : "bg-red-500/10 text-red-400";
-    return `<tr class="hover:bg-white/[0.02]">
-      <td class="p-3 text-white font-mono">${escapeHtml(String(dealId))}</td>
-      <td class="p-3 text-purple-400 font-mono">${escapeHtml(String(code))}</td>
-      <td class="p-3 text-white">$${escapeHtml(Number(amount || 0).toFixed(2))}</td>
-      <td class="p-3 text-gray-300">${escapeHtml(String(buyer))}</td>
-      <td class="p-3 text-gray-300">${escapeHtml(String(seller))}</td>
-      <td class="p-3"><span class="px-2 py-1 rounded-lg ${statusClass}">${escapeHtml(statusText)}</span></td>
-      <td class="p-3 text-gray-400">${formatMediationDate(disputeAt)}</td>
-      <td class="p-3 text-center"><button class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg" data-mediation-deal-id="${escapeHtml(String(dealId))}">عرض الأدلة</button></td>
-      <td class="p-3 text-center"><button class="bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 px-3 py-1.5 rounded-lg" data-mediation-analyze-deal-id="${escapeHtml(String(dealId))}">تحليل النزاع</button></td>
-    </tr>`;
-  }).join("");
-
-  table.querySelectorAll("[data-mediation-deal-id]").forEach(button => button.addEventListener("click", () => {
-    const dealId = Number(button.dataset.mediationDealId);
-    if (Number.isInteger(dealId) && dealId > 0) loadMediationEvidence(dealId);
-  }));
-  table.querySelectorAll("[data-mediation-analyze-deal-id]").forEach(button => button.addEventListener("click", () => {
-    const dealId = Number(button.dataset.mediationAnalyzeDealId);
-    if (Number.isInteger(dealId) && dealId > 0) loadMediationAnalysis(dealId);
-  }));
-}
-
 async function loadMediationDisputes() {
   const table = document.getElementById("mediationDisputesTable");
   if (!table) return;
-  table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-gray-500">جاري تحميل نزاعات الوساطة...</td></tr>`;
-  const res = await api("get_mediation_disputes");
-  if (!res || res.error) {
-    allMediationDisputesCache = [];
-    table.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-red-400">تعذر تحميل نزاعات الوساطة</td></tr>`;
-    renderMediationDisputes();
-    return;
-  }
-  allMediationDisputesCache = Array.isArray(res.data) ? res.data : Array.isArray(res.deals) ? res.deals : Array.isArray(res) ? res : [];
-  renderMediationDisputes();
+
+  table.innerHTML = `  
+      <tr>  
+          <td colspan="8" class="p-6 text-center text-gray-500">  
+              جاري تحميل نزاعات الوساطة...  
+          </td>  
+      </tr>  
+  `;  
+
+  const res = await api("get_mediation_disputes");  
+
+  if (!res || res.error) {  
+      table.innerHTML = `  
+          <tr>  
+              <td colspan="9" class="p-6 text-center text-red-400">  
+                  تعذر تحميل نزاعات الوساطة  
+              </td>  
+          </tr>  
+      `;  
+      return;  
+  }  
+
+  const deals = Array.isArray(res.data)  
+      ? res.data  
+      : Array.isArray(res.deals)  
+          ? res.deals  
+          : Array.isArray(res)  
+              ? res  
+              : [];  
+
+  if (!deals.length) {  
+      table.innerHTML = `  
+          <tr>  
+              <td colspan="9" class="p-6 text-center text-gray-500">  
+                  لا توجد صفقات في حالة نزاع حالياً  
+              </td>  
+          </tr>  
+      `;  
+      return;  
+  }  
+
+  table.innerHTML = deals.map(deal => {  
+      const dealId = deal.id ?? deal.deal_id ?? "";  
+      const code = deal.code ?? deal.deal_code ?? "—";  
+      const amount = deal.amount_usd ?? deal.amount ?? 0;  
+      const buyer = deal.buyer_id ?? "—";  
+      const seller = deal.seller_id ?? "—";  
+      const status = deal.status ?? "dispute";  
+      const disputeAt =  
+          deal.dispute_opened_at ??  
+          deal.opened_at ??  
+          deal.created_at ??  
+          "";  
+
+      return `  
+          <tr class="hover:bg-white/[0.02]">  
+              <td class="p-3 text-white font-mono">${escapeHtml(String(dealId))}</td>  
+              <td class="p-3 text-purple-400 font-mono">${escapeHtml(String(code))}</td>  
+              <td class="p-3 text-white">$${escapeHtml(Number(amount || 0).toFixed(2))}</td>  
+              <td class="p-3 text-gray-300">${escapeHtml(String(buyer))}</td>  
+              <td class="p-3 text-gray-300">${escapeHtml(String(seller))}</td>  
+              <td class="p-3">  
+                  <span class="px-2 py-1 rounded-lg bg-red-500/10 text-red-400">  
+                      ${escapeHtml(String(status))}  
+                  </span>  
+              </td>  
+              <td class="p-3 text-gray-400">${formatMediationDate(disputeAt)}</td>  
+              <td class="p-3 text-center">  
+                  <button  
+                      class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 px-3 py-1.5 rounded-lg"  
+                      data-mediation-deal-id="${escapeHtml(String(dealId))}">  
+                      عرض الأدلة  
+                  </button>  
+              </td>
+              <td class="p-3 text-center">
+                  <button
+                      class="bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 px-3 py-1.5 rounded-lg"
+                      data-mediation-analyze-deal-id="${escapeHtml(String(dealId))}">
+                      تحليل النزاع
+                  </button>
+              </td>
+          </tr>  
+      `;  
+  }).join("");  
+
+  table.querySelectorAll("[data-mediation-deal-id]").forEach(button => {  
+      button.addEventListener("click", () => {  
+          const dealId = Number(button.dataset.mediationDealId);  
+          if (Number.isInteger(dealId) && dealId > 0) {  
+              loadMediationEvidence(dealId);  
+          }  
+      });  
+  });
+
+  table.querySelectorAll("[data-mediation-analyze-deal-id]").forEach(button => {
+      button.addEventListener("click", () => {
+          const dealId = Number(button.dataset.mediationAnalyzeDealId);
+          if (Number.isInteger(dealId) && dealId > 0) {
+              loadMediationAnalysis(dealId);
+          }
+      });
+  });
 }
 
 function mediationAnalysisStat(label, value, tone = "text-white") {
@@ -2370,32 +2380,11 @@ document.getElementById("btnDeleteSelectedDeals")?.addEventListener("click", asy
 document.getElementById("btnRefreshDeals")?.addEventListener("click", loadAllMediationDeals);
 document.getElementById("dealsStatusFilter")?.addEventListener("change", renderAllMediationDeals);
 document.getElementById("dealsSearchInput")?.addEventListener("input", renderAllMediationDeals);
-document.getElementById("dealsStatusFilter")?.addEventListener("change", renderAllMediationDeals);
-document.getElementById("dealsSortFilter")?.addEventListener("change", renderAllMediationDeals);
-document.getElementById("btnClearDealsFilters")?.addEventListener("click", () => {
-  const search = document.getElementById("dealsSearchInput");
-  const status = document.getElementById("dealsStatusFilter");
-  const sort = document.getElementById("dealsSortFilter");
-  if (search) search.value = "";
-  if (status) status.value = "all";
-  if (sort) sort.value = "newest";
-  renderAllMediationDeals();
-});
 
 document.getElementById("btnRefreshMediation")?.addEventListener(
   "click",
   loadMediationDisputes
 );
-
-document.getElementById("mediationSearchInput")?.addEventListener("input", renderMediationDisputes);
-document.getElementById("mediationStatusFilter")?.addEventListener("change", renderMediationDisputes);
-document.getElementById("btnClearMediationFilters")?.addEventListener("click", () => {
-  const search = document.getElementById("mediationSearchInput");
-  const status = document.getElementById("mediationStatusFilter");
-  if (search) search.value = "";
-  if (status) status.value = "all";
-  renderMediationDisputes();
-});
 
 document.getElementById("btnCloseMediationEvidence")?.addEventListener(
   "click",
@@ -2820,104 +2809,106 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
   refreshDashboard();
 });
 
-let allActivityLogsCache = [];
-
-function renderActivityLogs() {
-  const container = document.getElementById("activityLogs");
-  if (!container) return;
-  const query = String(document.getElementById("logsSearchInput")?.value || "").trim().toLowerCase();
-  const typeFilter = String(document.getElementById("logsTypeFilter")?.value || "all").toUpperCase();
-  const sortFilter = String(document.getElementById("logsSortFilter")?.value || "newest");
-
-  const filtered = allActivityLogsCache.filter(log => {
-    const type = String(log?.type || "").toUpperCase();
-    if (typeFilter !== "ALL" && type !== typeFilter && !(typeFilter === "TOPUP" && type === "GAME")) return false;
-    if (!query) return true;
-    const haystack = [log?.id, log?.action, log?.type, log?.details, log?.device_id, log?.username, log?.user_id]
-      .map(v => String(v ?? "")).join(" ").toLowerCase();
-    return haystack.includes(query);
-  });
-
-  filtered.sort((a,b) => {
-    const ad = new Date(a?.created_at || 0).getTime() || 0;
-    const bd = new Date(b?.created_at || 0).getTime() || 0;
-    return sortFilter === "oldest" ? ad - bd : bd - ad;
-  });
-
-  const count = document.getElementById("logsResultCount");
-  if (count) count.textContent = `${filtered.length} / ${allActivityLogsCache.length} سجل`;
-
-  const total = document.getElementById("logsStatTotal");
-  const today = document.getElementById("logsStatToday");
-  const users = document.getElementById("logsStatUsers");
-  const admin = document.getElementById("logsStatAdmin");
-  const startToday = new Date(); startToday.setHours(0,0,0,0);
-  const todayCount = allActivityLogsCache.filter(x => new Date(x?.created_at || 0).getTime() >= startToday.getTime()).length;
-  const userTypes = new Set(["USER","AUTH","VIP"]);
-  const userCount = allActivityLogsCache.filter(x => userTypes.has(String(x?.type || "").toUpperCase())).length;
-  const adminCount = allActivityLogsCache.filter(x => !x?.device_id || String(x?.device_id).toLowerCase().includes("admin")).length;
-  if (total) total.innerHTML = `<div class="text-gray-400 text-[10px]">📋 إجمالي السجلات</div><div class="text-white font-bold text-lg mt-1">${allActivityLogsCache.length}</div>`;
-  if (today) today.innerHTML = `<div class="text-gray-400 text-[10px]">🕒 اليوم</div><div class="text-white font-bold text-lg mt-1">${todayCount}</div>`;
-  if (users) users.innerHTML = `<div class="text-gray-400 text-[10px]">👤 عمليات المستخدمين</div><div class="text-white font-bold text-lg mt-1">${userCount}</div>`;
-  if (admin) admin.innerHTML = `<div class="text-gray-400 text-[10px]">🛡️ عمليات إدارية</div><div class="text-white font-bold text-lg mt-1">${adminCount}</div>`;
-
-  if (!filtered.length) {
-    container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات مطابقة للفلاتر الحالية</div>`;
-    return;
-  }
-
-  container.innerHTML = filtered.map(log => {
-    let color = "text-purple-400", icon = "📋";
-    const type = String(log?.type || "").toUpperCase();
-    if (type === "USER" || type === "AUTH") { color = "text-blue-400"; icon = "👤"; }
-    else if (type === "VIP") { color = "text-yellow-400"; icon = "👑"; }
-    else if (type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }
-    else if (type === "ORDER") { color = "text-emerald-400"; icon = "📦"; }
-    else if (type === "TOPUP" || type === "GAME") { color = "text-indigo-400"; icon = "🎮"; }
-    else if (type === "PAYMENT") { color = "text-amber-400"; icon = "💳"; }
-    else if (type === "NAVIGATION") { color = "text-gray-400"; icon = "🧭"; }
-    else if (type === "AI") { color = "text-pink-400"; icon = "🤖"; }
-
-    const actionTranslations = {
-      APP_OPENED:"فتح التطبيق", USER_LOGOUT:"تسجيل خروج", SECTION_VIEWED:"تصفح قسم", SERVICE_SELECTED:"تحديد خدمة",
-      GAME_VIEWED:"مشاهدة لعبة", GAME_TOPUP_COMPLETED:"نجاح شحن اللعبة", GAME_TOPUP_FAILED:"فشل شحن اللعبة",
-      ORDER_COMPLETED:"اكتمال طلب", ORDER_FAILED:"فشل طلب", BALANCE_RECHARGE_INITIATED:"بدء شحن رصيد",
-      KEY_ACTIVATED:"تفعيل مفتاح VIP", KEY_ACTIVATION_FAILED:"فشل تفعيل مفتاح", AI_CHAT_OPENED:"استخدام المساعد الذكي",
-      VIP_GRANTED:"منح VIP", VIP_REVOKED:"سحب VIP", USER_DELETED:"حذف مستخدم", USER_BANNED:"حظر مستخدم",
-      USER_UNBANNED:"فك حظر مستخدم", KEY_CREATED:"إنشاء مفتاح", KEY_DELETED:"حذف مفتاح", KEYS_DELETED:"حذف عدة مفاتيح"
-    };
-    const actionName = actionTranslations[log?.action] || log?.action || "عملية غير معروفة";
-    let displayHtml = "";
-    try {
-      if (typeof log?.details === "string" && (log.details.trim().startsWith("{") || log.details.trim().startsWith("["))) {
-        const parsed = JSON.parse(log.details);
-        const username = parsed.username && parsed.username !== "Unknown" ? parsed.username : (log.device_id || "مستخدم");
-        const service = parsed.service && parsed.service !== "N/A" ? `<span class="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs">${escapeHtml(String(parsed.service))}</span>` : "";
-        const amount = parsed.amount > 0 ? `<span class="bg-green-500/20 text-green-300 px-2 py-0.5 rounded text-xs">${escapeHtml(String(parsed.amount))} ${escapeHtml(String(parsed.currency || ""))}</span>` : "";
-        const msg = parsed.message ? escapeHtml(String(parsed.message)) : "";
-        displayHtml = `<div class="flex flex-wrap items-center gap-1 text-xs text-gray-300 mt-1"><span class="text-white font-bold">${escapeHtml(String(username))}</span>: <span>${msg}</span>${service}${amount}</div>`;
-      }
-    } catch (_) {}
-    if (!displayHtml) displayHtml = `<div class="text-white text-xs mt-1">${escapeHtml(String(log?.details || "--"))}</div>`;
-
-    return `<div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">
-      <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${escapeHtml(String(log?.id ?? ""))}">
-      <div class="flex-1 flex justify-between items-start gap-3">
-        <div class="text-right min-w-0"><div class="${color} font-bold text-sm flex items-center gap-2"><span>${icon}</span><span>${escapeHtml(String(actionName))}</span>${log?.device_id ? `<span class="text-[10px] text-gray-500 font-mono">(${escapeHtml(String(log.device_id))})</span>` : ""}</div>${displayHtml}</div>
-        <div class="flex items-center gap-3 shrink-0"><span class="text-xs text-gray-400">🕒 ${formatDate(log?.created_at)}</span><button onclick="deleteActivityLog('${escapeHtml(String(log?.id ?? ""))}')" class="text-red-500 hover:text-red-400 transition text-lg" title="حذف السجل">🗑️</button></div>
-      </div>
-    </div>`;
-  }).join("");
-}
-
 async function loadActivityLogs() {
   const container = document.getElementById("activityLogs");
   if (!container) return;
   const res = await api("get_logs");
   const data = (res && (res.data || res)) || null;
   if (!res || res.error) { container.innerHTML = `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`; return; }
-  allActivityLogsCache = Array.isArray(data) ? data : [];
-  renderActivityLogs();
+  if (!data || data.length === 0) { container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات نشاط</div>`; return; }
+
+  container.innerHTML = "";  
+  data.forEach(log => {  
+      let color = "text-purple-400";   
+      let icon = "📋";  
+        
+      if (log.type === "USER" || log.type === "AUTH") { color = "text-blue-400"; icon = "👤"; }  
+      else if (log.type === "VIP") { color = "text-yellow-400"; icon = "👑"; }  
+      else if (log.type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }  
+      else if (log.type === "ORDER") { color = "text-emerald-400"; icon = "📦"; }  
+      else if (log.type === "TOPUP" || log.type === "GAME") { color = "text-indigo-400"; icon = "🎮"; }  
+      else if (log.type === "PAYMENT") { color = "text-amber-400"; icon = "💳"; }  
+      else if (log.type === "NAVIGATION") { color = "text-gray-400"; icon = "🧭"; }  
+      else if (log.type === "AI") { color = "text-pink-400"; icon = "🤖"; }  
+
+      let actionName = log.action;  
+      const actionTranslations = {  
+          "APP_OPENED": "فتح التطبيق",  
+          "USER_LOGOUT": "تسجيل خروج",  
+          "SECTION_VIEWED": "تصفح قسم",  
+          "SERVICE_SELECTED": "تحديد خدمة",  
+          "GAME_VIEWED": "مشاهدة لعبة",  
+          "GAME_TOPUP_COMPLETED": "نجاح شحن اللعبة",  
+          "GAME_TOPUP_FAILED": "فشل شحن اللعبة",  
+          "ORDER_COMPLETED": "اكتمال طلب",  
+          "ORDER_FAILED": "فشل طلب",  
+          "BALANCE_RECHARGE_INITIATED": "بدء شحن رصيد",  
+          "KEY_ACTIVATED": "تفعيل مفتاح VIP",  
+          "KEY_ACTIVATION_FAILED": "فشل تفعيل مفتاح",  
+          "AI_CHAT_OPENED": "استخدام المساعد الذكي",  
+          "VIP_GRANTED": "منح VIP",  
+          "VIP_REVOKED": "سحب VIP",  
+          "USER_DELETED": "حذف مستخدم",  
+          "USER_BANNED": "حظر مستخدم",  
+          "USER_UNBANNED": "فك حظر مستخدم",  
+          "KEY_CREATED": "إنشاء مفتاح",  
+          "KEY_DELETED": "حذف مفتاح",  
+          "KEYS_DELETED": "حذف عدة مفاتيح"  
+      };  
+      if (actionTranslations[log.action]) {  
+          actionName = actionTranslations[log.action];  
+      }  
+
+      let displayHtml = "";  
+      let isJsonParsed = false;  
+
+      try {  
+          if (log.details && (log.details.startsWith("{") || log.details.startsWith("["))) {  
+              const parsed = JSON.parse(log.details);  
+              isJsonParsed = true;  
+
+              const username = parsed.username && parsed.username !== "Unknown" ? parsed.username : (log.device_id || "مستخدم");  
+              const service = parsed.service && parsed.service !== "N/A" ? `<span class="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.service}</span>` : "";  
+              const amount = parsed.amount > 0 ? `<span class="bg-green-500/20 text-green-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.amount} ${parsed.currency || ''}</span>` : "";  
+              const msg = parsed.message ? parsed.message : "";  
+
+              displayHtml = `  
+                  <div class="flex flex-wrap items-center gap-1 text-xs text-gray-300 mt-1">  
+                      <span class="text-white font-bold">${username}</span>:   
+                      <span>${msg}</span>  
+                      ${service}  
+                      ${amount}  
+                  </div>  
+              `;  
+          }  
+      } catch (e) {  
+          isJsonParsed = false;  
+      }  
+
+      if (!isJsonParsed) {  
+          displayHtml = `<div class="text-white text-xs mt-1">${log.details || "--"}</div>`;  
+      }  
+
+      container.innerHTML += `  
+          <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">  
+              <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${log.id}">  
+              <div class="flex-1 flex justify-between items-start">  
+                  <div class="text-right">  
+                      <div class="${color} font-bold text-sm flex items-center gap-2">  
+                          <span>${icon}</span>  
+                          <span>${actionName}</span>  
+                          ${log.device_id ? `<span class="text-[10px] text-gray-500 font-mono">(${log.device_id})</span>` : ''}  
+                      </div>  
+                      ${displayHtml}  
+                  </div>  
+                  <div class="flex items-center gap-3">  
+                      <span class="text-xs text-gray-400">🕒 ${formatDate(log.created_at)}</span>  
+                      <button onclick="deleteActivityLog('${log.id}')" class="text-red-500 hover:text-red-400 transition text-lg" title="حذف السجل">🗑️</button>  
+                  </div>  
+              </div>  
+          </div>  
+      `;  
+  });
 }
 
 async function deleteActivityLog(id) {
@@ -2926,14 +2917,8 @@ async function deleteActivityLog(id) {
   if (res && !res.error) { showToast("تم حذف السجل"); loadActivityLogs(); }
 }
 
+document.getElementById("homeRefreshBtn")?.addEventListener("click", async () => { const b = document.getElementById("homeRefreshBtn"); if (b) { b.disabled = true; b.textContent = "⏳ جاري التحديث"; } try { await refreshDashboard(); showToast("تم تحديث لوحة القيادة"); } finally { if (b) { b.disabled = false; b.textContent = "🔄 تحديث الكل"; } } });
 document.getElementById("btnRefreshActivity")?.addEventListener("click", () => { loadActivityLogs(); showToast("تم تحديث سجل النشاط"); });
-document.getElementById("logsSearchInput")?.addEventListener("input", renderActivityLogs);
-document.getElementById("logsTypeFilter")?.addEventListener("change", renderActivityLogs);
-document.getElementById("logsSortFilter")?.addEventListener("change", renderActivityLogs);
-document.getElementById("btnClearLogsFilters")?.addEventListener("click", () => {
-  const q = document.getElementById("logsSearchInput"); const t = document.getElementById("logsTypeFilter"); const s = document.getElementById("logsSortFilter");
-  if (q) q.value = ""; if (t) t.value = "all"; if (s) s.value = "newest"; renderActivityLogs();
-});
 document.getElementById("btnSelectAllLogs")?.addEventListener("click", () => {
   const checkboxes = document.querySelectorAll(".log-checkbox");
   const allChecked = [...checkboxes].every(cb => cb.checked);
@@ -2948,17 +2933,6 @@ document.getElementById("btnDeleteSelectedLogs")?.addEventListener("click", asyn
   showToast("تم الحذف بنجاح");
   loadActivityLogs();
 });
-
-function updateSecurityStatus() {
-  const status = document.getElementById("securitySessionStatus");
-  const token = localStorage.getItem("admin_token") || ADMIN_TOKEN;
-  if (!status) return;
-  if (token) {
-    status.innerHTML = `<span class="inline-flex items-center gap-2 text-green-400"><span class="w-2 h-2 rounded-full bg-green-400"></span>الجلسة مؤمنة ومصادق عليها</span>`;
-  } else {
-    status.innerHTML = `<span class="inline-flex items-center gap-2 text-red-400"><span class="w-2 h-2 rounded-full bg-red-400"></span>لا توجد جلسة مصادق عليها</span>`;
-  }
-}
 
 async function loadSettings() {
   const res = await api("get_settings");
@@ -3152,23 +3126,4 @@ document.getElementById("quickRefreshDashboard")?.addEventListener("click", asyn
   }
 });
 
-// سهم رجوع موحّد داخل كل قسم رئيسي
-function initSectionBackButtons() {
-  document.querySelectorAll(".tab-content[id]").forEach(section => {
-    if (section.id === "home-section") return;
-    if (section.querySelector(":scope > .section-back-button")) return;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "section-back-button mb-1 inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white px-3 py-2 rounded-xl text-xs transition";
-    button.innerHTML = "↩️ رجوع";
-    button.addEventListener("click", () => {
-      const quick = document.querySelector('.nav-item[data-target="quick-actions-section"]');
-      if (quick) quick.click();
-      else document.querySelectorAll(".tab-content").forEach(s => s.classList.toggle("hidden", s.id !== "home-section"));
-    });
-    section.insertBefore(button, section.firstElementChild);
-  });
-}
-
-initSectionBackButtons();
 checkSession();
