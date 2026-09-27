@@ -985,7 +985,12 @@ async function applyBalanceAdjustment() {
 
   if (!res || res.error) {
     if (!res?.canceled) {
-      const detail = res?.error || res?.message || `HTTP ${res?._http_status || "?"}`;
+      const detail =
+        (typeof res?.message === "string" && res.message.trim())
+          ? res.message.trim()
+          : (typeof res?.error === "string" && res.error.trim())
+            ? res.error.trim()
+            : (res?.data?.message || res?.data?.error || `HTTP ${res?._http_status || "?"}`);
       showToast("❌ تعذر تعديل الرصيد: " + detail);
     }
     return;
