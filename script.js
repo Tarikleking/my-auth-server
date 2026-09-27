@@ -1,8 +1,92 @@
 /* KINGDZ ADMIN PANEL - SUPABASE REALTIME & EDGE ENGINE */
 const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-users";
 
-let ADMIN_TOKEN = localStorage.getItem("admin_token");
+let ADMIN_TOKEN = null;
 let liveClock = null;
+let securityIdleTimer = null;
+let securityLastActivity = Date.now();
+let securityLocked = false;
+const SECURITY_IDLE_LIMIT_MS = 15 * 60 * 1000;
+const SECURITY_ACTIVITY_THROTTLE_MS = 15000;
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+let lastActivitySignal = 0;
+
+function getLoginGuard() {
+  try {
+    return JSON.parse(sessionStorage.getItem("kingdz_login_guard") || "{}") || {};
+  } catch (_) { return {}; }
+}
+
+function setLoginGuard(guard) {
+  try { sessionStorage.setItem("kingdz_login_guard", JSON.stringify(guard || {})); } catch (_) {}
+}
+
+function clearLoginGuard() {
+  try { sessionStorage.removeItem("kingdz_login_guard"); } catch (_) {}
+}
+
+function getLoginLockRemaining() {
+  const guard = getLoginGuard();
+  const until = Number(guard.locked_until || 0);
+  return Math.max(0, until - Date.now());
+}
+
+function registerLoginFailure() {
+  const guard = getLoginGuard();
+  const windowStart = Number(guard.window_start || 0);
+  let attempts = Number(guard.attempts || 0);
+  if (!windowStart || Date.now() - windowStart > LOGIN_LOCKOUT_MS) {
+    attempts = 0;
+  }
+  attempts += 1;
+  const next = { window_start: windowStart && Date.now() - windowStart <= LOGIN_LOCKOUT_MS ? windowStart : Date.now(), attempts };
+  if (attempts >= LOGIN_MAX_ATTEMPTS) next.locked_until = Date.now() + LOGIN_LOCKOUT_MS;
+  setLoginGuard(next);
+  return attempts;
+}
+
+function resetSecurityActivity() {
+  securityLastActivity = Date.now();
+}
+
+function forceSecureLogout(message = "انتهت جلسة لوحة التحكم لأسباب أمنية. يرجى تسجيل الدخول مجددًا.") {
+  if (securityLocked) return;
+  securityLocked = true;
+  if (securityIdleTimer) { clearInterval(securityIdleTimer); securityIdleTimer = null; }
+  ADMIN_TOKEN = null;
+  try { sessionStorage.removeItem("kingdz_2fa_verified"); } catch (_) {}
+  client?.auth?.signOut?.({ scope: "local" }).catch(() => {});
+  const dashboard = document.getElementById("dashboard");
+  const loginPage = document.getElementById("loginPage");
+  if (dashboard) dashboard.style.display = "none";
+  if (loginPage) {
+    loginPage.style.display = "flex";
+    const err = document.getElementById("loginError");
+    if (err) { err.className = "text-yellow-400 text-xs text-center font-medium"; err.textContent = message; }
+  }
+}
+
+function startSecurityWatchdog() {
+  resetSecurityActivity();
+  if (securityIdleTimer) clearInterval(securityIdleTimer);
+  securityIdleTimer = setInterval(() => {
+    if (!ADMIN_TOKEN || securityLocked) return;
+    if (Date.now() - securityLastActivity >= SECURITY_IDLE_LIMIT_MS) {
+      forceSecureLogout();
+    }
+  }, 10000);
+}
+
+["pointerdown", "keydown", "touchstart", "mousemove"].forEach((eventName) => {
+  document.addEventListener(eventName, () => {
+    const now = Date.now();
+    if (now - lastActivitySignal >= SECURITY_ACTIVITY_THROTTLE_MS) {
+      lastActivitySignal = now;
+      resetSecurityActivity();
+    }
+  }, { passive: true });
+});
 
 const KINGDZ_SENSITIVE_ACTIONS = new Set([
   "update_balances", "update_user", "set_user_balance", "modify_user_balance",
@@ -28,8 +112,15 @@ async function requestKingdzSecurityPin(actionName) {
 }
 
 async function api(action, data = {}) {
-  const currentToken = localStorage.getItem("admin_token") || ADMIN_TOKEN;
-  if (!currentToken) { console.warn("No admin token found. Please login."); return null; }
+  if (securityLocked) return { error: true, security_locked: true };
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
+  const currentToken = sessionData?.session?.access_token || ADMIN_TOKEN;
+  if (sessionError || !currentToken) {
+    forceSecureLogout("انتهت الجلسة أو أصبحت غير صالحة. يرجى تسجيل الدخول مجددًا.");
+    return { error: true, session_expired: true };
+  }
+  ADMIN_TOKEN = currentToken;
+  resetSecurityActivity();
   let secureData = { ...data };
   if (KINGDZ_SENSITIVE_ACTIONS.has(action)) {
     const securityPin = await requestKingdzSecurityPin(action);
@@ -43,7 +134,8 @@ async function api(action, data = {}) {
       body: JSON.stringify({ action, ...secureData, timestamp: Date.now() })
     });
     if (res.status === 401) {
-      localStorage.removeItem("admin_token"); ADMIN_TOKEN = null; location.reload(); return null;
+      forceSecureLogout("انتهت جلسة المصادقة. يرجى تسجيل الدخول مجددًا.");
+      return { error: true, session_expired: true, _http_status: 401 };
     }
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -83,15 +175,24 @@ document.addEventListener("keydown", e => {
 
 const SUPABASE_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJueGNta2RpdnVod2tmYXFubmx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMzQzMzEsImV4cCI6MjA5NzkxMDMzMX0.hfjfnewJZSGaxa5R_wWxs4EAlSo3LAiseelqCJUsc1s";
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    storage: window.sessionStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: "pkce"
+  }
+});
 
 client.auth.onAuthStateChange((event, session) => {
   if (session) {
     ADMIN_TOKEN = session.access_token;
-    localStorage.setItem("admin_token", ADMIN_TOKEN);
+    resetSecurityActivity();
   } else {
     ADMIN_TOKEN = null;
-    localStorage.removeItem("admin_token");
+    securityLocked = false;
+    if (securityIdleTimer) { clearInterval(securityIdleTimer); securityIdleTimer = null; }
   }
 });
 
@@ -133,110 +234,89 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 // 2. فحص وتأمين الجلسة
 async function checkSession() {
-  const { data } = await client.auth.getSession();
+  const { data, error } = await client.auth.getSession();
   if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
 
-  if (data.session) {  
-    afterLogin();  
-  } else {  
-    if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";  
+  if (error || !data.session) {
+    ADMIN_TOKEN = null;
+    if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "none";
+    if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
+    return;
   }
+
+  ADMIN_TOKEN = data.session.access_token;
+  resetSecurityActivity();
+  await afterLogin();
 }
 
-// 🔐 إدارة تسجيل الدخول مع التحقق الثنائي (2FA via OTP)
+// 🔐 حماية تسجيل الدخول: حد للمحاولات + جلسة مؤقتة + تحقق من هوية Admin على الخادم.
 if (document.getElementById("loginBtn")) {
   document.getElementById("loginBtn").onclick = async () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+    const emailEl = document.getElementById("email");
+    const passwordEl = document.getElementById("password");
+    const btn = document.getElementById("loginBtn");
     const errorEl = document.getElementById("loginError");
-    if(errorEl) errorEl.textContent = "";
+    const email = String(emailEl?.value || "").trim().toLowerCase();
+    const password = String(passwordEl?.value || "");
 
-    if (!email || !password) {  
-      if(errorEl) errorEl.textContent = "الرجاء إدخال البريد وكلمة المرور!";  
-      return;  
-    }  
+    if (errorEl) { errorEl.className = "text-red-400 text-xs text-center font-medium"; errorEl.textContent = ""; }
 
-    const { data, error } = await client.auth.signInWithPassword({ email, password });  
-    if (error) {   
-      if(errorEl) errorEl.textContent = "بيانات الدخول خاطئة!";   
-      return;   
-    }  
+    const remaining = getLoginLockRemaining();
+    if (remaining > 0) {
+      const mins = Math.ceil(remaining / 60000);
+      if (errorEl) errorEl.textContent = `تم إيقاف محاولات الدخول مؤقتًا. حاول بعد ${mins} دقيقة.`;
+      return;
+    }
 
-    if (data && data.session) {  
-      const { error: otpError } = await client.auth.signInWithOtp({ email });  
-      if (otpError) {  
-        if(errorEl) errorEl.textContent = "فشل إرسال رمز التحقق الثنائي (2FA)";  
-        return;  
-      }  
-      show2FAModal(email);  
-    }  
-  };
-}
+    if (!email || !password) {
+      if (errorEl) errorEl.textContent = "الرجاء إدخال البريد وكلمة المرور.";
+      return;
+    }
 
-function show2FAModal(email) {
-  const loginPage = document.getElementById("loginPage");
-  if (!loginPage) return;
+    if (btn) { btn.disabled = true; btn.textContent = "⏳ جاري التحقق..."; }
 
-  loginPage.innerHTML = `  
-    <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">  
-        <h1 class="text-2xl font-black text-white tracking-wider mb-2">التحقق الثنائي <span class="text-purple-500">2FA</span></h1>  
-        <p class="text-gray-400 text-xs mb-6">تم إرسال رمز التحقق المكون من 6 أرقام إلى بريدك الإلكتروني.</p>  
-          
-        <div class="space-y-4">  
-            <input type="text" id="otpCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="------">  
-            <div id="otpError" class="text-red-400 text-xs font-medium"></div>  
-            <button id="verifyOtpBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تأكيد الرمز والدخول</button>  
-            <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline mt-2 block mx-auto">إلغاء والعودة</button>  
-        </div>  
-    </div>  
-  `;  
+    try {
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (error || !data?.session) {
+        const attempts = registerLoginFailure();
+        if (errorEl) errorEl.textContent = attempts >= LOGIN_MAX_ATTEMPTS
+          ? "تم إيقاف المحاولات مؤقتًا بعد عدة محاولات فاشلة."
+          : "بيانات الدخول غير صحيحة.";
+        return;
+      }
 
-  document.getElementById("verifyOtpBtn").onclick = async () => {  
-    const token = document.getElementById("otpCode").value.trim();  
-    const errDiv = document.getElementById("otpError");  
-    if (!token || token.length < 6) {  
-      errDiv.textContent = "الرجاء إدخال الرمز المكون من 6 أرقام كاملاً";  
-      return;  
-    }  
-
-    errDiv.textContent = "جاري التحقق...";  
-    const { data, error } = await client.auth.verifyOtp({ email, token, type: 'email' });  
-
-    if (error || !data.session) {  
-      errDiv.textContent = "رمز التحقق غير صحيح أو منتهي الصلاحية";  
-    } else {  
-      localStorage.setItem("admin_token", data.session.access_token);  
-      ADMIN_TOKEN = data.session.access_token;  
-      showToast("تم التحقق وتسجيل الدخول بنجاح!");  
-      setTimeout(() => { location.reload(); }, 1000);  
-    }  
+      // الجلسة أصبحت مصادقًا عليها، لكن الوصول للوحة لا يعتمد على الواجهة وحدها:
+      // كل API يتحقق من جدول admins في الخادم.
+      ADMIN_TOKEN = data.session.access_token;
+      clearLoginGuard();
+      resetSecurityActivity();
+      await afterLogin();
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "دخول"; }
+    }
   };
 }
 
 document.addEventListener("click", async (e) => {
   if (e.target && e.target.id === "forgotPasswordBtn") {
-    const email = document.getElementById("email").value.trim();
+    const email = String(document.getElementById("email")?.value || "").trim().toLowerCase();
     const errorEl = document.getElementById("loginError");
     if (!email) {
-      if (errorEl) errorEl.textContent = "الرجاء كتابة بريدك الإلكتروني في خانة الإيميل أولاً!";
+      if (errorEl) errorEl.textContent = "اكتب بريدك الإلكتروني أولاً.";
       return;
     }
-
-    if (errorEl) errorEl.textContent = "جاري إرسال رابط الاستعادة...";  
-    const { error } = await client.auth.resetPasswordForEmail(email, {  
-      redirectTo: window.location.origin,  
-    });  
-
-    if (error) {  
-      if (errorEl) errorEl.textContent = "خطأ: " + error.message;  
-    } else {  
-      if (errorEl) errorEl.textContent = "تم إرسال رابط استعادة كلمة المرور إلى بريدك!";  
-      errorEl.className = "text-green-400 text-xs text-center font-medium";  
-    }  
+    if (errorEl) errorEl.textContent = "جاري إرسال رابط الاستعادة...";
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    if (error) {
+      if (errorEl) errorEl.textContent = "تعذر إرسال رابط الاستعادة.";
+    } else if (errorEl) {
+      errorEl.className = "text-green-400 text-xs text-center font-medium";
+      errorEl.textContent = "تم إرسال رابط استعادة كلمة المرور.";
+    }
   }
 });
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener("DOMContentLoaded", () => {
   const loginCard = document.querySelector("#loginPage .glass-card, #loginPage > div");
   if (loginCard && !document.getElementById("forgotPasswordBtn")) {
     const forgotBtn = document.createElement("button");
@@ -250,8 +330,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
 if (document.getElementById("logout")) {
   document.getElementById("logout").onclick = async () => {
-    await client.auth.signOut();
-    localStorage.removeItem("admin_token");
+    securityLocked = false;
+    if (securityIdleTimer) { clearInterval(securityIdleTimer); securityIdleTimer = null; }
+    ADMIN_TOKEN = null;
+    await client.auth.signOut({ scope: "local" });
     location.reload();
   };
 }
@@ -2886,11 +2968,20 @@ function showToast(text) {
   setTimeout(() => { toast.classList.remove("translate-y-0", "opacity-100"); toast.classList.add("translate-y-12", "opacity-0"); }, 2500);
 }
 
-function afterLogin() {
+async function afterLogin() {
+  const authProbe = await api("get_dashboard_stats");
+  if (!authProbe || authProbe.error) {
+    forceSecureLogout("هذا الحساب لا يملك صلاحية دخول لوحة الإدارة.");
+    return false;
+  }
+
+  securityLocked = false;
   if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "none";
   if (document.getElementById("dashboard")) document.getElementById("dashboard").style.display = "flex";
-  refreshDashboard();
-  loadSettings();
+  startSecurityWatchdog();
+  await refreshDashboard();
+  await loadSettings();
+  return true;
 
   if (!liveClock) {  
       liveClock = setInterval(() => {  
