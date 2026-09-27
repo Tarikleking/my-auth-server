@@ -257,7 +257,9 @@ if (document.getElementById("loginBtn")) {
         return;
       }
 
-      const verifiedFactors = (factorsData?.totp || []).filter(f => f.status === "verified");
+      const totpFactors = Array.isArray(factorsData?.totp) ? factorsData.totp : [];
+      const verifiedFactors = totpFactors.filter(f => f.status === "verified");
+      const unverifiedFactor = totpFactors.find(f => f.status === "unverified");
 
       // أول دخول لحساب Admin: نتحقق من صلاحية الحساب أولاً، ثم نسمح بتسجيل Authenticator.
       if (verifiedFactors.length === 0) {
@@ -269,7 +271,11 @@ if (document.getElementById("loginBtn")) {
           if (errorEl) errorEl.textContent = "هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.";
           return;
         }
-        await showFirstTime2FAEnrollment(email);
+        if (unverifiedFactor?.id) {
+          await showPending2FAEnrollment(email, unverifiedFactor.id);
+        } else {
+          await showFirstTime2FAEnrollment(email);
+        }
         return;
       }
 
@@ -286,6 +292,54 @@ if (document.getElementById("loginBtn")) {
       show2FAModal(email, factor.id, challengeData.id);
     } finally {
       if (button) { button.disabled = false; button.textContent = "دخول"; }
+    }
+  };
+}
+
+function normalizeMfaCode(value) {
+  return String(value || "")
+    .replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/[۰-۹]/g, d => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+async function showPending2FAEnrollment(email, factorId) {
+  const loginPage = document.getElementById("loginPage");
+  if (!loginPage) return;
+  loginPage.innerHTML = `
+    <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
+      <h1 class="text-2xl font-black text-white tracking-wider mb-2">إكمال تفعيل <span class="text-purple-500">Authenticator 2FA</span></h1>
+      <p class="text-gray-400 text-xs mb-5">يوجد إعداد Authenticator غير مكتمل لهذا الحساب. استعمل نفس التطبيق/QR الذي بدأته سابقاً ثم أدخل الرمز الحالي.</p>
+      <input inputmode="numeric" autocomplete="one-time-code" type="text" id="pendingMfaCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="رمز 6 أرقام">
+      <div id="pendingMfaError" class="text-red-400 text-xs font-medium mt-3"></div>
+      <button id="pendingMfaBtn" class="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تفعيل 2FA والدخول</button>
+      <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline mt-4">العودة</button>
+    </div>`;
+
+  document.getElementById("pendingMfaBtn").onclick = async () => {
+    const code = normalizeMfaCode(document.getElementById("pendingMfaCode")?.value || "");
+    const errDiv = document.getElementById("pendingMfaError");
+    const btn = document.getElementById("pendingMfaBtn");
+    if (!/^\d{6}$/.test(code)) { if (errDiv) errDiv.textContent = "أدخل رمزاً صحيحاً من 6 أرقام."; return; }
+    btn.disabled = true;
+    btn.textContent = "جاري التحقق...";
+    if (errDiv) errDiv.textContent = "";
+    try {
+      const { data: challengeData, error: challengeError } = await client.auth.mfa.challenge({ factorId });
+      if (challengeError || !challengeData?.id) throw challengeError || new Error("challenge");
+      const { data: verifyData, error: verifyError } = await client.auth.mfa.verify({ factorId, challengeId: challengeData.id, code });
+      if (verifyError || !verifyData?.session) throw verifyError || new Error("verify");
+      clearKingdzLoginState();
+      ADMIN_TOKEN = verifyData.session.access_token;
+      showToast("تم تفعيل Authenticator 2FA وتسجيل الدخول بنجاح!");
+      setTimeout(() => location.reload(), 500);
+    } catch (e) {
+      console.error("MFA verification error:", e);
+      registerKingdzLoginFailure();
+      if (errDiv) errDiv.textContent = e?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية.";
+      btn.disabled = false;
+      btn.textContent = "تفعيل 2FA والدخول";
     }
   };
 }
@@ -332,7 +386,7 @@ async function showFirstTime2FAEnrollment(email) {
       <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline block mx-auto">إلغاء</button>`;
 
     document.getElementById("activateMfaBtn").onclick = async () => {
-      const code = document.getElementById("firstMfaCode")?.value.trim() || "";
+      const code = normalizeMfaCode(document.getElementById("firstMfaCode")?.value || "");
       const errDiv = document.getElementById("firstMfaError");
       const btn = document.getElementById("activateMfaBtn");
       if (!/^\d{6}$/.test(code)) {
@@ -359,7 +413,7 @@ async function showFirstTime2FAEnrollment(email) {
         setTimeout(() => { location.reload(); }, 500);
       } catch (e) {
         registerKingdzLoginFailure();
-        if (errDiv) errDiv.textContent = "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.";
+        if (errDiv) errDiv.textContent = e?.message || "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.";
         if (btn) { btn.disabled = false; btn.textContent = "تفعيل 2FA والدخول"; }
       }
     };
@@ -384,7 +438,7 @@ function show2FAModal(email, factorId, challengeId) {
     </div>`;
 
   document.getElementById("verifyOtpBtn").onclick = async () => {
-    const token = document.getElementById("otpCode")?.value.trim() || "";
+    const token = normalizeMfaCode(document.getElementById("otpCode")?.value || "");
     const errDiv = document.getElementById("otpError");
     if (!/^\d{6}$/.test(token)) { if (errDiv) errDiv.textContent = "أدخل رمزاً صحيحاً من 6 أرقام."; return; }
     if (errDiv) errDiv.textContent = "جاري التحقق...";
