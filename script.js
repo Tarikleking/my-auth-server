@@ -194,27 +194,84 @@ document.querySelectorAll('.nav-item').forEach(item => {
 });
 
 // 2. فحص وتأمين الجلسة
+// مهم: وجود Supabase session وحده لا يعني أن MFA تم اجتيازه.
+// بعد إلغاء شاشة 2FA يجب أن تبقى الجلسة خارج اللوحة، ولا يسمح بالدخول إلا بعد AAL2.
 async function checkSession() {
+  // Fail-closed: اللوحة تبقى مخفية إلى أن يثبت AAL2 + صلاحية Admin.
+  const dashboard = document.getElementById("dashboard");
+  if (dashboard) dashboard.style.display = "none";
   const { data } = await client.auth.getSession();
   if (document.getElementById("loading")) document.getElementById("loading").style.display = "none";
 
-  if (data.session) {
-    ADMIN_TOKEN = data.session.access_token;
-    const adminCheck = await api("get_settings");
-    if (adminCheck?.error) {
+  const showLogin = (message = "") => {
+    ADMIN_TOKEN = null;
+    const dashboard = document.getElementById("dashboard");
+    if (dashboard) dashboard.style.display = "none";
+    const loginPage = document.getElementById("loginPage");
+    if (loginPage) loginPage.style.display = "flex";
+    const errorEl = document.getElementById("loginError");
+    if (errorEl) errorEl.textContent = message;
+  };
+
+  if (!data.session) {
+    showLogin();
+    return;
+  }
+
+  ADMIN_TOKEN = data.session.access_token;
+
+  // تحقق من مستوى ضمان المصادقة الحالي. AAL2 يعني أن MFA تم اجتيازه فعلاً.
+  let assurance = null;
+  try {
+    const { data: assuranceData, error: assuranceError } =
+      await client.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (!assuranceError) assurance = assuranceData;
+  } catch (_) {}
+
+  if (assurance?.currentLevel !== "aal2") {
+    const { data: factorsData, error: factorsError } = await client.auth.mfa.listFactors();
+    if (factorsError) {
       await client.auth.signOut();
-      ADMIN_TOKEN = null;
-      if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
-      const errorEl = document.getElementById("loginError");
-      if (errorEl) errorEl.textContent = "هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.";
+      showLogin("تعذر التحقق من حالة المصادقة الثنائية.");
       return;
     }
-    afterLogin();
-    startKingdzSessionGuard();
-  } else {
-    ADMIN_TOKEN = null;
-    if (document.getElementById("loginPage")) document.getElementById("loginPage").style.display = "flex";
+
+    const totpFactors = Array.isArray(factorsData?.totp) ? factorsData.totp : [];
+    const verifiedFactors = totpFactors.filter(f => f.status === "verified");
+    const unverifiedFactor = totpFactors.find(f => f.status === "unverified");
+
+    // جلسة كلمة المرور فقط لا تكفي. إذا لم يوجد عامل موثق، نخرج تماماً.
+    if (verifiedFactors.length === 0) {
+      await client.auth.signOut();
+      showLogin("يجب إكمال تفعيل Authenticator 2FA قبل الدخول إلى لوحة الإدارة.");
+      return;
+    }
+
+    // يوجد TOTP موثق، لكن الجلسة الحالية لم تجتز MFA بعد: نطلب الرمز مرة أخرى.
+    const factor = verifiedFactors[0];
+    const { data: challengeData, error: challengeError } =
+      await client.auth.mfa.challenge({ factorId: factor.id });
+
+    if (challengeError || !challengeData?.id) {
+      await client.auth.signOut();
+      showLogin("تعذر بدء التحقق الثنائي.");
+      return;
+    }
+
+    show2FAModal(data.session.user?.email || "", factor.id, challengeData.id);
+    return;
   }
+
+  // MFA اجتاز فعلاً: بعدها فقط نتحقق من صلاحية Admin ونفتح اللوحة.
+  const adminCheck = await api("get_settings");
+  if (adminCheck?.error) {
+    await client.auth.signOut();
+    showLogin("هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.");
+    return;
+  }
+
+  afterLogin();
+  startKingdzSessionGuard();
 }
 
 // 🔐 تسجيل الدخول: كلمة مرور + MFA/TOTP حقيقي + تحقق من صلاحية Admin عبر الـBackend
@@ -304,6 +361,37 @@ function normalizeMfaCode(value) {
     .trim();
 }
 
+
+async function forceKingdzLogoutAndReload() {
+  // قطع الجلسة محلياً أولاً حتى لا تعود جلسة AAL1/AAL2 بسبب سباق
+  // بين signOut و location.reload(). لا نعتمد على الشبكة وحدها عند الإلغاء.
+  ADMIN_TOKEN = null;
+  try { await client.auth.signOut({ scope: "local" }); } catch (_) {}
+  try {
+    // عميل Supabase مضبوط على sessionStorage، لذلك نمسح مفتاح الجلسة
+    // الخاص بالمشروع حتى لا يبقى Token قديم بعد إعادة تحميل الصفحة.
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith("sb-") && key.includes("auth-token")) {
+        sessionStorage.removeItem(key);
+      }
+    }
+    sessionStorage.removeItem(KINGDZ_LOGIN_STATE_KEY);
+  } catch (_) {}
+  clearKingdzLoginState();
+
+  const dashboard = document.getElementById("dashboard");
+  const loginPage = document.getElementById("loginPage");
+  if (dashboard) dashboard.style.display = "none";
+  if (loginPage) loginPage.style.display = "flex";
+
+  // نعيد تحميل الصفحة فقط بعد تنظيف الجلسة محلياً.
+  location.reload();
+}
+
+async function cancelKingdzMfaFlow() {
+  await forceKingdzLogoutAndReload();
+}
+
 async function showPending2FAEnrollment(email, factorId) {
   const loginPage = document.getElementById("loginPage");
   if (!loginPage) return;
@@ -314,7 +402,7 @@ async function showPending2FAEnrollment(email, factorId) {
       <input inputmode="numeric" autocomplete="one-time-code" type="text" id="pendingMfaCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="رمز 6 أرقام">
       <div id="pendingMfaError" class="text-red-400 text-xs font-medium mt-3"></div>
       <button id="pendingMfaBtn" class="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تفعيل 2FA والدخول</button>
-      <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline mt-4">العودة</button>
+      <button type="button" onclick="cancelKingdzMfaFlow()" class="text-xs text-gray-400 hover:underline mt-4">العودة</button>
     </div>`;
 
   document.getElementById("pendingMfaBtn").onclick = async () => {
@@ -383,7 +471,7 @@ async function showFirstTime2FAEnrollment(email) {
       <input inputmode="numeric" autocomplete="one-time-code" type="text" id="firstMfaCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="رمز 6 أرقام">
       <div id="firstMfaError" class="text-red-400 text-xs font-medium"></div>
       <button id="activateMfaBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تفعيل 2FA والدخول</button>
-      <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline block mx-auto">إلغاء</button>`;
+      <button type="button" onclick="cancelKingdzMfaFlow()" class="text-xs text-gray-400 hover:underline block mx-auto">إلغاء</button>`;
 
     document.getElementById("activateMfaBtn").onclick = async () => {
       const code = normalizeMfaCode(document.getElementById("firstMfaCode")?.value || "");
@@ -433,7 +521,7 @@ function show2FAModal(email, factorId, challengeId) {
         <input inputmode="numeric" autocomplete="one-time-code" type="text" id="otpCode" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="------">
         <div id="otpError" class="text-red-400 text-xs font-medium"></div>
         <button id="verifyOtpBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-600/30">تأكيد الرمز والدخول</button>
-        <button type="button" onclick="location.reload()" class="text-xs text-gray-400 hover:underline mt-2 block mx-auto">إلغاء والعودة</button>
+        <button type="button" onclick="cancelKingdzMfaFlow()" class="text-xs text-gray-400 hover:underline mt-2 block mx-auto">إلغاء والعودة</button>
       </div>
     </div>`;
 
