@@ -740,41 +740,21 @@ function renderBalanceTransactions() {
   if (!table) return;
   const filter = document.getElementById("balanceTypeFilter")?.value || "all";
   const rows = balanceTransactionsCache.filter(x => filter === "all" || String(x.type||"").toLowerCase() === filter).slice(0,200);
-
   table.innerHTML = rows.length ? rows.map(x => {
     const amount = Number(x.amount || 0);
+    const currency = String(x.currency || "USD").toUpperCase();
+    const cls = amount >= 0 ? "text-green-400" : "text-red-400";
     const referenceType = String(x.reference_type || "").toLowerCase();
     const inferredCurrency = x.currency
       ? String(x.currency).toUpperCase()
-      : referenceType.endsWith("_dzd") ? "DZD" : "USD";
+      : referenceType.endsWith("_dzd")
+        ? "DZD"
+        : "USD";
     const displayCurrency = inferredCurrency === "DZD" ? "DZD" : "USD";
-    const cls = amount >= 0 ? "text-green-400" : "text-red-400";
     const reference = x.reference || x.reference_id || x.tx_hash || "—";
-    return `<tr class="hover:bg-white/[0.02] transition">
-      <td class="p-3 text-gray-500 whitespace-nowrap">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</td>
-      <td class="p-3 text-gray-300 break-all">${balanceEscape(x.username || x.user_id || "—")}</td>
-      <td class="p-3 text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</td>
-      <td class="p-3 ${cls} font-bold">${amount > 0 ? "+" : ""}${balanceEscape(balanceMoney(amount, displayCurrency))}</td>
-      <td class="p-3 text-gray-400">${balanceEscape(balanceMoney(x.balance_before, displayCurrency))}</td>
-      <td class="p-3 text-white">${balanceEscape(balanceMoney(x.balance_after, displayCurrency))}</td>
-      <td class="p-3 text-gray-500 break-all">${balanceEscape(reference)}</td>
-    </tr>`;
+    return `<tr class="hover:bg-white/[0.02]"><td class="p-3 text-gray-500 whitespace-nowrap">${balanceEscape(x.created_at ? formatDate(x.created_at) : "—")}</td><td class="p-3 text-gray-300 break-all">${balanceEscape(x.username || x.user_id || "—")}</td><td class="p-3 text-purple-300">${balanceEscape(balanceTypeLabel(x.type))}</td><td class="p-3 ${cls} font-bold">${amount>0?"+":""}${balanceEscape(balanceMoney(amount,displayCurrency))}</td><td class="p-3 text-gray-400">${balanceEscape(balanceMoney(x.balance_before,displayCurrency))}</td><td class="p-3 text-white">${balanceEscape(balanceMoney(x.balance_after,displayCurrency))}</td><td class="p-3 text-gray-500 break-all">${balanceEscape(reference)}</td></tr>`;
   }).join("") : `<tr><td colspan="7" class="p-8 text-center text-gray-500">لا توجد حركات مالية مسجلة</td></tr>`;
 }
-
-function toggleBalanceTransactions(forceOpen = null) {
-  const wrap = document.getElementById("balanceTransactionsListWrap");
-  const button = document.getElementById("btnToggleBalanceTransactions");
-  const arrow = document.getElementById("balanceTransactionsArrow");
-  if (!wrap || !button) return;
-
-  const isOpen = !wrap.classList.contains("hidden");
-  const shouldOpen = forceOpen === null ? !isOpen : Boolean(forceOpen);
-  wrap.classList.toggle("hidden", !shouldOpen);
-  button.setAttribute("aria-expanded", String(shouldOpen));
-  if (arrow) arrow.style.transform = shouldOpen ? "rotate(180deg)" : "rotate(0deg)";
-}
-
 
 function updateBalanceStats() {
   const users = balanceUsersCache;
@@ -880,7 +860,17 @@ async function loadBalanceManagement() {
 document.getElementById("btnRefreshBalances")?.addEventListener("click", loadBalanceManagement);
 document.getElementById("balanceUserSearch")?.addEventListener("input", renderBalanceUsers);
 document.getElementById("balanceTypeFilter")?.addEventListener("change", renderBalanceTransactions);
-  document.getElementById("btnToggleBalanceTransactions")?.addEventListener("click", () => toggleBalanceTransactions());
+
+// طي/فتح قائمة سجل الحركات المالية كاملة
+const balanceTransactionsToggle = document.getElementById("btnToggleBalanceTransactions");
+const balanceTransactionsListWrap = document.getElementById("balanceTransactionsListWrap");
+if (balanceTransactionsToggle && balanceTransactionsListWrap) {
+  balanceTransactionsToggle.addEventListener("click", () => {
+    const isHidden = balanceTransactionsListWrap.classList.toggle("hidden");
+    balanceTransactionsToggle.setAttribute("aria-expanded", String(!isHidden));
+    balanceTransactionsToggle.textContent = isHidden ? "⌄" : "⌃";
+  });
+}
 document.getElementById("btnApplyBalanceAdjustment")?.addEventListener("click", applyBalanceAdjustment);
 
 // ============================================================
