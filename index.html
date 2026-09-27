@@ -309,22 +309,48 @@
                 </section>
 
                 <!-- قسم المستخدمين -->
-                <section id="users-section" class="tab-content hidden space-y-6">
+                <section id="users-section" class="tab-content hidden space-y-5">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">إجمالي المستخدمين</div><div id="usersMgmtTotal" class="text-white text-xl font-black mt-1">0</div></div>
+                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">متصلون الآن</div><div id="usersMgmtOnline" class="text-green-400 text-xl font-black mt-1">0</div></div>
+                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">VIP نشط</div><div id="usersMgmtVip" class="text-yellow-400 text-xl font-black mt-1">0</div></div>
+                        <div class="glass-card rounded-2xl border border-white/5 p-4"><div class="text-gray-500 text-[10px]">محظورون</div><div id="usersMgmtBanned" class="text-red-400 text-xl font-black mt-1">0</div></div>
+                    </div>
+
                     <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
-                        <div class="p-5 border-b border-white/5"><h4 class="text-white font-bold text-sm">إدارة كافة المستخدمين</h4></div>
+                        <div class="p-4 md:p-5 border-b border-white/5 space-y-3">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h4 class="text-white font-bold text-sm">👥 إدارة المستخدمين</h4>
+                                    <p class="text-gray-500 text-[10px] mt-1">ابحث، صفّي، ثم افتح ملف المستخدم لمراجعة بياناته والتحكم فيه.</p>
+                                </div>
+                                <button id="btnRefreshUsersManagement" class="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded-xl text-xs">🔄 تحديث</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
+                                <div class="md:col-span-6 relative">
+                                    <span class="absolute right-3 top-2.5 text-gray-500">⌕</span>
+                                    <input id="usersManagementSearch" class="w-full bg-[#161b26] border border-white/10 rounded-xl pr-9 pl-3 py-2.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="اسم المستخدم / الإيميل / Device ID / الدولة">
+                                </div>
+                                <select id="usersManagementStatus" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-xl px-3 py-2.5 text-gray-200 text-xs focus:outline-none">
+                                    <option value="all">كل الحالات</option><option value="online">متصل الآن</option><option value="offline">غير متصل</option><option value="banned">محظور</option>
+                                </select>
+                                <select id="usersManagementType" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-xl px-3 py-2.5 text-gray-200 text-xs focus:outline-none">
+                                    <option value="all">كل الأنواع</option><option value="vip">VIP</option><option value="free">FREE</option>
+                                </select>
+                                <select id="usersManagementSort" class="md:col-span-2 bg-[#161b26] border border-white/10 rounded-xl px-3 py-2.5 text-gray-200 text-xs focus:outline-none">
+                                    <option value="latest">الأحدث اتصالاً</option><option value="oldest">الأقدم اتصالاً</option><option value="vip">VIP أولاً</option><option value="name">حسب الاسم</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between text-[10px]">
+                                <span id="usersManagementResultCount" class="text-gray-500">0 مستخدم</span>
+                                <span class="text-gray-600">اضغط «إدارة» لفتح الملف الكامل</span>
+                            </div>
+                        </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-right text-xs">
+                            <table class="w-full text-right text-xs min-w-[980px]">
                                 <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
                                     <tr>
-                                        <th class="p-3">الدولة</th>
-                                        <th class="p-3">الجهاز</th>
-                                        <th class="p-3">الحالة</th>
-                                        <th class="p-3">النوع</th>
-                                        <th class="p-3">المدة</th>
-                                        <th class="p-3">المتبقي</th>
-                                        <th class="p-3">انتهاء الاشتراك</th>
-                                        <th class="p-3">الحماية</th>
-                                        <th class="p-3">إدارة</th>
+                                        <th class="p-3">المستخدم</th><th class="p-3">الدولة</th><th class="p-3">الجهاز</th><th class="p-3">الحالة</th><th class="p-3">النوع</th><th class="p-3">المتبقي</th><th class="p-3">انتهاء الاشتراك</th><th class="p-3">الحماية</th><th class="p-3">إدارة</th>
                                     </tr>
                                 </thead>
                                 <tbody id="allUsersTable" class="divide-y divide-white/5"></tbody>

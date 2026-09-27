@@ -261,7 +261,8 @@ async function refreshDashboard() {
   const usersRes = await api("get_all_users");
   const keysRes = await api("get_keys");
 
-  const uData = (usersRes && (usersRes.data || usersRes)) || [];  
+  const uData = (usersRes && (usersRes.data || usersRes)) || [];
+  window.__kingDzUsersCache = Array.isArray(uData) ? uData : [];
   const kData = (keysRes && (keysRes.data || keysRes)) || [];  
 
   updateCounter("usersCount", uData.length);  
@@ -503,19 +504,93 @@ function renderMainUsersTable(users) {
 function renderAllUsersTable(users) {
   const tbody = document.getElementById("allUsersTable");
   if (!tbody) return;
-  tbody.innerHTML = "";
+
   const now = Date.now();
-  users.forEach(u => {
-    const devId = u.device_id || u.id || u.uuid || u.device || "Unknown";
-    const online = u.last_online && (now - new Date(u.last_online).getTime()) < 300000;
-    const statusText = u.banned ? "🚫 محظور" : (online ? "🟢 متصل الآن" : "⚫ غير متصل");
-    const device = u.model || u.device_type || u.manufacturer || "--";
-    const vip = u.vip ? '<span class="text-yellow-400 font-bold">👑 VIP</span>' : '<span class="text-gray-400">FREE</span>';
-    const row = document.createElement("tr");
-    row.innerHTML = `<td>${u.country || '--'}</td><td>${device}</td><td>${statusText}</td><td>${vip}</td><td class="text-yellow-400 font-bold">${u.duration_type || '--'}</td><td>${u.vip_until ? getRemainingTime(u.vip_until) : '--'}</td><td>${formatDate(u.vip_until)}</td><td style="color:${u.cheat_detected ? '#f87171' : '#4ade80'}">${u.cheat_detected ? '🚫 كشف' : '✅ نظيف'}</td><td><button onclick="openDrawer('${devId}')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white">إدارة</button></td>`;
-    tbody.appendChild(row);
+  const search = String(document.getElementById("usersManagementSearch")?.value || "").trim().toLowerCase();
+  const status = document.getElementById("usersManagementStatus")?.value || "all";
+  const type = document.getElementById("usersManagementType")?.value || "all";
+  const sort = document.getElementById("usersManagementSort")?.value || "latest";
+  const isOnline = u => !!u.last_online && (now - new Date(u.last_online).getTime()) < 300000;
+  const userName = u => u.username || u.email || u.name || u.device_id || u.id || "مستخدم";
+  const esc = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+
+  let filtered = (Array.isArray(users) ? users : []).filter(u => {
+    const hay = [u.username,u.email,u.device_id,u.id,u.uuid,u.country,u.model,u.manufacturer].filter(v => v !== null && v !== undefined).join(" ").toLowerCase();
+    if (search && !hay.includes(search)) return false;
+    if (status === "online" && (!isOnline(u) || u.banned)) return false;
+    if (status === "offline" && (isOnline(u) && !u.banned)) return false;
+    if (status === "banned" && u.banned !== true) return false;
+    if (type === "vip" && u.vip !== true) return false;
+    if (type === "free" && u.vip === true) return false;
+    return true;
   });
+
+  filtered.sort((a,b) => {
+    if (sort === "vip") return Number(b.vip === true) - Number(a.vip === true) || String(userName(a)).localeCompare(String(userName(b)), "ar");
+    if (sort === "name") return String(userName(a)).localeCompare(String(userName(b)), "ar");
+    const at = a.last_online ? new Date(a.last_online).getTime() : 0;
+    const bt = b.last_online ? new Date(b.last_online).getTime() : 0;
+    return sort === "oldest" ? at - bt : bt - at;
+  });
+
+  const total = Array.isArray(users) ? users.length : 0;
+  const onlineCount = (Array.isArray(users) ? users : []).filter(u => isOnline(u) && !u.banned).length;
+  const vipCount = (Array.isArray(users) ? users : []).filter(u => u.vip === true && (!u.vip_until || new Date(u.vip_until) > new Date())).length;
+  const bannedCount = (Array.isArray(users) ? users : []).filter(u => u.banned === true).length;
+  document.getElementById("usersMgmtTotal")?.replaceChildren(document.createTextNode(total.toLocaleString()));
+  document.getElementById("usersMgmtOnline")?.replaceChildren(document.createTextNode(onlineCount.toLocaleString()));
+  document.getElementById("usersMgmtVip")?.replaceChildren(document.createTextNode(vipCount.toLocaleString()));
+  document.getElementById("usersMgmtBanned")?.replaceChildren(document.createTextNode(bannedCount.toLocaleString()));
+  const resultEl = document.getElementById("usersManagementResultCount");
+  if (resultEl) resultEl.textContent = `${filtered.length.toLocaleString()} مستخدم من ${total.toLocaleString()}`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-10 text-center"><div class="text-gray-500 text-sm">لا توجد نتائج مطابقة</div><div class="text-gray-600 text-[10px] mt-1">جرّب تغيير البحث أو الفلاتر</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(u => {
+    const devId = u.device_id || u.id || u.uuid || u.device || "Unknown";
+    const online = isOnline(u);
+    const name = userName(u);
+    const device = u.model || u.device_type || u.manufacturer || "Smartphone";
+    const statusText = u.banned ? "🚫 محظور" : (online ? "🟢 متصل الآن" : "⚫ غير متصل");
+    const statusCls = u.banned ? "text-red-400" : (online ? "text-green-400" : "text-gray-500");
+    const vip = u.vip ? '<span class="px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 font-bold">👑 VIP</span>' : '<span class="px-2 py-1 rounded-lg bg-white/5 text-gray-400">FREE</span>';
+    const protection = u.cheat_detected ? '<span class="text-red-400 font-bold">🚫 كشف</span>' : '<span class="text-green-400">✅ نظيف</span>';
+    const avatarSeed = encodeURIComponent(String(devId));
+    return `<tr class="hover:bg-purple-500/[0.03] transition-colors">
+      <td class="p-3"><div class="flex items-center gap-2 min-w-[190px]"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}" class="w-8 h-8 rounded-full bg-[#111622] border border-white/10" loading="lazy"><div class="min-w-0"><div class="text-white font-bold truncate max-w-[150px]">${esc(name)}</div><div class="text-gray-600 text-[9px] truncate max-w-[170px]" title="${esc(devId)}">${esc(devId)}</div></div></div></td>
+      <td class="p-3 text-gray-300">${esc(u.country || "الجزائر 🇩🇿")}</td>
+      <td class="p-3 text-gray-400">${esc(device)}</td>
+      <td class="p-3"><span class="${statusCls} font-bold text-[10px]">${statusText}</span></td>
+      <td class="p-3">${vip}</td>
+      <td class="p-3 text-yellow-400 font-bold">${u.vip_until ? esc(getRemainingTime(u.vip_until)) : "—"}</td>
+      <td class="p-3 text-gray-400 text-[10px]">${u.vip_until ? esc(formatDate(u.vip_until)) : "—"}</td>
+      <td class="p-3">${protection}</td>
+      <td class="p-3"><button onclick="openDrawer('${esc(devId)}')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-white text-[10px] font-bold transition">إدارة ↗</button></td>
+    </tr>`;
+  }).join("");
+  if (window.lucide) lucide.createIcons();
 }
+
+function renderUsersManagementFromControls() {
+  if (typeof balanceUsersCache !== "undefined") {}
+  const cached = window.__kingDzUsersCache || [];
+  if (cached.length) renderAllUsersTable(cached);
+}
+
+
+["usersManagementSearch","usersManagementStatus","usersManagementType","usersManagementSort"].forEach(id => {
+  document.getElementById(id)?.addEventListener("input", renderUsersManagementFromControls);
+  document.getElementById(id)?.addEventListener("change", renderUsersManagementFromControls);
+});
+document.getElementById("btnRefreshUsersManagement")?.addEventListener("click", async () => {
+  const btn = document.getElementById("btnRefreshUsersManagement");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ جاري التحديث"; }
+  try { await refreshDashboard(); showToast?.("تم تحديث قائمة المستخدمين"); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = "🔄 تحديث"; } }
+});
 
 function getRemainingTime(vipUntil) {
   const now = new Date();
