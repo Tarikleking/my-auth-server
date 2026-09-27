@@ -9,7 +9,9 @@ const KINGDZ_SENSITIVE_ACTIONS = new Set([
   "zero_user_balance", "reset_user_balance", "admin_process_withdrawal_request",
   "process_withdrawal_request", "confirm_withdrawal_payment", "pay_withdrawal",
   "resolve_mediation_dispute", "refund_mediation", "release_mediation",
-  "complete_mediation_withdrawal"
+  "complete_mediation_withdrawal",
+  "delete_user", "delete_key", "create_key", "ban_user", "update_vip",
+  "update_settings", "delete_log"
 ]);
 
 let kingdzSecurityPinBusy = false;
@@ -93,6 +95,7 @@ client.auth.onAuthStateChange((event, session) => {
     ADMIN_TOKEN = null;
     localStorage.removeItem("admin_token");
   }
+  updateSecurityStatus?.();
 });
 
 let statsChart = null;
@@ -237,6 +240,7 @@ document.addEventListener("click", async (e) => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+  updateSecurityStatus();
   const loginCard = document.querySelector("#loginPage .glass-card, #loginPage > div");
   if (loginCard && !document.getElementById("forgotPasswordBtn")) {
     const forgotBtn = document.createElement("button");
@@ -2816,106 +2820,104 @@ document.getElementById("btnDeleteSelected")?.addEventListener("click", async ()
   refreshDashboard();
 });
 
+let allActivityLogsCache = [];
+
+function renderActivityLogs() {
+  const container = document.getElementById("activityLogs");
+  if (!container) return;
+  const query = String(document.getElementById("logsSearchInput")?.value || "").trim().toLowerCase();
+  const typeFilter = String(document.getElementById("logsTypeFilter")?.value || "all").toUpperCase();
+  const sortFilter = String(document.getElementById("logsSortFilter")?.value || "newest");
+
+  const filtered = allActivityLogsCache.filter(log => {
+    const type = String(log?.type || "").toUpperCase();
+    if (typeFilter !== "ALL" && type !== typeFilter && !(typeFilter === "TOPUP" && type === "GAME")) return false;
+    if (!query) return true;
+    const haystack = [log?.id, log?.action, log?.type, log?.details, log?.device_id, log?.username, log?.user_id]
+      .map(v => String(v ?? "")).join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+
+  filtered.sort((a,b) => {
+    const ad = new Date(a?.created_at || 0).getTime() || 0;
+    const bd = new Date(b?.created_at || 0).getTime() || 0;
+    return sortFilter === "oldest" ? ad - bd : bd - ad;
+  });
+
+  const count = document.getElementById("logsResultCount");
+  if (count) count.textContent = `${filtered.length} / ${allActivityLogsCache.length} سجل`;
+
+  const total = document.getElementById("logsStatTotal");
+  const today = document.getElementById("logsStatToday");
+  const users = document.getElementById("logsStatUsers");
+  const admin = document.getElementById("logsStatAdmin");
+  const startToday = new Date(); startToday.setHours(0,0,0,0);
+  const todayCount = allActivityLogsCache.filter(x => new Date(x?.created_at || 0).getTime() >= startToday.getTime()).length;
+  const userTypes = new Set(["USER","AUTH","VIP"]);
+  const userCount = allActivityLogsCache.filter(x => userTypes.has(String(x?.type || "").toUpperCase())).length;
+  const adminCount = allActivityLogsCache.filter(x => !x?.device_id || String(x?.device_id).toLowerCase().includes("admin")).length;
+  if (total) total.innerHTML = `<div class="text-gray-400 text-[10px]">📋 إجمالي السجلات</div><div class="text-white font-bold text-lg mt-1">${allActivityLogsCache.length}</div>`;
+  if (today) today.innerHTML = `<div class="text-gray-400 text-[10px]">🕒 اليوم</div><div class="text-white font-bold text-lg mt-1">${todayCount}</div>`;
+  if (users) users.innerHTML = `<div class="text-gray-400 text-[10px]">👤 عمليات المستخدمين</div><div class="text-white font-bold text-lg mt-1">${userCount}</div>`;
+  if (admin) admin.innerHTML = `<div class="text-gray-400 text-[10px]">🛡️ عمليات إدارية</div><div class="text-white font-bold text-lg mt-1">${adminCount}</div>`;
+
+  if (!filtered.length) {
+    container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات مطابقة للفلاتر الحالية</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(log => {
+    let color = "text-purple-400", icon = "📋";
+    const type = String(log?.type || "").toUpperCase();
+    if (type === "USER" || type === "AUTH") { color = "text-blue-400"; icon = "👤"; }
+    else if (type === "VIP") { color = "text-yellow-400"; icon = "👑"; }
+    else if (type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }
+    else if (type === "ORDER") { color = "text-emerald-400"; icon = "📦"; }
+    else if (type === "TOPUP" || type === "GAME") { color = "text-indigo-400"; icon = "🎮"; }
+    else if (type === "PAYMENT") { color = "text-amber-400"; icon = "💳"; }
+    else if (type === "NAVIGATION") { color = "text-gray-400"; icon = "🧭"; }
+    else if (type === "AI") { color = "text-pink-400"; icon = "🤖"; }
+
+    const actionTranslations = {
+      APP_OPENED:"فتح التطبيق", USER_LOGOUT:"تسجيل خروج", SECTION_VIEWED:"تصفح قسم", SERVICE_SELECTED:"تحديد خدمة",
+      GAME_VIEWED:"مشاهدة لعبة", GAME_TOPUP_COMPLETED:"نجاح شحن اللعبة", GAME_TOPUP_FAILED:"فشل شحن اللعبة",
+      ORDER_COMPLETED:"اكتمال طلب", ORDER_FAILED:"فشل طلب", BALANCE_RECHARGE_INITIATED:"بدء شحن رصيد",
+      KEY_ACTIVATED:"تفعيل مفتاح VIP", KEY_ACTIVATION_FAILED:"فشل تفعيل مفتاح", AI_CHAT_OPENED:"استخدام المساعد الذكي",
+      VIP_GRANTED:"منح VIP", VIP_REVOKED:"سحب VIP", USER_DELETED:"حذف مستخدم", USER_BANNED:"حظر مستخدم",
+      USER_UNBANNED:"فك حظر مستخدم", KEY_CREATED:"إنشاء مفتاح", KEY_DELETED:"حذف مفتاح", KEYS_DELETED:"حذف عدة مفاتيح"
+    };
+    const actionName = actionTranslations[log?.action] || log?.action || "عملية غير معروفة";
+    let displayHtml = "";
+    try {
+      if (typeof log?.details === "string" && (log.details.trim().startsWith("{") || log.details.trim().startsWith("["))) {
+        const parsed = JSON.parse(log.details);
+        const username = parsed.username && parsed.username !== "Unknown" ? parsed.username : (log.device_id || "مستخدم");
+        const service = parsed.service && parsed.service !== "N/A" ? `<span class="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs">${escapeHtml(String(parsed.service))}</span>` : "";
+        const amount = parsed.amount > 0 ? `<span class="bg-green-500/20 text-green-300 px-2 py-0.5 rounded text-xs">${escapeHtml(String(parsed.amount))} ${escapeHtml(String(parsed.currency || ""))}</span>` : "";
+        const msg = parsed.message ? escapeHtml(String(parsed.message)) : "";
+        displayHtml = `<div class="flex flex-wrap items-center gap-1 text-xs text-gray-300 mt-1"><span class="text-white font-bold">${escapeHtml(String(username))}</span>: <span>${msg}</span>${service}${amount}</div>`;
+      }
+    } catch (_) {}
+    if (!displayHtml) displayHtml = `<div class="text-white text-xs mt-1">${escapeHtml(String(log?.details || "--"))}</div>`;
+
+    return `<div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">
+      <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${escapeHtml(String(log?.id ?? ""))}">
+      <div class="flex-1 flex justify-between items-start gap-3">
+        <div class="text-right min-w-0"><div class="${color} font-bold text-sm flex items-center gap-2"><span>${icon}</span><span>${escapeHtml(String(actionName))}</span>${log?.device_id ? `<span class="text-[10px] text-gray-500 font-mono">(${escapeHtml(String(log.device_id))})</span>` : ""}</div>${displayHtml}</div>
+        <div class="flex items-center gap-3 shrink-0"><span class="text-xs text-gray-400">🕒 ${formatDate(log?.created_at)}</span><button onclick="deleteActivityLog('${escapeHtml(String(log?.id ?? ""))}')" class="text-red-500 hover:text-red-400 transition text-lg" title="حذف السجل">🗑️</button></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
 async function loadActivityLogs() {
   const container = document.getElementById("activityLogs");
   if (!container) return;
   const res = await api("get_logs");
   const data = (res && (res.data || res)) || null;
   if (!res || res.error) { container.innerHTML = `<div class="text-red-400 text-center">فشل تحميل السجلات</div>`; return; }
-  if (!data || data.length === 0) { container.innerHTML = `<div class="text-gray-500 text-center py-8">لا توجد سجلات نشاط</div>`; return; }
-
-  container.innerHTML = "";  
-  data.forEach(log => {  
-      let color = "text-purple-400";   
-      let icon = "📋";  
-        
-      if (log.type === "USER" || log.type === "AUTH") { color = "text-blue-400"; icon = "👤"; }  
-      else if (log.type === "VIP") { color = "text-yellow-400"; icon = "👑"; }  
-      else if (log.type === "KEY") { color = "text-cyan-400"; icon = "🔑"; }  
-      else if (log.type === "ORDER") { color = "text-emerald-400"; icon = "📦"; }  
-      else if (log.type === "TOPUP" || log.type === "GAME") { color = "text-indigo-400"; icon = "🎮"; }  
-      else if (log.type === "PAYMENT") { color = "text-amber-400"; icon = "💳"; }  
-      else if (log.type === "NAVIGATION") { color = "text-gray-400"; icon = "🧭"; }  
-      else if (log.type === "AI") { color = "text-pink-400"; icon = "🤖"; }  
-
-      let actionName = log.action;  
-      const actionTranslations = {  
-          "APP_OPENED": "فتح التطبيق",  
-          "USER_LOGOUT": "تسجيل خروج",  
-          "SECTION_VIEWED": "تصفح قسم",  
-          "SERVICE_SELECTED": "تحديد خدمة",  
-          "GAME_VIEWED": "مشاهدة لعبة",  
-          "GAME_TOPUP_COMPLETED": "نجاح شحن اللعبة",  
-          "GAME_TOPUP_FAILED": "فشل شحن اللعبة",  
-          "ORDER_COMPLETED": "اكتمال طلب",  
-          "ORDER_FAILED": "فشل طلب",  
-          "BALANCE_RECHARGE_INITIATED": "بدء شحن رصيد",  
-          "KEY_ACTIVATED": "تفعيل مفتاح VIP",  
-          "KEY_ACTIVATION_FAILED": "فشل تفعيل مفتاح",  
-          "AI_CHAT_OPENED": "استخدام المساعد الذكي",  
-          "VIP_GRANTED": "منح VIP",  
-          "VIP_REVOKED": "سحب VIP",  
-          "USER_DELETED": "حذف مستخدم",  
-          "USER_BANNED": "حظر مستخدم",  
-          "USER_UNBANNED": "فك حظر مستخدم",  
-          "KEY_CREATED": "إنشاء مفتاح",  
-          "KEY_DELETED": "حذف مفتاح",  
-          "KEYS_DELETED": "حذف عدة مفاتيح"  
-      };  
-      if (actionTranslations[log.action]) {  
-          actionName = actionTranslations[log.action];  
-      }  
-
-      let displayHtml = "";  
-      let isJsonParsed = false;  
-
-      try {  
-          if (log.details && (log.details.startsWith("{") || log.details.startsWith("["))) {  
-              const parsed = JSON.parse(log.details);  
-              isJsonParsed = true;  
-
-              const username = parsed.username && parsed.username !== "Unknown" ? parsed.username : (log.device_id || "مستخدم");  
-              const service = parsed.service && parsed.service !== "N/A" ? `<span class="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.service}</span>` : "";  
-              const amount = parsed.amount > 0 ? `<span class="bg-green-500/20 text-green-300 px-2 py-0.5 rounded text-xs ml-2">${parsed.amount} ${parsed.currency || ''}</span>` : "";  
-              const msg = parsed.message ? parsed.message : "";  
-
-              displayHtml = `  
-                  <div class="flex flex-wrap items-center gap-1 text-xs text-gray-300 mt-1">  
-                      <span class="text-white font-bold">${username}</span>:   
-                      <span>${msg}</span>  
-                      ${service}  
-                      ${amount}  
-                  </div>  
-              `;  
-          }  
-      } catch (e) {  
-          isJsonParsed = false;  
-      }  
-
-      if (!isJsonParsed) {  
-          displayHtml = `<div class="text-white text-xs mt-1">${log.details || "--"}</div>`;  
-      }  
-
-      container.innerHTML += `  
-          <div class="glass-card p-4 rounded-xl border border-white/5 hover:border-purple-500/40 transition-all flex items-center gap-3">  
-              <input type="checkbox" class="log-checkbox w-4 h-4 accent-purple-600" data-id="${log.id}">  
-              <div class="flex-1 flex justify-between items-start">  
-                  <div class="text-right">  
-                      <div class="${color} font-bold text-sm flex items-center gap-2">  
-                          <span>${icon}</span>  
-                          <span>${actionName}</span>  
-                          ${log.device_id ? `<span class="text-[10px] text-gray-500 font-mono">(${log.device_id})</span>` : ''}  
-                      </div>  
-                      ${displayHtml}  
-                  </div>  
-                  <div class="flex items-center gap-3">  
-                      <span class="text-xs text-gray-400">🕒 ${formatDate(log.created_at)}</span>  
-                      <button onclick="deleteActivityLog('${log.id}')" class="text-red-500 hover:text-red-400 transition text-lg" title="حذف السجل">🗑️</button>  
-                  </div>  
-              </div>  
-          </div>  
-      `;  
-  });
+  allActivityLogsCache = Array.isArray(data) ? data : [];
+  renderActivityLogs();
 }
 
 async function deleteActivityLog(id) {
@@ -2925,6 +2927,13 @@ async function deleteActivityLog(id) {
 }
 
 document.getElementById("btnRefreshActivity")?.addEventListener("click", () => { loadActivityLogs(); showToast("تم تحديث سجل النشاط"); });
+document.getElementById("logsSearchInput")?.addEventListener("input", renderActivityLogs);
+document.getElementById("logsTypeFilter")?.addEventListener("change", renderActivityLogs);
+document.getElementById("logsSortFilter")?.addEventListener("change", renderActivityLogs);
+document.getElementById("btnClearLogsFilters")?.addEventListener("click", () => {
+  const q = document.getElementById("logsSearchInput"); const t = document.getElementById("logsTypeFilter"); const s = document.getElementById("logsSortFilter");
+  if (q) q.value = ""; if (t) t.value = "all"; if (s) s.value = "newest"; renderActivityLogs();
+});
 document.getElementById("btnSelectAllLogs")?.addEventListener("click", () => {
   const checkboxes = document.querySelectorAll(".log-checkbox");
   const allChecked = [...checkboxes].every(cb => cb.checked);
@@ -2939,6 +2948,17 @@ document.getElementById("btnDeleteSelectedLogs")?.addEventListener("click", asyn
   showToast("تم الحذف بنجاح");
   loadActivityLogs();
 });
+
+function updateSecurityStatus() {
+  const status = document.getElementById("securitySessionStatus");
+  const token = localStorage.getItem("admin_token") || ADMIN_TOKEN;
+  if (!status) return;
+  if (token) {
+    status.innerHTML = `<span class="inline-flex items-center gap-2 text-green-400"><span class="w-2 h-2 rounded-full bg-green-400"></span>الجلسة مؤمنة ومصادق عليها</span>`;
+  } else {
+    status.innerHTML = `<span class="inline-flex items-center gap-2 text-red-400"><span class="w-2 h-2 rounded-full bg-red-400"></span>لا توجد جلسة مصادق عليها</span>`;
+  }
+}
 
 async function loadSettings() {
   const res = await api("get_settings");
