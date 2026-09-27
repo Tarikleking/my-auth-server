@@ -45,8 +45,12 @@ async function api(action, data = {}) {
     if (res.status === 401) {
       localStorage.removeItem("admin_token"); ADMIN_TOKEN = null; location.reload(); return null;
     }
-    if (!res.ok) { console.error("API ERROR:", res.status); return null; }
-    return await res.json();
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error("API ERROR:", res.status, body);
+      return { ...body, error: body.error || body.message || `HTTP ${res.status}`, _http_status: res.status };
+    }
+    return body;
   } catch (err) { console.error("NETWORK ERROR:", err); return null; }
 }
 
@@ -766,12 +770,19 @@ async function applyBalanceAdjustment() {
     return;
   }
 
-  const amount = Number(document.getElementById("balanceAdjustAmount")?.value || 0);
+  const rawValue = String(document.getElementById("balanceAdjustAmount")?.value || "").trim();
+  const newBalance = Number(rawValue);
   const currency = String(document.getElementById("balanceAdjustCurrency")?.value || "usd").toLowerCase();
   const reason = String(document.getElementById("balanceAdjustReason")?.value || "تعديل إداري").trim();
 
-  if (!Number.isFinite(amount) || amount === 0) {
-    showToast("أدخل مبلغًا صحيحًا غير صفري");
+  if (!rawValue || !Number.isFinite(newBalance) || newBalance < 0) {
+    showToast("أدخل الرصيد الجديد بشكل صحيح");
+    return;
+  }
+
+  const userId = Number(selectedBalanceUser.id ?? selectedBalanceUser.user_id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    showToast("معرف المستخدم غير صالح");
     return;
   }
 
@@ -780,45 +791,45 @@ async function applyBalanceAdjustment() {
       ? (selectedBalanceUser.balance_dzd ?? 0)
       : (selectedBalanceUser.balance_usd ?? 0)
   );
-  const next = current + amount;
 
-  if (!Number.isFinite(current) || next < 0) {
-    showToast("لا يمكن أن يصبح الرصيد سالبًا");
+  if (!Number.isFinite(current)) {
+    showToast("تعذر قراءة الرصيد الحالي");
     return;
   }
 
-  const deviceId = selectedBalanceUser.device_id || null;
-  if (!deviceId) {
-    showToast("تعذر تحديد جهاز المستخدم");
+  const movement = Number((newBalance - current).toFixed(2));
+  if (movement === 0) {
+    showToast("الرصيد لم يتغير");
     return;
   }
 
   const payload = {
-    device_id: deviceId,
-    ...(currency === "dzd" ? { balance_dzd: Number(next.toFixed(2)) } : { balance_usd: Number(next.toFixed(2)) }),
-    transaction_amount: Number(amount.toFixed(2)),
+    user_id: userId,
+    ...(currency === "dzd"
+      ? { balance_dzd: Number(newBalance.toFixed(2)) }
+      : { balance_usd: Number(newBalance.toFixed(2)) }),
+    transaction_amount: movement,
     transaction_currency: currency,
     transaction_type: "admin_adjustment",
-    transaction_reason: reason,
-    transaction_reference: reason
+    transaction_reference: reason || "تعديل إداري"
   };
 
   const res = await api("update_balances", payload);
 
   if (!res || res.error) {
-    if (!res?.canceled) showToast("❌ تعذر تعديل الرصيد: " + (res?.error || "خطأ غير معروف"));
+    if (!res?.canceled) {
+      console.error("BALANCE UPDATE RESPONSE:", res);
+      showToast("❌ تعذر تعديل الرصيد: " + (res?.error || res?.message || "خطأ غير معروف"));
+    }
     return;
   }
 
-  showToast("تم تعديل الرصيد وتسجيل الحركة المالية");
+  showToast(`تم تعديل الرصيد من ${balanceMoney(current, currency.toUpperCase())} إلى ${balanceMoney(newBalance, currency.toUpperCase())} وتسجيل الحركة`);
   document.getElementById("balanceAdjustAmount").value = "";
   document.getElementById("balanceAdjustReason").value = "";
 
   await loadBalanceUsers();
-  const fresh = balanceUsersCache.find(u =>
-    String(u.id ?? u.user_id ?? u.device_id ?? u.uuid) ===
-    String(selectedBalanceUser.id ?? selectedBalanceUser.user_id ?? selectedBalanceUser.device_id ?? selectedBalanceUser.uuid)
-  ) || selectedBalanceUser;
+  const fresh = balanceUsersCache.find(u => Number(u.id ?? u.user_id) === userId) || selectedBalanceUser;
   selectBalanceUser(fresh);
 }
 
