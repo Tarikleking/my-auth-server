@@ -536,10 +536,20 @@ if (document.getElementById("loginBtn")) {
 
         const adminCheck = await api("check_admin");
 
+        const adminAuthorized =
+          adminCheck?.admin === true ||
+          adminCheck?.adminFound === true ||
+          adminCheck?.data?.admin === true ||
+          adminCheck?.data?.adminFound === true ||
+          adminCheck?.result?.admin === true ||
+          adminCheck?.result?.adminFound === true;
+
+        console.info("KING-DZ CHECK_ADMIN RESULT", adminCheck);
+
         if (
           !adminCheck ||
           adminCheck.error ||
-          adminCheck.admin !== true
+          !adminAuthorized
         ) {
           registerKingdzLoginFailure();
 
@@ -931,6 +941,28 @@ async function showFirstTime2FAEnrollment(email) {
     }
 
     /*
+     * حماية إضافية: إذا أعاد Supabase أي عامل TOTP موجود
+     * بحالة أخرى (مثل factor_in_progress)، لا ننفذ enroll().
+     * نعيد استخدام العامل الموجود حتى لا يظهر
+     * mfa_factor_name_conflict.
+     */
+    const anyExistingFactor = existingTotp.find(
+      factor => factor?.id
+    );
+
+    if (anyExistingFactor?.id) {
+      console.warn("MFA existing TOTP factor reused", {
+        id: anyExistingFactor.id,
+        status: anyExistingFactor.status || null
+      });
+      await showPending2FAEnrollment(
+        email,
+        anyExistingFactor.id
+      );
+      return;
+    }
+
+    /*
      * فحص نهائي قبل enroll(): لا ننشئ عاملاً جديداً إذا ظهر عامل
      * غير موثق بين الفحص السابق وهذه اللحظة.
      */
@@ -959,8 +991,19 @@ async function showFirstTime2FAEnrollment(email) {
       return;
     }
 
+    const finalAnyFactor = finalTotp.find(f => f?.id);
+    if (finalAnyFactor?.id) {
+      console.warn("MFA final guard reused existing TOTP factor", {
+        id: finalAnyFactor.id,
+        status: finalAnyFactor.status || null
+      });
+      await showPending2FAEnrollment(email, finalAnyFactor.id);
+      return;
+    }
+
     /*
-     * الآن فقط ننشئ عامل TOTP جديد.
+     * الآن فقط ننشئ عامل TOTP جديد، ولا يوجد أي عامل TOTP
+     * موجود للمستخدم.
      */
     const { data, error } = await client.auth.mfa.enroll({
       factorType: "totp",
