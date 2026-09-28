@@ -490,9 +490,11 @@ if (document.getElementById("loginBtn")) {
        * قراءة عوامل MFA.
        */
       const {
-        data: factorsData,
+        totp: totpFromRetry,
         error: factorsError
-      } = await client.auth.mfa.listFactors();
+      } = await getKingdzTotpFactorsWithRetry();
+
+      const factorsData = { totp: totpFromRetry };
 
       if (factorsError) {
         registerKingdzLoginFailure();
@@ -798,6 +800,33 @@ async function showPending2FAEnrollment(email, factorId) {
   };
 }
 
+async function getKingdzTotpFactorsWithRetry(maxAttempts = 4, delayMs = 700) {
+  let lastError = null;
+  let lastTotp = [];
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const { data, error } = await client.auth.mfa.listFactors();
+      if (error) {
+        lastError = error;
+      } else {
+        lastTotp = Array.isArray(data?.totp) ? data.totp : [];
+        if (lastTotp.length > 0 || attempt === maxAttempts) {
+          return { totp: lastTotp, error: null };
+        }
+      }
+    } catch (e) {
+      lastError = e;
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return { totp: lastTotp, error: lastError };
+}
+
 async function showFirstTime2FAEnrollment(email) {
   const loginPage = document.getElementById("loginPage");
   if (!loginPage) return;
@@ -885,34 +914,25 @@ async function showFirstTime2FAEnrollment(email) {
     }
 
     /*
-     * نتأكد أن الجلسة ما زالت صالحة فعلياً.
+     * لا نعمل refreshSession هنا؛ جلسة signInWithPassword الحالية
+     * هي جلسة AAL1 المطلوبة لـ MFA. الـ refresh في هذه النقطة قد
+     * يسبب إعادة ترتيب طلبات Auth ويجعل فحص العوامل غير متزامن مع
+     * حالة العامل الموجودة في Supabase.
      */
-    const { data: refreshedSessionData, error: refreshError } =
-      await client.auth.refreshSession();
-
-    if (!refreshError && refreshedSessionData?.session) {
-      session = refreshedSessionData.session;
-      ADMIN_TOKEN = session.access_token;
-    } else {
-      ADMIN_TOKEN = session.access_token;
-    }
+    ADMIN_TOKEN = session.access_token;
 
     /*
      * نفحص العوامل مرة أخرى حتى لا ننشئ عامل TOTP إضافياً
      * إذا كان هناك عامل غير موثق من محاولة سابقة.
      */
-    const { data: factorData, error: factorError } =
-      await client.auth.mfa.listFactors();
+    const { totp: existingTotp, error: factorError } =
+      await getKingdzTotpFactorsWithRetry(5, 800);
 
     if (factorError) {
       console.error("MFA listFactors error:", factorError);
       showEnrollError("تعذر قراءة إعداد المصادقة الثنائية.");
       return;
     }
-
-    const existingTotp = Array.isArray(factorData?.totp)
-      ? factorData.totp
-      : [];
 
     const verifiedFactor = existingTotp.find(
       factor => factor.status === "verified"
@@ -966,18 +986,14 @@ async function showFirstTime2FAEnrollment(email) {
      * فحص نهائي قبل enroll(): لا ننشئ عاملاً جديداً إذا ظهر عامل
      * غير موثق بين الفحص السابق وهذه اللحظة.
      */
-    const { data: finalFactorData, error: finalFactorError } =
-      await client.auth.mfa.listFactors();
+    const { totp: finalTotp, error: finalFactorError } =
+      await getKingdzTotpFactorsWithRetry(5, 800);
 
     if (finalFactorError) {
       console.error("MFA final listFactors error:", finalFactorError);
       showEnrollError("تعذر التحقق من عوامل Authenticator الحالية.");
       return;
     }
-
-    const finalTotp = Array.isArray(finalFactorData?.totp)
-      ? finalFactorData.totp
-      : [];
 
     const finalVerified = finalTotp.find(f => f.status === "verified");
     if (finalVerified?.id) {
