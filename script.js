@@ -3,6 +3,7 @@ const API_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/admin-use
 const KINGDZ_ADMIN_ORIGIN = "https://admin.kingstoor.com";
 
 let ADMIN_TOKEN = null;
+let KINGDZ_MFA_LOGIN_FLOW = false;
 let liveClock = null;
 let kingdzMfaCancelEpoch = 0;
 
@@ -253,6 +254,10 @@ async function showKingdzPasswordRecovery() {
 }
 
 async function checkSession() {
+  if (KINGDZ_MFA_LOGIN_FLOW) {
+    console.debug("KING-DZ: checkSession skipped while login/MFA flow is active");
+    return;
+  }
   const checkEpoch = kingdzMfaCancelEpoch;
   if (isKingdzPasswordRecovery()) { await showKingdzPasswordRecovery(); return; }
   // Fail-closed: اللوحة تبقى مخفية إلى أن يثبت AAL2 + صلاحية Admin.
@@ -352,6 +357,7 @@ async function checkSession() {
 // 🔐 تسجيل الدخول: كلمة مرور + MFA/TOTP حقيقي + تحقق من صلاحية Admin عبر الـBackend
 if (document.getElementById("loginBtn")) {
   document.getElementById("loginBtn").onclick = async () => {
+    KINGDZ_MFA_LOGIN_FLOW = true;
     const email =
       document.getElementById("email")?.value.trim().toLowerCase() || "";
 
@@ -579,6 +585,12 @@ if (document.getElementById("loginBtn")) {
         ADMIN_TOKEN =
           currentSessionData.session.access_token;
 
+        console.info("KING-DZ MFA ROUTE", {
+          email,
+          verifiedCount: verifiedFactors.length,
+          unverifiedFactorId: unverifiedFactor?.id || null
+        });
+
         /*
          * مهم جداً: إذا كان هناك عامل TOTP غير موثق،
          * لا نستعمل enroll() أبداً، لأن Supabase سيرفض إنشاء
@@ -643,6 +655,9 @@ if (document.getElementById("loginBtn")) {
       }
 
     } finally {
+
+      // لا نعتبر تدفق MFA منتهياً إلا بعد انتهاء معالج تسجيل الدخول.
+      KINGDZ_MFA_LOGIN_FLOW = false;
 
       if (button) {
         button.disabled = false;
@@ -916,6 +931,35 @@ async function showFirstTime2FAEnrollment(email) {
     }
 
     /*
+     * فحص نهائي قبل enroll(): لا ننشئ عاملاً جديداً إذا ظهر عامل
+     * غير موثق بين الفحص السابق وهذه اللحظة.
+     */
+    const { data: finalFactorData, error: finalFactorError } =
+      await client.auth.mfa.listFactors();
+
+    if (finalFactorError) {
+      console.error("MFA final listFactors error:", finalFactorError);
+      showEnrollError("تعذر التحقق من عوامل Authenticator الحالية.");
+      return;
+    }
+
+    const finalTotp = Array.isArray(finalFactorData?.totp)
+      ? finalFactorData.totp
+      : [];
+
+    const finalVerified = finalTotp.find(f => f.status === "verified");
+    if (finalVerified?.id) {
+      show2FAModal(email, finalVerified.id);
+      return;
+    }
+
+    const finalPending = finalTotp.find(f => f.status === "unverified");
+    if (finalPending?.id) {
+      await showPending2FAEnrollment(email, finalPending.id);
+      return;
+    }
+
+    /*
      * الآن فقط ننشئ عامل TOTP جديد.
      */
     const { data, error } = await client.auth.mfa.enroll({
@@ -925,6 +969,48 @@ async function showFirstTime2FAEnrollment(email) {
 
     if (error || !data?.id || !data?.totp) {
       console.error("MFA enroll error:", error);
+
+      // إذا أخبر Supabase أن العامل موجود بالفعل، لا نحاول enroll مرة أخرى.
+      // نعيد قراءة العوامل ونستخدم العامل غير الموثق الموجود.
+      const alreadyExists = /already exists|friendly name.*exists|factor.*exists/i.test(
+        String(error?.message || "")
+      );
+
+      if (alreadyExists) {
+        const { data: retryFactors, error: retryFactorsError } =
+          await client.auth.mfa.listFactors();
+
+        const retryTotp = Array.isArray(retryFactors?.totp)
+          ? retryFactors.totp
+          : [];
+
+        const retryVerified = retryTotp.find(
+          factor => factor.status === "verified"
+        );
+
+        const retryPending = retryTotp.find(
+          factor => factor.status === "unverified"
+        );
+
+        console.warn("MFA enroll reported existing factor", {
+          retryFactorsError,
+          factors: retryTotp.map(factor => ({
+            id: factor.id,
+            status: factor.status,
+            friendlyName: factor.friendly_name || factor.friendlyName || null
+          }))
+        });
+
+        if (retryVerified?.id) {
+          show2FAModal(email, retryVerified.id);
+          return;
+        }
+
+        if (retryPending?.id) {
+          await showPending2FAEnrollment(email, retryPending.id);
+          return;
+        }
+      }
 
       showEnrollError(
         error?.message ||
