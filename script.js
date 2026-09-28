@@ -522,61 +522,79 @@ if (document.getElementById("loginBtn")) {
 
       /*
        * لا يوجد Authenticator موثق.
+       * في هذه الحالة نسمح فقط بفحص عضوية admin على AAL1،
+       * ثم نكمل MFA: عامل غير موثق => challenge/verify،
+       * ولا يوجد عامل => enroll مرة واحدة فقط.
        */
       if (verifiedFactors.length === 0) {
 
-  // أول دخول: الجلسة AAL1.
-  // نستخدم check_admin فقط للتأكد أن الحساب موجود في admins.
-  // لا نستخدم get_settings هنا لأنه يتطلب AAL2.
-  const adminCheck = await api("check_admin");
+        const adminCheck = await api("check_admin");
 
-  if (!adminCheck || adminCheck.error || adminCheck.admin !== true) {
-    registerKingdzLoginFailure();
+        if (
+          !adminCheck ||
+          adminCheck.error ||
+          adminCheck.admin !== true
+        ) {
+          registerKingdzLoginFailure();
 
-    await client.auth.signOut({ scope: "local" });
-    ADMIN_TOKEN = null;
+          await client.auth.signOut({
+            scope: "local"
+          });
 
-    if (errorEl) {
-      errorEl.textContent =
-        "هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.";
-    }
+          ADMIN_TOKEN = null;
 
-    return;
-  }
+          if (errorEl) {
+            errorEl.textContent =
+              "هذا الحساب غير مصرح له بالدخول إلى لوحة الإدارة.";
+          }
 
-  // تأكد أن جلسة Supabase ما زالت موجودة قبل mfa.enroll()
-  const {
-    data: currentSessionData,
-    error: currentSessionError
-  } = await client.auth.getSession();
+          return;
+        }
 
-  if (
-    currentSessionError ||
-    !currentSessionData?.session?.access_token
-  ) {
-    registerKingdzLoginFailure();
+        const {
+          data: currentSessionData,
+          error: currentSessionError
+        } = await client.auth.getSession();
 
-    await client.auth.signOut({ scope: "local" });
-    ADMIN_TOKEN = null;
+        if (
+          currentSessionError ||
+          !currentSessionData?.session?.access_token
+        ) {
+          registerKingdzLoginFailure();
 
-    if (errorEl) {
-      errorEl.textContent =
-        "لا توجد جلسة دخول صالحة. حاول تسجيل الدخول مرة أخرى.";
-    }
+          await client.auth.signOut({
+            scope: "local"
+          });
 
-    return;
-  }
+          ADMIN_TOKEN = null;
 
-  ADMIN_TOKEN = currentSessionData.session.access_token;
+          if (errorEl) {
+            errorEl.textContent =
+              "لا توجد جلسة دخول صالحة. حاول تسجيل الدخول مرة أخرى.";
+          }
 
-  if (unverifiedFactor?.id) {
-    await showPending2FAEnrollment(email, unverifiedFactor.id);
-  } else {
-    await showFirstTime2FAEnrollment(email);
-  }
+          return;
+        }
 
-  return;
-}
+        ADMIN_TOKEN =
+          currentSessionData.session.access_token;
+
+        /*
+         * مهم جداً: إذا كان هناك عامل TOTP غير موثق،
+         * لا نستعمل enroll() أبداً، لأن Supabase سيرفض إنشاء
+         * عامل آخر بنفس friendlyName. نعيد استخدام نفس factorId.
+         */
+        if (unverifiedFactor?.id) {
+          await showPending2FAEnrollment(
+            email,
+            unverifiedFactor.id
+          );
+        } else {
+          await showFirstTime2FAEnrollment(email);
+        }
+
+        return;
+      }
 
       /*
        * يوجد Authenticator موثق.
@@ -718,43 +736,37 @@ async function showPending2FAEnrollment(email, factorId) {
       }
 
       const {
-        data: finalSessionData,
-        error: finalSessionError
+        data: sessionData,
+        error: sessionError
       } = await client.auth.getSession();
 
-      if (finalSessionError || !finalSessionData?.session?.access_token) {
-        throw finalSessionError || new Error("تعذر الحصول على جلسة الدخول بعد التحقق.");
+      if (
+        sessionError ||
+        !sessionData?.session?.access_token
+      ) {
+        throw sessionError || new Error("تعذر الحصول على جلسة الدخول بعد التحقق.");
       }
 
       const {
-        data: assuranceData,
-        error: assuranceError
+        data: aalData,
+        error: aalError
       } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
 
-      if (assuranceError || assuranceData?.currentLevel !== "aal2") {
-        throw assuranceError || new Error("لم يتم رفع جلسة الدخول إلى AAL2.");
-      }
-
-      ADMIN_TOKEN = finalSessionData.session.access_token;
-
-      const adminCheck = await api("get_settings");
-      if (!adminCheck || adminCheck.error) {
-        throw new Error("الحساب غير مصرح له بلوحة الإدارة.");
+      if (
+        aalError ||
+        aalData?.currentLevel !== "aal2"
+      ) {
+        throw aalError || new Error("لم يتم رفع مستوى المصادقة إلى AAL2.");
       }
 
       clearKingdzLoginState();
+      ADMIN_TOKEN = sessionData.session.access_token;
       showToast("تم تفعيل Authenticator 2FA وتسجيل الدخول بنجاح!");
       setTimeout(() => location.reload(), 500);
     } catch (e) {
       console.error("MFA verification error:", e);
       registerKingdzLoginFailure();
-      if (errDiv) {
-        const message = String(e?.message || "");
-        errDiv.textContent =
-          /Invalid TOTP code entered|mfa_verification_failed/i.test(message)
-            ? "رمز Authenticator غير صحيح. فعّل ضبط التاريخ والوقت تلقائياً في الهاتف، ثم أدخل الرمز الحالي قبل تغيّره."
-            : (message || "رمز التحقق غير صحيح أو منتهي الصلاحية.");
-      }
+      if (errDiv) errDiv.textContent = e?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية.";
       btn.disabled = false;
       btn.textContent = "تفعيل 2FA والدخول";
     }
@@ -932,12 +944,7 @@ async function showFirstTime2FAEnrollment(email) {
           qrSvg
             ? `
               <div class="bg-white rounded-xl p-3 mx-auto w-fit">
-                <img
-                  src="data:image/svg+xml;charset=UTF-8,${encodeURIComponent(qrSvg)}"
-                  alt="Authenticator QR Code"
-                  class="block w-56 h-56"
-                  draggable="false"
-                />
+                ${qrSvg}
               </div>
             `
             : ""
@@ -1057,17 +1064,13 @@ async function showFirstTime2FAEnrollment(email) {
         /*
          * verify يحفظ جلسة MFA الجديدة داخل Supabase Auth.
          */
-        const {
-          data: finalSessionData,
-          error: finalSessionError
-        } = await client.auth.getSession();
-
-        if (finalSessionError) {
-          throw finalSessionError;
-        }
+        const { data: finalSessionData } =
+          await client.auth.getSession();
 
         const finalSession =
-          finalSessionData?.session || null;
+          finalSessionData?.session ||
+          verifyData?.session ||
+          null;
 
         if (!finalSession) {
           throw new Error(
@@ -1124,11 +1127,9 @@ async function showFirstTime2FAEnrollment(email) {
         registerKingdzLoginFailure();
 
         if (errDiv) {
-          const message = String(e?.message || "");
           errDiv.textContent =
-            /Invalid TOTP code entered|mfa_verification_failed/i.test(message)
-              ? "رمز Authenticator غير صحيح. فعّل ضبط التاريخ والوقت تلقائياً في الهاتف، ثم أدخل الرمز الحالي قبل تغيّره."
-              : (message || "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.");
+            e?.message ||
+            "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.";
         }
 
         if (btn) {
