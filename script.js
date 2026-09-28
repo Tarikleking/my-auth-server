@@ -707,7 +707,7 @@ async function showPending2FAEnrollment(email, factorId) {
     try {
       const { data: challengeData, error: challengeError } = await client.auth.mfa.challenge({ factorId });
       if (challengeError || !challengeData?.id) throw challengeError || new Error("challenge");
-      const { data: verifyData, error: verifyError } = await client.auth.mfa.verify({
+      const { error: verifyError } = await client.auth.mfa.verify({
         factorId,
         challengeId: challengeData.id,
         code
@@ -717,15 +717,13 @@ async function showPending2FAEnrollment(email, factorId) {
         throw verifyError;
       }
 
-      // verify يحفظ جلسة MFA الجديدة داخل Supabase Auth.
-      const { data: finalSessionData, error: finalSessionError } =
-        await client.auth.getSession();
+      const {
+        data: finalSessionData,
+        error: finalSessionError
+      } = await client.auth.getSession();
 
-      const finalSession = finalSessionData?.session || null;
-
-      if (finalSessionError || !finalSession?.access_token) {
-        throw finalSessionError ||
-          new Error("تم التحقق من الرمز لكن تعذر الحصول على جلسة الدخول.");
+      if (finalSessionError || !finalSessionData?.session?.access_token) {
+        throw finalSessionError || new Error("تعذر الحصول على جلسة الدخول بعد التحقق.");
       }
 
       const {
@@ -733,19 +731,13 @@ async function showPending2FAEnrollment(email, factorId) {
         error: assuranceError
       } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
 
-      if (
-        assuranceError ||
-        assuranceData?.currentLevel !== "aal2"
-      ) {
-        throw assuranceError ||
-          new Error("لم يتم رفع جلسة الدخول إلى AAL2.");
+      if (assuranceError || assuranceData?.currentLevel !== "aal2") {
+        throw assuranceError || new Error("لم يتم رفع جلسة الدخول إلى AAL2.");
       }
 
-      ADMIN_TOKEN = finalSession.access_token;
+      ADMIN_TOKEN = finalSessionData.session.access_token;
 
-      // الآن فقط نتحقق من صلاحية Admin عبر endpoint المحمي بـ AAL2.
       const adminCheck = await api("get_settings");
-
       if (!adminCheck || adminCheck.error) {
         throw new Error("الحساب غير مصرح له بلوحة الإدارة.");
       }
@@ -756,7 +748,13 @@ async function showPending2FAEnrollment(email, factorId) {
     } catch (e) {
       console.error("MFA verification error:", e);
       registerKingdzLoginFailure();
-      if (errDiv) errDiv.textContent = e?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية.";
+      if (errDiv) {
+        const message = String(e?.message || "");
+        errDiv.textContent =
+          /Invalid TOTP code entered|mfa_verification_failed/i.test(message)
+            ? "رمز Authenticator غير صحيح. فعّل ضبط التاريخ والوقت تلقائياً في الهاتف، ثم أدخل الرمز الحالي قبل تغيّره."
+            : (message || "رمز التحقق غير صحيح أو منتهي الصلاحية.");
+      }
       btn.disabled = false;
       btn.textContent = "تفعيل 2FA والدخول";
     }
@@ -934,7 +932,12 @@ async function showFirstTime2FAEnrollment(email) {
           qrSvg
             ? `
               <div class="bg-white rounded-xl p-3 mx-auto w-fit">
-                ${qrSvg}
+                <img
+                  src="data:image/svg+xml;charset=UTF-8,${encodeURIComponent(qrSvg)}"
+                  alt="Authenticator QR Code"
+                  class="block w-56 h-56"
+                  draggable="false"
+                />
               </div>
             `
             : ""
@@ -1054,13 +1057,17 @@ async function showFirstTime2FAEnrollment(email) {
         /*
          * verify يحفظ جلسة MFA الجديدة داخل Supabase Auth.
          */
-        const { data: finalSessionData } =
-          await client.auth.getSession();
+        const {
+          data: finalSessionData,
+          error: finalSessionError
+        } = await client.auth.getSession();
+
+        if (finalSessionError) {
+          throw finalSessionError;
+        }
 
         const finalSession =
-          finalSessionData?.session ||
-          verifyData?.session ||
-          null;
+          finalSessionData?.session || null;
 
         if (!finalSession) {
           throw new Error(
@@ -1117,9 +1124,11 @@ async function showFirstTime2FAEnrollment(email) {
         registerKingdzLoginFailure();
 
         if (errDiv) {
+          const message = String(e?.message || "");
           errDiv.textContent =
-            e?.message ||
-            "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.";
+            /Invalid TOTP code entered|mfa_verification_failed/i.test(message)
+              ? "رمز Authenticator غير صحيح. فعّل ضبط التاريخ والوقت تلقائياً في الهاتف، ثم أدخل الرمز الحالي قبل تغيّره."
+              : (message || "رمز التحقق غير صحيح أو تعذر تفعيل 2FA.");
         }
 
         if (btn) {
