@@ -187,6 +187,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
         loadMediationDisputes();  
       } else if (targetSection === 'deals-section') {  
         loadAllMediationDeals();  
+      } else if (targetSection === 'commissions-section') {
+        loadMediationCommissions();
       } else if (targetSection === 'withdrawals-section') {
         loadWithdrawalRequests();
         loadWithdrawalSettings();
@@ -2430,6 +2432,114 @@ async function loadAllMediationDeals() {
   updateAllMediationDealStats(deals);
   renderAllMediationDeals();
 }
+
+// ============================================================
+// MEDIATION COMMISSIONS — ADMIN
+// ============================================================
+
+let mediationCommissionsCache = [];
+
+function commissionEscape(value) {
+  return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+function commissionMoney(value) {
+  const n = Number(value || 0);
+  return `$${n.toFixed(2)}`;
+}
+
+function commissionUserLabel(row, role) {
+  const id = role === "buyer" ? (row.buyer_id ?? row.buyer_user_id) : (row.seller_id ?? row.seller_user_id);
+  const name = role === "buyer" ? (row.buyer_username ?? row.buyer_name) : (row.seller_username ?? row.seller_name);
+  if (name) return `${name} <span class="text-gray-600 font-mono">#${commissionEscape(id ?? "—")}</span>`;
+  return id ? `#${commissionEscape(id)}` : "—";
+}
+
+function updateCommissionStats(rows) {
+  const buyer = rows.reduce((sum, row) => sum + Number(row?.buyer_fee_usd || 0), 0);
+  const seller = rows.reduce((sum, row) => sum + Number(row?.seller_fee_usd || 0), 0);
+  const total = rows.reduce((sum, row) => sum + Number(row?.total_commission_usd ?? row?.amount_usd ?? 0), 0);
+  const values = [
+    ["commissionStatTotal", "إجمالي العمولات", commissionMoney(total), "text-green-400"],
+    ["commissionStatBuyer", "عمولات المشترين", commissionMoney(buyer), "text-blue-400"],
+    ["commissionStatSeller", "عمولات البائعين", commissionMoney(seller), "text-purple-400"],
+    ["commissionStatCount", "عدد العمليات", rows.length, "text-white"]
+  ];
+  values.forEach(([id, label, value, tone]) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="text-[10px] text-gray-500">${label}</div><div class="text-xl font-black ${tone} mt-1">${value}</div>`;
+  });
+}
+
+function renderMediationCommissions() {
+  const table = document.getElementById("commissionsTable");
+  if (!table) return;
+
+  const q = String(document.getElementById("commissionsSearchInput")?.value || "").trim().toLowerCase();
+  const rows = mediationCommissionsCache.filter(row => {
+    if (!q) return true;
+    const haystack = [
+      row.id, row.deal_id, row.code, row.deal_code,
+      row.buyer_id, row.seller_id, row.buyer_username, row.seller_username,
+      row.buyer_name, row.seller_name
+    ].filter(v => v !== null && v !== undefined).join(" ").toLowerCase();
+    return haystack.includes(q);
+  });
+
+  updateCommissionStats(mediationCommissionsCache);
+
+  if (!rows.length) {
+    table.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500">لا توجد عمولات مسجلة.</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = rows.map(row => {
+    const dealId = row.deal_id ?? row.id ?? "—";
+    const code = row.code ?? row.deal_code ?? "—";
+    const amount = Number(row.deal_amount_usd ?? row.gross_amount_usd ?? row.amount_usd ?? 0);
+    const buyerFee = Number(row.buyer_fee_usd || 0);
+    const sellerFee = Number(row.seller_fee_usd || 0);
+    const total = Number(row.total_commission_usd ?? row.commission_usd ?? row.amount_usd ?? (buyerFee + sellerFee));
+    const date = row.created_at ?? row.collected_at ?? row.completed_at ?? "";
+
+    return `<tr class="hover:bg-white/[0.02]">
+      <td class="p-3">
+        <div class="text-purple-300 font-mono font-bold">#${commissionEscape(dealId)}</div>
+        <div class="text-gray-600 text-[9px] mt-0.5">${commissionEscape(code)}</div>
+      </td>
+      <td class="p-3 text-gray-300">${commissionUserLabel(row, "buyer")}</td>
+      <td class="p-3 text-gray-300">${commissionUserLabel(row, "seller")}</td>
+      <td class="p-3 text-white font-bold">${commissionMoney(amount)}</td>
+      <td class="p-3 text-blue-300">${commissionMoney(buyerFee)}</td>
+      <td class="p-3 text-purple-300">${commissionMoney(sellerFee)}</td>
+      <td class="p-3 text-green-400 font-black">${commissionMoney(total)}</td>
+      <td class="p-3 text-gray-400">${typeof formatMediationDate === "function" ? formatMediationDate(date) : commissionEscape(date)}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function loadMediationCommissions() {
+  const table = document.getElementById("commissionsTable");
+  if (!table) return;
+  table.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500">جاري تحميل العمولات...</td></tr>`;
+
+  let rows = [];
+  try {
+    const { data, error } = await client.rpc("get_mediation_commissions");
+    if (error) throw error;
+    rows = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("get_mediation_commissions error:", error);
+    table.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-red-400">تعذر تحميل سجل العمولات: ${commissionEscape(error?.message || "خطأ غير معروف")}</td></tr>`;
+    return;
+  }
+
+  mediationCommissionsCache = rows;
+  renderMediationCommissions();
+}
+
+document.getElementById("btnRefreshCommissions")?.addEventListener("click", loadMediationCommissions);
+document.getElementById("commissionsSearchInput")?.addEventListener("input", renderMediationCommissions);
 
 // ============================================================
 // EARNINGS WITHDRAWAL REQUESTS — ADMIN
