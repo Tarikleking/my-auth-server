@@ -311,6 +311,7 @@ async function showKingdzPasswordRecovery(recoveryError = null) {
   if (dashboard) dashboard.style.display = "none";
   if (loading) loading.style.display = "none";
   if (!loginPage) return;
+
   loginPage.style.display = "flex";
   loginPage.innerHTML = `
     <div class="glass-card p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-purple-500/20 text-center">
@@ -319,12 +320,19 @@ async function showKingdzPasswordRecovery(recoveryError = null) {
       <div class="space-y-4">
         <input id="recoveryPassword" type="password" autocomplete="new-password" minlength="12" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center focus:outline-none focus:border-purple-500" placeholder="كلمة المرور الجديدة">
         <input id="recoveryPasswordConfirm" type="password" autocomplete="new-password" minlength="12" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center focus:outline-none focus:border-purple-500" placeholder="تأكيد كلمة المرور">
+        <div id="recoveryMfaBox" class="hidden space-y-3">
+          <p class="text-gray-400 text-xs">لأن المصادقة الثنائية مفعلة، أدخل الرمز من تطبيق Authenticator لتأكيد تغيير كلمة المرور.</p>
+          <input id="recoveryMfaCode" inputmode="numeric" autocomplete="one-time-code" type="text" maxlength="6" class="w-full bg-[#161b26] border border-white/15 rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest focus:outline-none focus:border-purple-500 font-mono" placeholder="رمز 6 أرقام">
+        </div>
         <div id="recoveryError" class="text-red-400 text-xs font-medium"></div>
         <button id="recoverySaveBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition">حفظ كلمة المرور</button>
         <button id="recoveryCancelBtn" type="button" class="text-xs text-gray-400 hover:underline">إلغاء والعودة لتسجيل الدخول</button>
       </div>
     </div>`;
+
   const errorEl = document.getElementById("recoveryError");
+  const saveBtn = document.getElementById("recoverySaveBtn");
+  const mfaBox = document.getElementById("recoveryMfaBox");
 
   if (recoveryError && errorEl) {
     errorEl.textContent = recoveryError?.message || "تعذر فتح جلسة الاستعادة.";
@@ -338,7 +346,6 @@ async function showKingdzPasswordRecovery(recoveryError = null) {
     window.location.replace(KINGDZ_ADMIN_ORIGIN + "/#login");
   });
 
-  const saveBtn = document.getElementById("recoverySaveBtn");
   if (recoveryError) {
     if (saveBtn) {
       saveBtn.disabled = true;
@@ -347,36 +354,159 @@ async function showKingdzPasswordRecovery(recoveryError = null) {
     return;
   }
 
+  // Password recovery is authenticated by the Supabase recovery session.
+  // When MFA is enabled, Supabase requires the recovery session to be promoted
+  // from AAL1 to AAL2 before updateUser({ password }) is allowed.
+  let recoveryMfaFactorId = null;
+  let recoveryMfaChallengeId = null;
+  let recoveryMfaPrepared = false;
+  let recoveryMfaChallengeReady = false;
+  let recoveryPasswordValue = "";
+
+  const getRecoveryAal = async () => {
+    const { data, error } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) throw error;
+    return data || {};
+  };
+
+  const prepareRecoveryMfa = async () => {
+    const aal = await getRecoveryAal();
+
+    if (aal.currentLevel === "aal2") {
+      recoveryMfaPrepared = true;
+      return { aal2: true };
+    }
+
+    if (aal.nextLevel !== "aal2") {
+      throw new Error("هذا الحساب لا يملك عامل MFA موثقاً يمكن استخدامه لاستعادة كلمة المرور.");
+    }
+
+    const { data: factorsData, error: factorsError } = await client.auth.mfa.listFactors();
+    if (factorsError) throw factorsError;
+
+    const totpFactors = Array.isArray(factorsData?.totp) ? factorsData.totp : [];
+    const factor = pickKingdzTotpFactor(totpFactors);
+
+    if (!factor?.id) {
+      throw new Error("تعذر العثور على Authenticator موثق لهذا الحساب.");
+    }
+
+    const { data: challengeData, error: challengeError } =
+      await client.auth.mfa.challenge({ factorId: factor.id });
+
+    if (challengeError || !challengeData?.id) {
+      throw challengeError || new Error("تعذر إنشاء تحدي MFA.");
+    }
+
+    recoveryMfaFactorId = factor.id;
+    recoveryMfaChallengeId = challengeData.id;
+    recoveryMfaPrepared = false;
+    recoveryMfaChallengeReady = true;
+
+    if (mfaBox) mfaBox.classList.remove("hidden");
+    if (saveBtn) saveBtn.textContent = "تأكيد الرمز وحفظ كلمة المرور";
+
+    document.getElementById("recoveryMfaCode")?.focus();
+  };
+
+  const saveRecoveredPassword = async () => {
+    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+    if (sessionError || !sessionData?.session) {
+      throw sessionError || new Error("انتهت جلسة الاستعادة. أعد فتح رابط البريد الإلكتروني.");
+    }
+
+    const aal = await getRecoveryAal();
+    if (aal.currentLevel !== "aal2") {
+      throw new Error("يجب إكمال التحقق الثنائي قبل تغيير كلمة المرور.");
+    }
+
+    const { error } = await client.auth.updateUser({ password: recoveryPasswordValue });
+    if (error) throw error;
+
+    KINGDZ_PASSWORD_RECOVERY_FLOW = false;
+    await client.auth.signOut({ scope: "local" }).catch(() => {});
+    ADMIN_TOKEN = null;
+    window.location.replace(KINGDZ_ADMIN_ORIGIN + "/#login");
+  };
+
   saveBtn?.addEventListener("click", async () => {
+    if (saveBtn.disabled) return;
+    if (errorEl) errorEl.textContent = "";
+
     const password = document.getElementById("recoveryPassword")?.value || "";
     const confirm = document.getElementById("recoveryPasswordConfirm")?.value || "";
-    if (password.length < 12) { if (errorEl) errorEl.textContent = "كلمة المرور يجب أن تكون 12 حرفاً/رقماً على الأقل."; return; }
-    if (password !== confirm) { if (errorEl) errorEl.textContent = "كلمتا المرور غير متطابقتين."; return; }
-    if (!KINGDZ_PASSWORD_RECOVERY_FLOW) { if (errorEl) errorEl.textContent = "جلسة الاستعادة غير صالحة. أعد طلب رابط الاستعادة."; return; }
 
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "جاري الحفظ..."; }
+    if (password.length < 12) {
+      if (errorEl) errorEl.textContent = "كلمة المرور يجب أن تكون 12 حرفاً/رقماً على الأقل.";
+      return;
+    }
+    if (password !== confirm) {
+      if (errorEl) errorEl.textContent = "كلمتا المرور غير متطابقتين.";
+      return;
+    }
+    if (!KINGDZ_PASSWORD_RECOVERY_FLOW) {
+      if (errorEl) errorEl.textContent = "جلسة الاستعادة غير صالحة. أعد طلب رابط الاستعادة.";
+      return;
+    }
+
+    recoveryPasswordValue = password;
+    saveBtn.disabled = true;
+    saveBtn.textContent = recoveryMfaPrepared ? "جاري الحفظ..." : "جاري التحقق...";
+
     try {
-      // IMPORTANT: recovery uses the temporary Supabase Auth session only.
-      // It does not call api(), does not require an Admin token, and does not
-      // bypass the normal Admin authorization/MFA on the next login.
-      const { data: sessionData } = await client.auth.getSession();
-      if (!sessionData?.session) {
-        throw new Error("انتهت جلسة الاستعادة. أعد فتح رابط البريد الإلكتروني.");
+      // First click: determine whether the recovery session needs MFA.
+      // Second click: verify the MFA code, then update the password.
+      if (recoveryMfaChallengeReady && recoveryMfaFactorId && recoveryMfaChallengeId) {
+        const code = normalizeMfaCode(
+          document.getElementById("recoveryMfaCode")?.value || ""
+        );
+
+        if (!/^\d{6}$/.test(code)) {
+          throw new Error("أدخل رمز Authenticator الصحيح المكون من 6 أرقام.");
+        }
+
+        const { error: verifyError } = await client.auth.mfa.verify({
+          factorId: recoveryMfaFactorId,
+          challengeId: recoveryMfaChallengeId,
+          code
+        });
+
+        if (verifyError) throw verifyError;
+
+        recoveryMfaPrepared = true;
+        recoveryMfaChallengeReady = false;
+        saveBtn.textContent = "جاري الحفظ...";
+        await saveRecoveredPassword();
+        return;
       }
 
-      const { error } = await client.auth.updateUser({ password });
-      if (error) throw error;
+      if (!recoveryMfaPrepared) {
+        const aal = await getRecoveryAal();
 
-      KINGDZ_PASSWORD_RECOVERY_FLOW = false;
-      await client.auth.signOut({ scope: "local" }).catch(() => {});
-      ADMIN_TOKEN = null;
-      window.location.replace(KINGDZ_ADMIN_ORIGIN + "/#login");
+        if (aal.currentLevel === "aal2") {
+          recoveryMfaPrepared = true;
+          saveBtn.textContent = "جاري الحفظ...";
+          await saveRecoveredPassword();
+          return;
+        }
+
+        await prepareRecoveryMfa();
+        saveBtn.disabled = false;
+        return;
+      }
+
+      await saveRecoveredPassword();
     } catch (e) {
+      console.error("KING-DZ password recovery MFA error:", e);
       if (errorEl) errorEl.textContent = e?.message || "تعذر تغيير كلمة المرور.";
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "حفظ كلمة المرور"; }
+      saveBtn.disabled = false;
+      saveBtn.textContent = recoveryMfaFactorId
+        ? "تأكيد الرمز وحفظ كلمة المرور"
+        : "حفظ كلمة المرور";
     }
   });
 }
+
 
 async function checkSession() {
   if (KINGDZ_MFA_LOGIN_FLOW) {
