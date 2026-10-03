@@ -4,6 +4,9 @@ const KINGDZ_ADMIN_ORIGIN = "https://admin.kingstoor.com";
 
 let ADMIN_TOKEN = null;
 let KINGDZ_MFA_LOGIN_FLOW = false;
+// Password recovery is a separate Supabase Auth flow. It must never require
+// an existing Admin API session or MFA before the new password is saved.
+let KINGDZ_PASSWORD_RECOVERY_FLOW = false;
 let liveClock = null;
 let kingdzMfaCancelEpoch = 0;
 
@@ -156,6 +159,12 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 client.auth.onAuthStateChange((event, session) => {
+  // Supabase can return PASSWORD_RECOVERY after the reset link is opened.
+  // Mark it before checkSession() performs the normal Admin/MFA checks.
+  if (event === "PASSWORD_RECOVERY") {
+    KINGDZ_PASSWORD_RECOVERY_FLOW = true;
+  }
+
   ADMIN_TOKEN = session?.access_token || null;
   if (session) resetKingdzActivityTimer();
 });
@@ -205,10 +214,97 @@ document.querySelectorAll('.nav-item').forEach(item => {
 function isKingdzPasswordRecovery() {
   const hash = String(window.location.hash || "").toLowerCase();
   const search = String(window.location.search || "").toLowerCase();
-  return hash.includes("type=recovery") || search.includes("type=recovery");
+
+  // Older/implicit recovery links can contain type=recovery.
+  // Current PKCE recovery links normally contain ?code=...
+  const hasRecoveryType =
+    hash.includes("type=recovery") ||
+    search.includes("type=recovery");
+
+  let hasPkceCode = false;
+  try {
+    hasPkceCode = Boolean(new URLSearchParams(window.location.search).get("code"));
+  } catch (_) {}
+
+  return KINGDZ_PASSWORD_RECOVERY_FLOW || hasRecoveryType || hasPkceCode;
 }
 
-async function showKingdzPasswordRecovery() {
+function clearKingdzRecoveryUrl() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("code");
+    url.searchParams.delete("type");
+    url.searchParams.delete("sb_flow_id");
+    // Do not touch a normal #login/#dashboard hash unless it is a recovery hash.
+    if (String(url.hash || "").toLowerCase().includes("type=recovery")) {
+      url.hash = "";
+    }
+    window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+  } catch (_) {}
+}
+
+async function waitForKingdzRecoverySession(timeoutMs = 5000) {
+  const started = Date.now();
+
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const { data } = await client.auth.getSession();
+      if (data?.session) {
+        ADMIN_TOKEN = data.session.access_token || null;
+        return data.session;
+      }
+    } catch (_) {}
+
+    await new Promise(resolve => setTimeout(resolve, 150));
+  }
+
+  return null;
+}
+
+async function prepareKingdzPasswordRecovery() {
+  let code = "";
+  let flowId = "";
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    code = String(params.get("code") || "").trim();
+    flowId = String(params.get("sb_flow_id") || "").trim();
+  } catch (_) {}
+
+  // If Supabase's detectSessionInUrl has already completed the exchange,
+  // getSession() will return the recovery session and no second exchange is attempted.
+  let session = await waitForKingdzRecoverySession(900);
+
+  if (!session && code) {
+    try {
+      const options = flowId ? { flowId } : undefined;
+      const { data, error } = await client.auth.exchangeCodeForSession(code, options);
+      if (error) throw error;
+      session = data?.session || null;
+    } catch (e) {
+      // A concurrent automatic exchange may have completed just after the first check.
+      session = await waitForKingdzRecoverySession(1200);
+      if (!session) {
+        console.error("KING-DZ password recovery code exchange failed:", e);
+        return { session: null, error: e };
+      }
+    }
+  }
+
+  if (!session) {
+    return {
+      session: null,
+      error: new Error("انتهت صلاحية رابط استعادة كلمة المرور أو تم استخدامه مسبقاً.")
+    };
+  }
+
+  ADMIN_TOKEN = session.access_token || null;
+  KINGDZ_PASSWORD_RECOVERY_FLOW = true;
+  clearKingdzRecoveryUrl();
+  return { session, error: null };
+}
+
+async function showKingdzPasswordRecovery(recoveryError = null) {
   const dashboard = document.getElementById("dashboard");
   const loading = document.getElementById("loading");
   const loginPage = document.getElementById("loginPage");
@@ -229,28 +325,55 @@ async function showKingdzPasswordRecovery() {
       </div>
     </div>`;
   const errorEl = document.getElementById("recoveryError");
+
+  if (recoveryError && errorEl) {
+    errorEl.textContent = recoveryError?.message || "تعذر فتح جلسة الاستعادة.";
+  }
+
   document.getElementById("recoveryCancelBtn")?.addEventListener("click", async () => {
     kingdzMfaCancelEpoch++;
+    KINGDZ_PASSWORD_RECOVERY_FLOW = false;
     ADMIN_TOKEN = null;
     try { await client.auth.signOut({ scope: "local" }); } catch (_) {}
     window.location.replace(KINGDZ_ADMIN_ORIGIN + "/#login");
   });
-  document.getElementById("recoverySaveBtn")?.addEventListener("click", async () => {
+
+  const saveBtn = document.getElementById("recoverySaveBtn");
+  if (recoveryError) {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.classList.add("opacity-50", "cursor-not-allowed");
+    }
+    return;
+  }
+
+  saveBtn?.addEventListener("click", async () => {
     const password = document.getElementById("recoveryPassword")?.value || "";
     const confirm = document.getElementById("recoveryPasswordConfirm")?.value || "";
     if (password.length < 12) { if (errorEl) errorEl.textContent = "كلمة المرور يجب أن تكون 12 حرفاً/رقماً على الأقل."; return; }
     if (password !== confirm) { if (errorEl) errorEl.textContent = "كلمتا المرور غير متطابقتين."; return; }
-    const btn = document.getElementById("recoverySaveBtn");
-    if (btn) { btn.disabled = true; btn.textContent = "جاري الحفظ..."; }
+    if (!KINGDZ_PASSWORD_RECOVERY_FLOW) { if (errorEl) errorEl.textContent = "جلسة الاستعادة غير صالحة. أعد طلب رابط الاستعادة."; return; }
+
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "جاري الحفظ..."; }
     try {
+      // IMPORTANT: recovery uses the temporary Supabase Auth session only.
+      // It does not call api(), does not require an Admin token, and does not
+      // bypass the normal Admin authorization/MFA on the next login.
+      const { data: sessionData } = await client.auth.getSession();
+      if (!sessionData?.session) {
+        throw new Error("انتهت جلسة الاستعادة. أعد فتح رابط البريد الإلكتروني.");
+      }
+
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
+
+      KINGDZ_PASSWORD_RECOVERY_FLOW = false;
       await client.auth.signOut({ scope: "local" }).catch(() => {});
       ADMIN_TOKEN = null;
       window.location.replace(KINGDZ_ADMIN_ORIGIN + "/#login");
     } catch (e) {
       if (errorEl) errorEl.textContent = e?.message || "تعذر تغيير كلمة المرور.";
-      if (btn) { btn.disabled = false; btn.textContent = "حفظ كلمة المرور"; }
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "حفظ كلمة المرور"; }
     }
   });
 }
@@ -261,7 +384,18 @@ async function checkSession() {
     return;
   }
   const checkEpoch = kingdzMfaCancelEpoch;
-  if (isKingdzPasswordRecovery()) { await showKingdzPasswordRecovery(); return; }
+
+  // Password recovery is intentionally handled BEFORE every normal Admin/MFA check.
+  // This is what prevents the reset link from asking for an existing Admin session token.
+  if (isKingdzPasswordRecovery()) {
+    const recovery = await prepareKingdzPasswordRecovery();
+    if (recovery?.session) {
+      await showKingdzPasswordRecovery();
+    } else {
+      await showKingdzPasswordRecovery(recovery?.error || new Error("تعذر فتح جلسة الاستعادة."));
+    }
+    return;
+  }
   // Fail-closed: اللوحة تبقى مخفية إلى أن يثبت AAL2 + صلاحية Admin.
   const dashboard = document.getElementById("dashboard");
   if (dashboard) dashboard.style.display = "none";
