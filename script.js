@@ -1287,74 +1287,43 @@ async function showFirstTime2FAEnrollment(email) {
      * الآن فقط ننشئ عامل TOTP جديد، ولا يوجد أي عامل TOTP
      * موجود للمستخدم.
      */
-    const { data, error } = await client.auth.mfa.enroll({
+    let { data, error } = await client.auth.mfa.enroll({
       factorType: "totp",
       friendlyName: `KING-DZ Admin - ${email}`
     });
 
-    if (error || !data?.id || !data?.totp) {
-      console.error("MFA enroll error:", error);
-
-      // إذا أخبر Supabase أن العامل موجود بالفعل، لا نحاول enroll مرة أخرى.
-      // نعيد قراءة العوامل ونستخدم العامل غير الموثق الموجود.
-      const alreadyExists = /already exists|friendly name.*exists|factor.*exists/i.test(
-        String(error?.message || "")
-      );
-
-      if (alreadyExists) {
-        const { data: retryFactors, error: retryFactorsError } =
-          await client.auth.mfa.listFactors();
-
-        const retryTotp = Array.isArray(retryFactors?.totp)
-          ? retryFactors.totp
-          : [];
-
-        const retryVerified = retryTotp.find(
-          factor => factor.status === "verified"
+    if (error) {
+      const duplicateFriendlyName =
+        /mfa_factor_name_conflict|friendly name.*already exists|factor with the friendly name.*already exists/i.test(
+          `${error.code || ""} ${error.message || ""}`
         );
 
-        const retryPending = retryTotp.find(
-          factor => factor.status === "unverified"
-        );
+      if (duplicateFriendlyName) {
+        /*
+         * إصلاح التعارض الحقيقي: قد يكون هناك عامل unverified قديم
+         * في auth.mfa_factors لكن listFactors() لا يعيده للواجهة.
+         * لا نطلب من المستخدم رمز QR قديمًا؛ نجرب مرة واحدة فقط
+         * باسم فريد ونُظهر QR جديدًا إذا نجح Supabase.
+         */
+        const uniqueFriendlyName =
+          `KING-DZ Admin - ${email} - ${Date.now()}`;
 
-        console.warn("MFA enroll reported existing factor", {
-          retryFactorsError,
-          visibleFactorCount: retryTotp.length,
-          factors: retryTotp.map(factor => ({
-            id: factor.id,
-            status: factor.status,
-            friendlyName: factor.friendly_name || factor.friendlyName || null
-          }))
+        console.warn("MFA friendly-name conflict; retrying once with a unique name.");
+        const retryEnrollment = await client.auth.mfa.enroll({
+          factorType: "totp",
+          friendlyName: uniqueFriendlyName
         });
 
-        if (retryVerified?.id) {
-          show2FAModal(email, retryVerified.id);
-          return;
-        }
-
-        if (retryPending?.id) {
-          await showPending2FAEnrollment(email, retryPending.id);
-          return;
-        }
-
-        /*
-         * Supabase reports a duplicate factor name, but listFactors()
-         * cannot see that factor. Do not ask the user for a code from an
-         * authenticator they may never have configured, and do not loop
-         * through enroll() again. The stale/unverified factor must be
-         * reconciled by an authorized server-side/admin operation first.
-         */
-        if (!retryFactorsError && retryTotp.length === 0) {
-          showEnrollError(
-            "يوجد إعداد Authenticator غير مكتمل في Supabase، لكن الموقع لا يستطيع قراءته. لم يتم تفعيل المصادقة ولم يتم حذف أي إعداد. يحتاج العامل غير الموثق إلى إزالة آمنة من إدارة Supabase، ثم أعد تسجيل الدخول لإنشاء QR جديد. لا تدخل رمزاً من تطبيق لم تُكمل إعداده."
-          );
-          return;
-        }
+        data = retryEnrollment.data;
+        error = retryEnrollment.error;
       }
+    }
 
+    if (error || !data?.id || !data?.totp) {
+      console.error("MFA enroll error:", error);
       showEnrollError(
         error?.message ||
-        "تعذر إنشاء إعداد Authenticator."
+        "تعذر إنشاء إعداد Authenticator. أعد المحاولة أو راجع سجل Auth في Supabase."
       );
       return;
     }
