@@ -93,6 +93,9 @@
                     <button data-target="users-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="users" class="w-4 h-4"></i> المستخدمين
                     </button>
+                    <button data-target="identity-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="badge-check" class="w-4 h-4"></i> توثيق الهوية
+                    </button>
                     <button data-target="balance-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="wallet-cards" class="w-4 h-4"></i> الأرصدة والحركات المالية
                     </button>
@@ -356,6 +359,49 @@
                                 <tbody id="allUsersTable" class="divide-y divide-white/5"></tbody>
                             </table>
                         </div>
+                    </div>
+                </section>
+
+                <!-- قسم مراجعة وتفعيل وثائق الهوية — إضافة مستقلة لا تغيّر الأقسام الأخرى -->
+                <section id="identity-section" class="tab-content hidden space-y-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="glass-card rounded-xl border border-white/5 p-3"><div class="text-gray-500 text-[10px]">كل الطلبات المعروضة</div><div id="identityStatAll" class="text-white text-xl font-black mt-1">0</div></div>
+                        <div class="glass-card rounded-xl border border-yellow-500/10 p-3"><div class="text-gray-500 text-[10px]">قيد المراجعة</div><div id="identityStatPending" class="text-yellow-300 text-xl font-black mt-1">0</div></div>
+                        <div class="glass-card rounded-xl border border-green-500/10 p-3"><div class="text-gray-500 text-[10px]">موثّقون</div><div id="identityStatApproved" class="text-green-300 text-xl font-black mt-1">0</div></div>
+                        <div class="glass-card rounded-xl border border-red-500/10 p-3"><div class="text-gray-500 text-[10px]">مرفوضة</div><div id="identityStatRejected" class="text-red-300 text-xl font-black mt-1">0</div></div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                        <div class="p-4 border-b border-white/5 space-y-3">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h4 class="text-white font-black text-base">🪪 مراجعة وثائق الهوية</h4>
+                                    <p class="text-gray-500 text-xs mt-1">راجع بيانات الحساب وصور الوجهين، ثم وافق أو ارفض مع توضيح السبب.</p>
+                                </div>
+                                <button id="btnRefreshIdentity" class="px-3 py-2 rounded-xl bg-purple-600/20 border border-purple-500/20 text-purple-200 text-xs font-bold">🔄 تحديث الطلبات</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
+                                <input id="identitySearch" class="md:col-span-8 bg-[#0d1320] border border-white/10 rounded-xl px-3 py-2 text-white text-xs" placeholder="بحث بالاسم أو البريد أو رقم الطلب أو المستخدم">
+                                <select id="identityStatusFilter" class="md:col-span-4 bg-[#0d1320] border border-white/10 rounded-xl px-3 py-2 text-gray-200 text-xs">
+                                    <option value="pending">طلبات قيد المراجعة</option><option value="all">كل الطلبات</option><option value="approved">مقبولة / موثقة</option><option value="rejected">مرفوضة</option>
+                                </select>
+                            </div>
+                            <div id="identityListMessage" class="text-xs text-gray-500">الصور لا تُعرض إلا بروابط خاصة مؤقتة للمشرف المخوّل.</div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs min-w-[850px]">
+                                <thead class="bg-white/[0.025] text-gray-400"><tr><th class="p-3">المستخدم / الطلب</th><th class="p-3">الاسم في الوثيقة</th><th class="p-3">نوع الوثيقة</th><th class="p-3">تاريخ الإرسال</th><th class="p-3">الحالة</th><th class="p-3">المراجعة</th></tr></thead>
+                                <tbody id="identityRequestsTable" class="divide-y divide-white/5"><tr><td colspan="6" class="p-6 text-center text-gray-500">اضغط تحديث لتحميل الطلبات.</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="identityDetailsPanel" class="hidden glass-card rounded-2xl border border-cyan-500/15 overflow-hidden">
+                        <div class="p-4 border-b border-white/5 flex items-center justify-between gap-3">
+                            <div><h4 class="text-white font-black">ملف مراجعة التوثيق</h4><p id="identityDetailsSubtitle" class="text-gray-500 text-xs mt-1">بيانات المستخدم والوثائق</p></div>
+                            <button id="btnCloseIdentityDetails" class="px-3 py-2 rounded-lg bg-white/5 text-gray-300 text-xs">إغلاق</button>
+                        </div>
+                        <div id="identityDetailsContent" class="p-4 space-y-4"><div class="text-center text-gray-500 py-6">اختر طلبًا من الجدول.</div></div>
                     </div>
                 </section>
 

@@ -188,6 +188,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
       targetEl.classList.remove('hidden');  
       if (targetSection === 'home-section' || targetSection === 'keys-section' || targetSection === 'ban-section' || targetSection === 'users-section' || targetSection === 'stats-section') {  
         refreshDashboard();  
+      } else if (targetSection === 'identity-section') {
+        loadIdentityRequests();
       } else if (targetSection === 'quick-actions-section') {
         // قسم اختصارات فقط؛ لا يكرر أي طلبات API عند فتحه.
       } else if (targetSection === 'balance-section') {
@@ -4961,5 +4963,159 @@ document.getElementById("quickRefreshDashboard")?.addEventListener("click", asyn
     }
   }
 });
+
+
+// ============================================================
+// IDENTITY VERIFICATION REVIEW — isolated admin section
+// Uses existing account-security admin actions; no changes to existing admin API.
+// ============================================================
+const IDENTITY_SECURITY_URL = "https://rnxcmkdivuhwkfaqnnlz.supabase.co/functions/v1/account-security";
+let identityRequestsCache = [];
+let selectedIdentityRequestId = null;
+
+function identityEscape(value) {
+  return String(value ?? "—").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function identityDate(value) {
+  if (!value) return "—";
+  try { return new Date(value).toLocaleString("fr-DZ", { dateStyle:"medium", timeStyle:"short" }); }
+  catch (_) { return identityEscape(value); }
+}
+function identityStatusBadge(status) {
+  const s = String(status || "pending").toLowerCase();
+  const m = {
+    pending: ["قيد المراجعة", "text-yellow-300 bg-yellow-500/10 border-yellow-500/20"],
+    approved: ["موثّق / مقبول", "text-green-300 bg-green-500/10 border-green-500/20"],
+    rejected: ["مرفوض", "text-red-300 bg-red-500/10 border-red-500/20"]
+  }[s] || [s, "text-gray-300 bg-white/5 border-white/10"];
+  return `<span class="inline-flex px-2 py-1 rounded-lg border text-[10px] font-bold ${m[1]}">${m[0]}</span>`;
+}
+async function identitySecurityApi(action, data = {}) {
+  if (!ADMIN_TOKEN) return { ok:false, error:"جلسة الإدارة غير متوفرة. سجّل الدخول من جديد." };
+  try {
+    const res = await fetch(IDENTITY_SECURITY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + ADMIN_TOKEN,
+        "apikey": SUPABASE_KEY
+      },
+      body: JSON.stringify({ action, ...data })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body?.ok === false) return { ok:false, error:body?.error || body?.message || `HTTP ${res.status}`, status:res.status };
+    return body;
+  } catch (e) {
+    console.error("Identity admin API error", e);
+    return { ok:false, error:"تعذر الاتصال بخدمة التوثيق." };
+  }
+}
+async function loadIdentityRequests() {
+  const tbody = document.getElementById("identityRequestsTable");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">⏳ جاري تحميل الطلبات...</td></tr>`;
+  // Fetch all statuses once so the counters stay accurate; filtering is local.
+  const result = await identitySecurityApi("admin_identity_list", { status:"all", limit:100 });
+  if (!result || result.ok === false || !Array.isArray(result.requests)) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-red-300">تعذر تحميل الطلبات: ${identityEscape(result?.error || "استجابة غير متوقعة")}</td></tr>`;
+    const msg = document.getElementById("identityListMessage");
+    if (msg) msg.textContent = "تأكد من نشر نسخة account-security التي تحتوي admin_identity_list، وأن حساب الإدارة ضمن admins مع تحقق MFA.";
+    return;
+  }
+  identityRequestsCache = result.requests;
+  renderIdentityRequests();
+}
+function renderIdentityRequests() {
+  const tbody = document.getElementById("identityRequestsTable");
+  if (!tbody) return;
+  const q = String(document.getElementById("identitySearch")?.value || "").trim().toLowerCase();
+  const statusFilter = document.getElementById("identityStatusFilter")?.value || "pending";
+  const rows = identityRequestsCache.filter(r => {
+    if (statusFilter !== "all" && String(r.status || "pending") !== statusFilter) return false;
+    return [r.id,r.user_id,r.full_name,r.document_type,r.status].some(v => String(v ?? "").toLowerCase().includes(q));
+  });
+  const stat = id => { const el=document.getElementById(id); if(el) el.textContent=String(identityRequestsCache.filter(r=>r.status===({identityStatPending:"pending",identityStatApproved:"approved",identityStatRejected:"rejected"}[id])).length); };
+  const allEl=document.getElementById("identityStatAll"); if(allEl) allEl.textContent=String(identityRequestsCache.length);
+  stat("identityStatPending"); stat("identityStatApproved"); stat("identityStatRejected");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500">لا توجد طلبات مطابقة لهذا الفلتر.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr class="hover:bg-white/[0.025]">
+    <td class="p-3"><div class="text-white font-bold">${identityEscape(r.user?.username || r.user?.email || `مستخدم #${r.user_id}`)}</div><div class="text-[10px] text-gray-500 font-mono mt-1">طلب: ${identityEscape(r.id)}</div><div class="text-[10px] text-gray-500 font-mono">User ID: ${identityEscape(r.user_id)}</div></td>
+    <td class="p-3 text-gray-200">${identityEscape(r.full_name)}</td>
+    <td class="p-3 text-gray-300">${({national_id:"بطاقة التعريف الوطنية",passport:"جواز السفر",drivers_license:"رخصة السياقة"}[r.document_type] || identityEscape(r.document_type))}</td>
+    <td class="p-3 text-gray-400">${identityDate(r.submitted_at || r.created_at)}</td>
+    <td class="p-3">${identityStatusBadge(r.status)}</td>
+    <td class="p-3"><button data-identity-open="${identityEscape(r.id)}" class="px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 hover:bg-cyan-500/20 text-[11px] font-bold">فتح الملف ومراجعة</button></td>
+  </tr>`).join("");
+  tbody.querySelectorAll("[data-identity-open]").forEach(btn => btn.addEventListener("click", () => openIdentityRequest(btn.getAttribute("data-identity-open"))));
+}
+async function openIdentityRequest(id) {
+  selectedIdentityRequestId = id;
+  const panel = document.getElementById("identityDetailsPanel");
+  const content = document.getElementById("identityDetailsContent");
+  if (!panel || !content) return;
+  panel.classList.remove("hidden");
+  content.innerHTML = `<div class="text-center py-8 text-gray-400">⏳ جاري جلب بيانات الطلب وروابط الصور الخاصة...</div>`;
+  panel.scrollIntoView({ behavior:"smooth", block:"start" });
+  const result = await identitySecurityApi("admin_identity_get", { id });
+  if (!result || result.ok === false || !result.verification) {
+    content.innerHTML = `<div class="text-red-300 p-4">تعذر فتح الطلب: ${identityEscape(result?.error || "خطأ غير معروف")}</div>`;
+    return;
+  }
+  const v = result.verification;
+  let user = v.user || null;
+  // Use the existing admin-users API for the broader account profile, without changing it.
+  if (!user) {
+    const profileResult = await api("get_user_details", { device_id: v.user_id });
+    user = profileResult?.user || profileResult?.data?.user || null;
+    if (!user) {
+      const allRes = await api("get_all_users");
+      const users = Array.isArray(allRes?.data) ? allRes.data : Array.isArray(allRes) ? allRes : [];
+      user = users.find(u => String(u.id ?? u.user_id ?? u.uuid ?? u.device_id) === String(v.user_id)) || null;
+    }
+  }
+  const docs = result.documents || {};
+  const img = (url, title) => url ? `<div class="rounded-xl border border-white/10 bg-black/20 p-2"><div class="text-gray-300 text-xs font-bold mb-2">${title}</div><a href="${identityEscape(url)}" target="_blank" rel="noopener noreferrer"><img src="${identityEscape(url)}" alt="${title}" class="w-full max-h-[480px] object-contain rounded-lg bg-black/30" loading="lazy"></a><div class="text-[10px] text-gray-500 mt-2">رابط خاص مؤقت — اضغط الصورة لفتحها</div></div>` : `<div class="rounded-xl border border-white/10 p-5 text-center text-gray-500">${title}: لا توجد صورة محفوظة</div>`;
+  const profileRows = user ? [
+    ["اسم المستخدم",user.username || user.name], ["الاسم الكامل في الحساب",user.full_name], ["البريد الإلكتروني",user.email], ["رقم الهاتف",user.phone || user.phone_number],
+    ["معرّف المستخدم",user.id ?? user.user_id ?? v.user_id], ["المعرّف العام",user.public_id], ["Device ID",user.device_id],
+    ["الدولة",user.country], ["الشركة المصنّعة للجهاز",user.manufacturer], ["طراز الجهاز",user.model],
+    ["تاريخ إنشاء الحساب",user.created_at], ["آخر ظهور",user.last_online], ["حالة الحظر",user.banned === true ? "محظور" : "غير محظور"],
+    ["VIP",user.vip === true ? "نعم" : "لا"], ["انتهاء VIP",user.vip_until], ["الرصيد بالدولار",user.balance_usd], ["الرصيد بالدينار",user.balance_dzd],
+    ["حالة توثيق الهوية",user.identity_verification_status || (user.identity_verified ? "approved" : "غير موثق")], ["تاريخ التوثيق",user.identity_verified_at]
+  ].filter(([label, value]) => value !== undefined && value !== null && value !== "") : [["معرّف المستخدم",v.user_id], ["ملاحظة","تعذر جلب ملف الحساب الكامل من admin-users؛ بيانات طلب التوثيق والصور متاحة أدناه."]];
+  const profileHtml = profileRows.map(([k,val]) => `<div class="bg-black/15 border border-white/5 rounded-lg p-3"><div class="text-gray-500 text-[10px] mb-1">${identityEscape(k)}</div><div class="text-gray-100 text-xs break-all">${identityEscape(val)}</div></div>`).join("");
+  const reviewActions = v.status === "pending" ? `<div class="flex flex-wrap gap-2 pt-3 border-t border-white/10"><button id="btnIdentityApprove" class="px-5 py-3 rounded-xl bg-green-600/20 border border-green-500/30 text-green-200 font-black text-sm">✓ تأكيد الوثائق وتفعيل التوثيق</button><button id="btnIdentityReject" class="px-5 py-3 rounded-xl bg-red-600/15 border border-red-500/30 text-red-200 font-bold text-sm">✕ رفض الطلب</button></div><p class="text-[10px] text-gray-500">الموافقة تحدث حالة الطلب وحقول توثيق المستخدم في قاعدة البيانات. الرفض يتطلب سببًا يظهر للمراجعة.</p>` : `<div class="p-3 rounded-xl bg-white/5 text-sm">تمت مراجعة هذا الطلب. الحالة الحالية: ${identityStatusBadge(v.status)}${v.rejection_reason ? `<div class="text-red-200 mt-2">سبب الرفض: ${identityEscape(v.rejection_reason)}</div>` : ""}</div>`;
+  content.innerHTML = `
+    <div class="flex flex-wrap items-start justify-between gap-3"><div><h5 class="text-white font-black text-lg">${identityEscape(v.full_name)}</h5><div class="text-xs text-gray-500 mt-1">رقم الطلب: <span class="font-mono">${identityEscape(v.id)}</span></div><div class="mt-2">${identityStatusBadge(v.status)}</div></div><div class="text-xs text-gray-400">أرسل: ${identityDate(v.submitted_at || v.created_at)}<br>راجع: ${identityDate(v.reviewed_at)}</div></div>
+    <div><h6 class="text-cyan-200 font-bold mb-2">معلومات الحساب المرتبطة</h6><div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${profileHtml}</div></div>
+    <div><h6 class="text-cyan-200 font-bold mb-2">صور الوثيقة</h6><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${img(docs.front_url,"الوجه الأمامي")}${img(docs.back_url,"الوجه الخلفي")}</div></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs"><div class="rounded-lg bg-white/5 p-3"><span class="text-gray-500">نوع الوثيقة:</span> ${identityEscape(v.document_type)}</div><div class="rounded-lg bg-white/5 p-3"><span class="text-gray-500">تاريخ المراجعة:</span> ${identityDate(v.reviewed_at)}</div>${v.rejection_reason ? `<div class="rounded-lg bg-red-500/10 p-3 sm:col-span-2"><span class="text-red-300">سبب الرفض:</span> ${identityEscape(v.rejection_reason)}</div>` : ""}</div>
+    ${reviewActions}`;
+  document.getElementById("btnIdentityApprove")?.addEventListener("click", () => reviewIdentityRequest("approved"));
+  document.getElementById("btnIdentityReject")?.addEventListener("click", () => reviewIdentityRequest("rejected"));
+}
+async function reviewIdentityRequest(decision) {
+  if (!selectedIdentityRequestId) return;
+  let reason = "";
+  if (decision === "approved") {
+    if (!confirm("هل راجعت الوجه الأمامي والخلفي وتأكدت من تطابق البيانات؟ سيتم تفعيل توثيق هذا المستخدم.")) return;
+  } else {
+    reason = String(prompt("اكتب سبب رفض التوثيق (سيتم حفظه في سجل الطلب):") || "").trim();
+    if (reason.length < 3) { showToast("يجب كتابة سبب واضح للرفض"); return; }
+  }
+  const result = await identitySecurityApi("admin_identity_review", { id:selectedIdentityRequestId, decision, rejection_reason:reason });
+  if (!result || result.ok === false) { showToast(`❌ تعذر حفظ القرار: ${result?.error || "خطأ غير معروف"}`); return; }
+  showToast(decision === "approved" ? "✅ تم توثيق المستخدم" : "تم رفض طلب التوثيق");
+  await loadIdentityRequests();
+  await openIdentityRequest(selectedIdentityRequestId);
+}
+document.getElementById("btnRefreshIdentity")?.addEventListener("click", loadIdentityRequests);
+document.getElementById("identityStatusFilter")?.addEventListener("change", renderIdentityRequests);
+document.getElementById("identitySearch")?.addEventListener("input", renderIdentityRequests);
+document.getElementById("btnCloseIdentityDetails")?.addEventListener("click", () => document.getElementById("identityDetailsPanel")?.classList.add("hidden"));
+
 
 checkSession();
