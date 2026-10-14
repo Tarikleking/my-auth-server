@@ -205,6 +205,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
         loadWithdrawalSettings();
       } else if (targetSection === 'settings-section') {  
         loadSettings();  
+      } else if (targetSection === 'notifications-section') {
+        loadKingstoorPushUsers();
       }  
     }  
   });
@@ -5100,29 +5102,79 @@ document.getElementById("btnCloseIdentityDetails")?.addEventListener("click", ()
 
 checkSession();
 
-// Add after the existing api(action, data) helper has been defined.
+// Firebase push notifications: audience selection and user picker.
+let kingstoorPushUsersLoaded = false;
+let kingstoorPushUsersLoading = false;
+
+async function loadKingstoorPushUsers(force = false) {
+  const select = document.getElementById("kingstoorPushUserId");
+  const status = document.getElementById("kingstoorPushStatus");
+  if (!select || kingstoorPushUsersLoading || (kingstoorPushUsersLoaded && !force)) return;
+  kingstoorPushUsersLoading = true;
+  select.disabled = true;
+  select.innerHTML = '<option value="">جاري تحميل المستخدمين...</option>';
+  try {
+    const result = await api("get_all_users");
+    const users = Array.isArray(result) ? result : (Array.isArray(result?.data) ? result.data : (Array.isArray(result?.users) ? result.users : []));
+    const esc = value => String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+    const seen = new Set();
+    const options = users.map(user => {
+      const id = user.id ?? user.user_id ?? user.profile_id;
+      if (id === null || id === undefined || String(id).trim() === "" || seen.has(String(id))) return "";
+      seen.add(String(id));
+      const name = user.username || user.name || user.email || user.device_id || "مستخدم";
+      return `<option value="${esc(id)}">${esc(name)} — ID: ${esc(id)}</option>`;
+    }).filter(Boolean);
+    select.innerHTML = '<option value="">— اختر مستخدمًا —</option>' + options.join("");
+    select.disabled = options.length === 0;
+    kingstoorPushUsersLoaded = options.length > 0;
+    if (!options.length) {
+      select.innerHTML = '<option value="">لم يتم العثور على مستخدمين أو تعذر تحميل القائمة</option>';
+      if (status) status.textContent = "تحقق من صلاحيات admin-users وأن استجابة get_all_users تحتوي على قائمة المستخدمين.";
+    } else if (status) {
+      status.textContent = `تم تحميل ${options.length} مستخدم. اختر المستلم ثم أرسل الإشعار.`;
+    }
+  } catch (error) {
+    select.innerHTML = '<option value="">تعذر تحميل المستخدمين — أعد المحاولة</option>';
+    if (status) status.textContent = "تعذر تحميل القائمة. تحقق من جلسة الإدارة واتصال الخادم.";
+  } finally {
+    kingstoorPushUsersLoading = false;
+  }
+}
+
 (() => {
   const button = document.getElementById("kingstoorPushSend");
-  if (!button) return;
+  const audienceSelect = document.getElementById("kingstoorPushAudience");
+  const userWrap = document.getElementById("kingstoorPushUserWrap");
+  const userSelect = document.getElementById("kingstoorPushUserId");
+  const reloadButton = document.getElementById("kingstoorPushReloadUsers");
+  if (!button || !audienceSelect || !userSelect) return;
+
+  audienceSelect.addEventListener("change", () => {
+    const isUser = audienceSelect.value === "user";
+    userWrap?.classList.toggle("hidden", !isUser);
+    if (isUser) loadKingstoorPushUsers();
+  });
+  reloadButton?.addEventListener("click", () => loadKingstoorPushUsers(true));
+
   button.addEventListener("click", async () => {
     const status = document.getElementById("kingstoorPushStatus");
-    const audience = document.getElementById("kingstoorPushAudience").value;
+    const audience = audienceSelect.value;
     const title = document.getElementById("kingstoorPushTitle").value.trim();
     const message = document.getElementById("kingstoorPushMessage").value.trim();
-    const targetRaw = document.getElementById("kingstoorPushUserId").value.trim();
+    const targetRaw = userSelect.value;
     if (!title || !message) { status.textContent = "اكتب عنوان الإشعار ومحتواه أولاً."; return; }
-    if (audience === "user" && (!/^\d+$/.test(targetRaw) || Number(targetRaw) <= 0)) {
-      status.textContent = "أدخل ID صحيح للمستخدم."; return;
-    }
-    if (!window.confirm(audience === "all" ? "تأكيد إرسال الإشعار لجميع الأجهزة المسجلة؟" : `تأكيد الإرسال للمستخدم رقم ${targetRaw}؟`)) return;
+    if (audience === "user" && !targetRaw) { status.textContent = "اختر المستخدم الذي تريد إرسال الإشعار إليه."; return; }
+    const selectedLabel = audience === "user" ? userSelect.options[userSelect.selectedIndex]?.text : "جميع المستخدمين";
+    if (!window.confirm(audience === "all" ? "تأكيد إرسال الإشعار لجميع الأجهزة المسجلة؟" : `تأكيد إرسال الإشعار إلى: ${selectedLabel}؟`)) return;
     button.disabled = true;
     status.textContent = "جاري الإرسال…";
     try {
       const result = await api("send_push", { audience, title, message, ...(audience === "user" ? { target_user_id: Number(targetRaw) } : {}) });
       if (!result || result.error || result.success !== true) {
-        status.textContent = "فشل الإرسال. راجع سجل Edge Function وإعدادات Firebase.";
+        status.textContent = `فشل الإرسال: ${result?.message || result?.error_description || "راجع سجل Edge Function وإعدادات Firebase."}`;
       } else {
-        status.textContent = `انتهى الإرسال: وصل إلى FCM ${result.sent}، فشل ${result.failed}، إجمالي الأجهزة ${result.total_tokens}.`;
+        status.textContent = `انتهى الإرسال: وصل إلى FCM ${result.sent ?? 0}، فشل ${result.failed ?? 0}، إجمالي الأجهزة ${result.total_tokens ?? 0}.`;
       }
     } catch (_) { status.textContent = "تعذر الاتصال بالخادم."; }
     finally { button.disabled = false; }

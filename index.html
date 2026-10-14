@@ -123,6 +123,9 @@
                     <button data-target="withdrawals-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="banknote" class="w-4 h-4"></i> طلبات سحب الأرباح
                     </button>
+                    <button data-target="notifications-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
+                        <i data-lucide="bell-ring" class="w-4 h-4"></i> الإشعارات الفورية
+                    </button>
                     <button data-target="settings-section" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-300 hover:bg-white/5 hover:text-white">
                         <i data-lucide="settings" class="w-4 h-4"></i> الإعدادات
                     </button>
@@ -895,6 +898,40 @@
                     </div>
                 </section>
 
+                <!-- قسم الإشعارات الفورية -->
+                <section id="notifications-section" class="tab-content hidden space-y-4">
+                    <div class="glass-card rounded-2xl border border-purple-500/20 p-5 space-y-4 max-w-2xl">
+                        <div>
+                            <h4 class="text-white font-bold text-base">🔔 إرسال إشعار للتطبيق</h4>
+                            <p class="text-gray-400 text-xs mt-1">أرسل تنبيهًا لجميع المستخدمين أو اختر مستخدمًا من القائمة.</p>
+                        </div>
+                        <div>
+                            <label for="kingstoorPushAudience" class="block text-xs text-gray-400 mb-1">المستلمون</label>
+                            <select id="kingstoorPushAudience" class="w-full rounded-xl border border-white/10 bg-[#161b26] text-white p-3 text-sm">
+                                <option value="all">جميع المستخدمين</option>
+                                <option value="user">مستخدم معيّن</option>
+                            </select>
+                        </div>
+                        <div id="kingstoorPushUserWrap" class="hidden">
+                            <label for="kingstoorPushUserId" class="block text-xs text-gray-400 mb-1">اختر المستخدم</label>
+                            <select id="kingstoorPushUserId" disabled class="w-full rounded-xl border border-white/10 bg-[#161b26] text-white p-3 text-sm">
+                                <option value="">افتح القائمة لتحميل المستخدمين</option>
+                            </select>
+                            <button id="kingstoorPushReloadUsers" type="button" class="mt-2 text-xs text-purple-300 hover:text-purple-200">إعادة تحميل قائمة المستخدمين</button>
+                        </div>
+                        <div>
+                            <label for="kingstoorPushTitle" class="block text-xs text-gray-400 mb-1">عنوان الإشعار</label>
+                            <input id="kingstoorPushTitle" maxlength="100" placeholder="مثال: تحديث جديد" class="w-full rounded-xl border border-white/10 bg-[#161b26] text-white p-3 text-sm" />
+                        </div>
+                        <div>
+                            <label for="kingstoorPushMessage" class="block text-xs text-gray-400 mb-1">محتوى الإشعار</label>
+                            <textarea id="kingstoorPushMessage" maxlength="1000" rows="4" placeholder="اكتب محتوى الإشعار هنا..." class="w-full rounded-xl border border-white/10 bg-[#161b26] text-white p-3 text-sm"></textarea>
+                        </div>
+                        <button id="kingstoorPushSend" type="button" class="w-full rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold p-3 transition">إرسال الإشعار</button>
+                        <p id="kingstoorPushStatus" class="text-sm text-gray-300" aria-live="polite"></p>
+                    </div>
+                </section>
+
                 <!-- قسم الإعدادات -->
                 <section id="settings-section" class="tab-content hidden space-y-6">
                     <div class="glass-card p-6 rounded-2xl border border-white/5 space-y-6 max-w-2xl">
@@ -936,19 +973,6 @@
                         </div>
                     </div>
 
-                    <!-- Insert this card in the existing admin dashboard page (inside the appropriate section). -->
-                    <section id="kingstoorPushCard" class="rounded-2xl border border-purple-500/20 bg-slate-900/70 p-4 space-y-3">
-                      <h3 class="text-white font-bold">🔔 إرسال إشعار للتطبيق</h3>
-                      <select id="kingstoorPushAudience" class="w-full rounded-lg bg-slate-800 text-white p-3">
-                        <option value="all">جميع المستخدمين</option>
-                        <option value="user">مستخدم واحد (حسب ID)</option>
-                      </select>
-                      <input id="kingstoorPushUserId" type="number" min="1" placeholder="ID المستخدم عند الإرسال لفرد واحد" class="w-full rounded-lg bg-slate-800 text-white p-3" />
-                      <input id="kingstoorPushTitle" maxlength="100" placeholder="عنوان الإشعار" class="w-full rounded-lg bg-slate-800 text-white p-3" />
-                      <textarea id="kingstoorPushMessage" maxlength="1000" rows="3" placeholder="محتوى الإشعار" class="w-full rounded-lg bg-slate-800 text-white p-3"></textarea>
-                      <button id="kingstoorPushSend" type="button" class="w-full rounded-lg bg-purple-600 text-white font-bold p-3">إرسال الإشعار</button>
-                      <p id="kingstoorPushStatus" class="text-sm text-slate-300" aria-live="polite"></p>
-                    </section>
                 </section>
 
             </div>
