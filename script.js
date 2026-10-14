@@ -5099,3 +5099,33 @@ document.getElementById("btnCloseIdentityDetails")?.addEventListener("click", ()
 
 
 checkSession();
+
+// Add after the existing api(action, data) helper has been defined.
+(() => {
+  const button = document.getElementById("kingstoorPushSend");
+  if (!button) return;
+  button.addEventListener("click", async () => {
+    const status = document.getElementById("kingstoorPushStatus");
+    const audience = document.getElementById("kingstoorPushAudience").value;
+    const title = document.getElementById("kingstoorPushTitle").value.trim();
+    const message = document.getElementById("kingstoorPushMessage").value.trim();
+    const targetRaw = document.getElementById("kingstoorPushUserId").value.trim();
+    if (!title || !message) { status.textContent = "اكتب عنوان الإشعار ومحتواه أولاً."; return; }
+    if (audience === "user" && (!/^\d+$/.test(targetRaw) || Number(targetRaw) <= 0)) {
+      status.textContent = "أدخل ID صحيح للمستخدم."; return;
+    }
+    if (!window.confirm(audience === "all" ? "تأكيد إرسال الإشعار لجميع الأجهزة المسجلة؟" : `تأكيد الإرسال للمستخدم رقم ${targetRaw}؟`)) return;
+    button.disabled = true;
+    status.textContent = "جاري الإرسال…";
+    try {
+      const result = await api("send_push", { audience, title, message, ...(audience === "user" ? { target_user_id: Number(targetRaw) } : {}) });
+      if (!result || result.error || result.success !== true) {
+        status.textContent = "فشل الإرسال. راجع سجل Edge Function وإعدادات Firebase.";
+      } else {
+        status.textContent = `انتهى الإرسال: وصل إلى FCM ${result.sent}، فشل ${result.failed}، إجمالي الأجهزة ${result.total_tokens}.`;
+      }
+    } catch (_) { status.textContent = "تعذر الاتصال بالخادم."; }
+    finally { button.disabled = false; }
+  });
+})();
+
