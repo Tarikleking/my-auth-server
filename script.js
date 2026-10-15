@@ -203,6 +203,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
       } else if (targetSection === 'withdrawals-section') {
         loadWithdrawalRequests();
         loadWithdrawalSettings();
+      } else if (targetSection === 'mfa-section') {
+        loadKingdzAdminMfa();
       } else if (targetSection === 'settings-section') {  
         loadSettings();  
       } else if (targetSection === 'notifications-section') {
@@ -5181,3 +5183,109 @@ async function loadKingstoorPushUsers(force = false) {
   });
 })();
 
+
+
+// ============================================================
+// إدارة المصادقة الثنائية 2FA — الأدمن ومستخدمي Supabase Auth
+// ============================================================
+function renderKingdzMfaFactors(factors, targetType, targetId) {
+  if (!Array.isArray(factors) || factors.length === 0) {
+    return `<div class="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-xs text-gray-500">لا توجد عوامل مصادقة مسجلة لهذا الحساب.</div>`;
+  }
+  return factors.map((factor) => {
+    const factorId = String(factor.id || "");
+    const status = String(factor.status || "unknown");
+    const label = factor.friendly_name || factor.factor_type || "Authenticator";
+    const isAdmin = targetType === "admin";
+    const targetPayload = isAdmin
+      ? `admin_user_id: '${escapeHtml(targetId)}'`
+      : `auth_user_id: '${escapeHtml(targetId)}'`;
+    return `
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+        <div class="min-w-0">
+          <div class="text-white text-xs font-bold">${escapeHtml(label)}</div>
+          <div class="text-gray-500 text-[10px] mt-1">النوع: ${escapeHtml(factor.factor_type || "—")} · الحالة: ${escapeHtml(status)} · ID: ${escapeHtml(factorId)}</div>
+        </div>
+        <button type="button" class="px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20 text-[10px] font-bold" onclick="resetKingdzMfaFactor('${isAdmin ? "admin" : "user"}','${escapeHtml(targetId)}','${escapeHtml(factorId)}')">إزالة عامل 2FA</button>
+      </div>`;
+  }).join("");
+}
+
+async function loadKingdzAdminMfa() {
+  const status = document.getElementById("mfaAdminsStatus");
+  const list = document.getElementById("mfaAdminsList");
+  if (!status || !list) return;
+  status.textContent = "جاري تحميل حالة 2FA للأدمن…";
+  list.innerHTML = "";
+  const result = await api("get_admin_mfa");
+  if (!result || result.error || result.success !== true) {
+    status.textContent = `تعذر تحميل القائمة: ${result?.error || result?.message || "تحقق من اتصال الخادم وصلاحيات الأدمن."}`;
+    return;
+  }
+  const admins = Array.isArray(result.admins) ? result.admins : [];
+  status.textContent = `عدد حسابات الأدمن: ${admins.length}`;
+  if (!admins.length) {
+    list.innerHTML = `<div class="text-xs text-gray-500 p-4">لا توجد حسابات أدمن.</div>`;
+    return;
+  }
+  list.innerHTML = admins.map((admin) => {
+    const factors = Array.isArray(admin.factors) ? admin.factors : [];
+    const enabled = admin.mfa_enabled === true;
+    return `
+      <div class="rounded-2xl border border-white/5 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="text-white text-xs font-bold">${escapeHtml(admin.email || "بدون بريد إلكتروني")}</div>
+            <div class="text-gray-500 text-[10px] mt-1 break-all">Auth ID: ${escapeHtml(admin.admin_user_id || admin.auth_user_id || "")}</div>
+          </div>
+          <span class="px-2 py-1 rounded-lg text-[10px] ${enabled ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}">${enabled ? "2FA مفعّل" : "لا يوجد عامل موثّق"}</span>
+        </div>
+        ${renderKingdzMfaFactors(factors, "admin", String(admin.admin_user_id || admin.auth_user_id || ""))}
+      </div>`;
+  }).join("");
+  if (window.lucide) lucide.createIcons();
+}
+
+async function lookupKingdzUserMfa(authUserId) {
+  const status = document.getElementById("mfaUserStatus");
+  const factorsBox = document.getElementById("mfaUserFactors");
+  if (!status || !factorsBox) return;
+  status.textContent = "جاري فحص الحساب…";
+  factorsBox.innerHTML = "";
+  const result = await api("get_user_mfa", { auth_user_id: authUserId });
+  if (!result || result.error || result.success !== true) {
+    status.textContent = `تعذر فحص الحساب: ${result?.error || result?.message || "لم يتم العثور على الحساب."}`;
+    return;
+  }
+  status.textContent = `${result.email || authUserId} — ${result.mfa_enabled ? "المصادقة الثنائية مفعّلة" : "لا يوجد عامل مصادقة موثّق"}`;
+  factorsBox.innerHTML = renderKingdzMfaFactors(result.factors, "user", authUserId);
+}
+
+async function resetKingdzMfaFactor(targetType, targetId, factorId) {
+  const isAdmin = targetType === "admin";
+  const label = isAdmin ? "حساب الأدمن" : "حساب المستخدم";
+  if (!window.confirm(`تأكيد إزالة عامل 2FA من ${label}؟ قد يحتاج الحساب إلى تسجيل عامل جديد.`)) return;
+  const status = document.getElementById(isAdmin ? "mfaAdminsStatus" : "mfaUserStatus");
+  if (status) status.textContent = "جاري إزالة عامل المصادقة…";
+  const result = await api(isAdmin ? "reset_admin_mfa" : "reset_user_mfa", {
+    ...(isAdmin ? { admin_user_id: targetId } : { auth_user_id: targetId }),
+    factor_id: factorId,
+    confirm_reset: true
+  });
+  if (!result || result.error || result.success !== true) {
+    if (status) status.textContent = `فشلت العملية: ${result?.error || result?.message || "خطأ غير معروف"}`;
+    return;
+  }
+  if (typeof showToast === "function") showToast("تمت إزالة عامل المصادقة الثنائية");
+  if (isAdmin) await loadKingdzAdminMfa();
+  else await lookupKingdzUserMfa(targetId);
+}
+
+document.getElementById("mfaRefreshAdmins")?.addEventListener("click", loadKingdzAdminMfa);
+document.getElementById("mfaUserLookupForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.getElementById("mfaUserAuthId");
+  const authUserId = String(input?.value || "").trim();
+  if (!authUserId) return;
+  await lookupKingdzUserMfa(authUserId);
+});
