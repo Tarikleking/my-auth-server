@@ -669,11 +669,25 @@
                             <h4 class="text-white font-bold text-sm">المصادقة الثنائية للمستخدم</h4>
                             <p class="text-gray-400 text-xs mt-2">أدخل UUID الخاص بحساب المستخدم في Supabase Auth. رقم الجهاز أو رقم المستخدم من جدول التطبيق لا يكفي.</p>
                         </div>
-                        <form id="mfaUserLookupForm" class="flex flex-col sm:flex-row gap-3">
-                            <input id="mfaUserAuthId" type="text" autocomplete="off" placeholder="Supabase Auth UUID للمستخدم" class="flex-1 bg-[#0b0f17] border border-white/10 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-purple-500" required>
-                            <button type="submit" class="px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition">فحص 2FA</button>
-                        </form>
-                        <p class="text-xs text-gray-500">ملاحظة: هذه الوظيفة تخص الحسابات التي تستعمل Supabase Auth. إذا كان تسجيل المستخدمين يتم بنظام آخر، يلزم ربطه به قبل إدارة 2FA من هنا.</p>
+                        <div class="space-y-3">
+                            <label for="mfaUserSelect" class="block text-xs text-gray-300">اختر مستخدماً من القائمة</label>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <select id="mfaUserSelect" class="flex-1 bg-[#0b0f17] border border-white/10 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-purple-500">
+                                    <option value="">اضغط على تحديث المستخدمين لتحميل القائمة</option>
+                                </select>
+                                <button id="mfaRefreshUsers" type="button" class="px-4 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition">تحديث المستخدمين</button>
+                                <button id="mfaCheckSelectedUser" type="button" class="px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition">فحص 2FA</button>
+                            </div>
+                            <p id="mfaUsersListStatus" class="text-[11px] text-gray-500" aria-live="polite">قائمة المستخدمين تُحمّل من جدول users. يلزم وجود Supabase Auth UUID مرتبط بالحساب لإدارة 2FA.</p>
+                        </div>
+                        <details class="rounded-xl border border-white/5 p-3">
+                            <summary class="cursor-pointer text-xs text-gray-400">إدخال UUID يدوياً (اختياري)</summary>
+                            <form id="mfaUserLookupForm" class="flex flex-col sm:flex-row gap-3 mt-3">
+                                <input id="mfaUserAuthId" type="text" autocomplete="off" placeholder="Supabase Auth UUID للمستخدم" class="flex-1 bg-[#0b0f17] border border-white/10 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-purple-500" required>
+                                <button type="submit" class="px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition">فحص UUID</button>
+                            </form>
+                        </details>
+                        <p class="text-xs text-gray-500">ملاحظة: لا يُستخدم رقم المستخدم أو Device ID كبديل عن Supabase Auth UUID. إذا لم يكن UUID مرتبطاً في سجل المستخدم، سيظهر تنبيه بذلك.</p>
                         <p id="mfaUserStatus" class="text-xs text-gray-400" aria-live="polite"></p>
                         <div id="mfaUserFactors" class="space-y-3"></div>
                     </div>

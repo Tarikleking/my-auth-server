@@ -5281,7 +5281,67 @@ async function resetKingdzMfaFactor(targetType, targetId, factorId) {
   else await lookupKingdzUserMfa(targetId);
 }
 
+// تحميل قائمة المستخدمين من نفس مصدر لوحة التحكم، مع عدم اعتبار رقم users.id أو device_id كـ Auth UUID.
+async function loadKingdzMfaUsers() {
+  const select = document.getElementById("mfaUserSelect");
+  const status = document.getElementById("mfaUsersListStatus");
+  if (!select || !status) return;
+  select.disabled = true;
+  status.textContent = "جاري تحميل المستخدمين…";
+  select.innerHTML = '<option value="">جاري التحميل…</option>';
+  try {
+    const result = await api("get_all_users");
+    const users = Array.isArray(result) ? result : (Array.isArray(result?.data) ? result.data : (Array.isArray(result?.users) ? result.users : []));
+    if (result?.error || result?.success === false) throw new Error(result.error || result.message || "تعذر جلب المستخدمين");
+    if (!users.length) {
+      select.innerHTML = '<option value="">لا يوجد مستخدمون في القائمة</option>';
+      status.textContent = "لم يرجع الخادم أي مستخدم. تحقق من صلاحيات get_all_users.";
+      return;
+    }
+    const options = users.map((user) => {
+      const authId = String(user.auth_user_id || user.supabase_auth_id || user.auth_id || user.supabase_user_id || "").trim();
+      const displayId = user.id ?? user.user_id ?? user.device_id ?? "";
+      const name = user.username || user.name || user.full_name || user.email || user.device_id || `مستخدم ${displayId}`;
+      const label = `${name}${user.email && user.email !== name ? ` — ${user.email}` : ""} · ID: ${displayId || "—"}${authId ? " · Auth مرتبط" : " · لا يوجد Auth UUID"}`;
+      return { authId, label, key: String(displayId || authId || name) };
+    });
+    select.innerHTML = '<option value="">— اختر المستخدم —</option>' + options.map((item, i) => `<option value="${i}" ${item.authId ? "" : "disabled"}>${escapeHtml(item.label)}</option>`).join("");
+    select._kingdzMfaUsers = options;
+    select.disabled = false;
+    const linked = options.filter(item => item.authId).length;
+    status.textContent = `تم تحميل ${options.length} مستخدم. حسابات مرتبطة بـ Supabase Auth: ${linked}. الحسابات غير المرتبطة ظاهرة لكن غير قابلة للاختيار.`;
+  } catch (error) {
+    select.innerHTML = '<option value="">تعذر تحميل المستخدمين</option>';
+    status.textContent = `خطأ في تحميل القائمة: ${error?.message || error}`;
+  } finally {
+    select.disabled = false;
+  }
+}
+
+function checkSelectedKingdzMfaUser() {
+  const select = document.getElementById("mfaUserSelect");
+  const item = select?._kingdzMfaUsers?.[Number(select.value)];
+  if (!item || !item.authId) {
+    const status = document.getElementById("mfaUsersListStatus");
+    if (status) status.textContent = "اختر مستخدماً مرتبطاً بـ Supabase Auth. رقم المستخدم أو Device ID لا يكفي لفحص 2FA.";
+    return;
+  }
+  const input = document.getElementById("mfaUserAuthId");
+  if (input) input.value = item.authId;
+  lookupKingdzUserMfa(item.authId);
+}
+
 document.getElementById("mfaRefreshAdmins")?.addEventListener("click", loadKingdzAdminMfa);
+document.getElementById("mfaRefreshUsers")?.addEventListener("click", loadKingdzMfaUsers);
+document.getElementById("mfaCheckSelectedUser")?.addEventListener("click", checkSelectedKingdzMfaUser);
+document.getElementById("mfaUserSelect")?.addEventListener("change", () => {
+  const select = document.getElementById("mfaUserSelect");
+  const item = select?._kingdzMfaUsers?.[Number(select.value)];
+  if (item?.authId) {
+    const input = document.getElementById("mfaUserAuthId");
+    if (input) input.value = item.authId;
+  }
+});
 document.getElementById("mfaUserLookupForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = document.getElementById("mfaUserAuthId");
